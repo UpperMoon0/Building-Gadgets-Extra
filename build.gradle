@@ -2,6 +2,13 @@ plugins {
     id 'idea'
 }
 
+def nestedGradle = { String module, String taskName ->
+    if (org.gradle.internal.os.OperatingSystem.current().isWindows()) {
+        return ['cmd', '/c', 'gradlew.bat', taskName, '--no-daemon', '--no-configuration-cache']
+    }
+    return ['./gradlew', taskName, '--no-daemon', '--no-configuration-cache']
+}
+
 allprojects {
     group = rootProject.mod_group_id
     version = rootProject.mod_version
@@ -22,14 +29,61 @@ tasks.register('build') {
     group = 'build'
     description = 'Builds every supported Building Gadgets Extra module.'
     dependsOn ':neoforge-1.21.1:build'
+    dependsOn 'neoforge2612Build'
     dependsOn ':forge-1.20.1:build'
     dependsOn ':forge-1.16.5:build'
+}
+
+tasks.register('test') {
+    group = 'verification'
+    description = 'Runs shared logic tests and every supported module test suite.'
+    dependsOn ':common:test'
+    dependsOn ':neoforge-1.21.1:test'
+    dependsOn 'neoforge2612Test'
+    dependsOn ':forge-1.20.1:test'
+    dependsOn ':forge-1.16.5:test'
 }
 
 tasks.register('clean') {
     group = 'build'
     description = 'Cleans every supported Building Gadgets Extra module.'
     dependsOn ':neoforge-1.21.1:clean'
+    dependsOn 'neoforge2612Clean'
     dependsOn ':forge-1.20.1:clean'
     dependsOn ':forge-1.16.5:clean'
+}
+
+tasks.register('neoforge2612Build', Exec) {
+    group = 'neoforge-26.1.2'
+    description = 'Builds the Java 25 / Gradle 9 NeoForge 26.1.2 module.'
+    workingDir rootProject.file('neoforge-26.1.2')
+    commandLine nestedGradle('neoforge-26.1.2', 'build')
+}
+
+tasks.register('neoforge2612Test', Exec) {
+    group = 'neoforge-26.1.2'
+    description = 'Runs tests for the Java 25 / Gradle 9 NeoForge 26.1.2 module.'
+    workingDir rootProject.file('neoforge-26.1.2')
+    commandLine nestedGradle('neoforge-26.1.2', 'test')
+}
+
+tasks.register('neoforge2612Clean', Exec) {
+    group = 'neoforge-26.1.2'
+    description = 'Cleans the Java 25 / Gradle 9 NeoForge 26.1.2 module.'
+    workingDir rootProject.file('neoforge-26.1.2')
+    commandLine nestedGradle('neoforge-26.1.2', 'clean')
+}
+
+tasks.register('neoforge2612RunClient', Exec) {
+    group = 'neoforge-26.1.2'
+    description = 'Runs the Minecraft client for NeoForge 26.1.2.'
+    workingDir rootProject.file('neoforge-26.1.2')
+    commandLine nestedGradle('neoforge-26.1.2', 'runClient')
+}
+
+tasks.register('neoforge2612RunServer', Exec) {
+    group = 'neoforge-26.1.2'
+    description = 'Runs the Minecraft server for NeoForge 26.1.2.'
+    workingDir rootProject.file('neoforge-26.1.2')
+    commandLine nestedGradle('neoforge-26.1.2', 'runServer')
 }

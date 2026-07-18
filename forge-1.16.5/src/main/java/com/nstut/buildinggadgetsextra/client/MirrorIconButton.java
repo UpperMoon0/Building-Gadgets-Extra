@@ -4,22 +4,29 @@ import com.direwolf20.buildinggadgets.client.screen.components.GuiIconActionable
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.matrix.MatrixStack;
 import com.nstut.buildinggadgetsextra.common.ExtraConstants;
+import com.nstut.buildinggadgetsextra.common.RadialIconLayout;
 import net.minecraft.client.Minecraft;
 import net.minecraft.util.ResourceLocation;
 import net.minecraft.util.text.ITextComponent;
 
 public final class MirrorIconButton extends GuiIconActionable {
-    private static final int TEXTURE_SIZE = 44;
     private final ResourceLocation icon;
+    private final int sourceSize;
 
     public MirrorIconButton(int x, int y, String iconName, ITextComponent tooltip, Runnable action) {
+        this(x, y, iconName, RadialIconLayout.SOURCE_TEXTURE_SIZE, tooltip, action);
+    }
+
+    public MirrorIconButton(int x, int y, String iconName, int sourceSize,
+                            ITextComponent tooltip, Runnable action) {
         super(x, y, "buildinggadgetsextra_placeholder", tooltip, false, send -> {
             if (send) action.run();
             return false;
         });
         this.icon = new ResourceLocation(ExtraConstants.MOD_ID, "textures/gui/setting/" + iconName + ".png");
-        this.width = 24;
-        this.height = 24;
+        this.sourceSize = sourceSize;
+        this.width = RadialIconLayout.BUTTON_SIZE;
+        this.height = RadialIconLayout.BUTTON_SIZE;
     }
 
     @Override
@@ -30,12 +37,13 @@ public final class MirrorIconButton extends GuiIconActionable {
         RenderSystem.enableBlend();
         RenderSystem.disableTexture();
         RenderSystem.color4f(1, 1, 1, .2f);
-        fill(poseStack, x, y, x + width, y + height, 0x32FFFFFF);
+        fill(poseStack, x, y, x + width, y + height, RadialIconLayout.BACKGROUND_COLOR);
         RenderSystem.enableTexture();
         RenderSystem.color4f(1, 1, 1, alpha);
         minecraft.getTextureManager().bind(icon);
         blit(poseStack, x, y, width, height,
-                0, 0, TEXTURE_SIZE, TEXTURE_SIZE, TEXTURE_SIZE, TEXTURE_SIZE);
+                0, 0,
+                sourceSize, sourceSize, sourceSize, sourceSize);
         RenderSystem.color4f(1, 1, 1, 1);
         RenderSystem.disableBlend();
 

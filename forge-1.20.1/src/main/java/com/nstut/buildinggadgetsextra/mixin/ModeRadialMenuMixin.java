@@ -4,10 +4,12 @@ import com.direwolf20.buildinggadgets2.client.screen.ModeRadialMenu;
 import com.direwolf20.buildinggadgets2.common.items.BaseGadget;
 import com.direwolf20.buildinggadgets2.common.items.GadgetCopyPaste;
 import com.direwolf20.buildinggadgets2.common.items.GadgetCutPaste;
+import com.direwolf20.buildinggadgets2.util.GadgetNBT;
+import com.nstut.buildinggadgetsextra.client.ClientStructureFiles;
 import com.nstut.buildinggadgetsextra.client.MirrorIconButton;
-import com.nstut.buildinggadgetsextra.client.StructureLibraryButton;
-import com.nstut.buildinggadgetsextra.client.StructureLibraryScreen;
 import com.nstut.buildinggadgetsextra.common.ExtraConstants;
+import com.nstut.buildinggadgetsextra.common.RadialButtonPolicy;
+import com.nstut.buildinggadgetsextra.common.RadialIconLayout;
 import com.nstut.buildinggadgetsextra.network.ExtraNetwork;
 import com.nstut.buildinggadgetsextra.network.MirrorPacket;
 import net.minecraft.client.Minecraft;
@@ -46,14 +48,28 @@ public abstract class ModeRadialMenuMixin extends Screen {
 
         int x = rotateButton.getX() - 34;
         int y = rotateButton.getY();
-        this.addRenderableWidget(new MirrorIconButton(x, y, "mirror_horizontal",
-                Component.translatable(ExtraConstants.MIRROR_HORIZONTAL),
-                () -> ExtraNetwork.sendToServer(new MirrorPacket(false))));
-        this.addRenderableWidget(new MirrorIconButton(x, y + 34, "mirror_vertical",
-                Component.translatable(ExtraConstants.MIRROR_VERTICAL),
-                () -> ExtraNetwork.sendToServer(new MirrorPacket(true))));
-        this.addRenderableWidget(new StructureLibraryButton(x, y + 68,
-                Component.translatable(ExtraConstants.STRUCTURE_LIBRARY),
-                () -> minecraft.setScreen(new StructureLibraryScreen(this))));
+        String mode = GadgetNBT.getMode(gadget).getId().getPath();
+        int fileY = y;
+        if (RadialButtonPolicy.showMirrorButtons(mode)) {
+            this.addRenderableWidget(new MirrorIconButton(x, y, "mirror_horizontal",
+                    Component.translatable(ExtraConstants.MIRROR_HORIZONTAL),
+                    () -> ExtraNetwork.sendToServer(new MirrorPacket(false))));
+            this.addRenderableWidget(new MirrorIconButton(
+                    x, y + RadialIconLayout.BUTTON_SPACING, "mirror_vertical",
+                    Component.translatable(ExtraConstants.MIRROR_VERTICAL),
+                    () -> ExtraNetwork.sendToServer(new MirrorPacket(true))));
+            fileY += RadialIconLayout.BUTTON_SPACING * 2;
+        }
+
+        RadialButtonPolicy.FileAction fileAction = RadialButtonPolicy.fileAction(
+                gadget.getItem() instanceof GadgetCutPaste, mode);
+        if (fileAction != RadialButtonPolicy.FileAction.NONE) {
+            boolean load = fileAction == RadialButtonPolicy.FileAction.LOAD;
+            this.addRenderableWidget(new MirrorIconButton(x, fileY,
+                    load ? "load" : "save",
+                    Component.translatable(load
+                            ? ExtraConstants.LOAD_STRUCTURE : ExtraConstants.SAVE_STRUCTURE),
+                    load ? ClientStructureFiles::chooseLoad : ClientStructureFiles::chooseSave));
+        }
     }
 }

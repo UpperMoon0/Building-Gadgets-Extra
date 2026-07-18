@@ -1,0 +1,75 @@
+plugins {
+    id 'java-library'
+    id 'net.neoforged.moddev' version '2.0.142'
+    id 'idea'
+}
+
+def sharedProperties = new Properties()
+file('../gradle.properties').withInputStream { sharedProperties.load(it) }
+
+['mod_id', 'mod_name', 'mod_license', 'mod_version', 'mod_authors', 'mod_description',
+ 'mod_url', 'mod_issues_url', 'mod_group_id'].each { propertyName ->
+    ext.set(propertyName, sharedProperties.getProperty(propertyName))
+}
+
+version = mod_version
+group = mod_group_id
+
+repositories {
+    maven { url = 'https://www.cursemaven.com' }
+}
+
+base {
+    archivesName = "building-gadgets-extra-neoforge-${minecraft_version}"
+}
+
+sourceSets.main.java.srcDir file('../common/src/main/java')
+sourceSets.main.resources.srcDir file('../common/src/main/resources')
+
+java.toolchain.languageVersion = JavaLanguageVersion.of(25)
+
+neoForge {
+    version = project.neo_version
+
+    runs {
+        client { client() }
+        server {
+            server()
+            programArgument '--nogui'
+        }
+    }
+
+    mods {
+        "${mod_id}" {
+            sourceSet(sourceSets.main)
+        }
+    }
+}
+
+dependencies {
+    implementation 'curse.maven:building-gadgets-298187:7964119'
+}
+
+def generateModMetadata = tasks.register('generateModMetadata', ProcessResources) {
+    def replaceProperties = [
+            minecraft_version_range        : minecraft_version_range,
+            neo_version                    : neo_version,
+            loader_version_range           : loader_version_range,
+            mod_id                         : mod_id,
+            mod_name                       : mod_name,
+            mod_license                    : mod_license,
+            mod_version                    : mod_version,
+            mod_authors                    : mod_authors,
+            mod_description                : mod_description,
+            mod_url                        : mod_url,
+            mod_issues_url                 : mod_issues_url,
+            building_gadgets_version_range : building_gadgets_version_range,
+    ]
+    inputs.properties replaceProperties
+    expand replaceProperties
+    from 'src/main/templates'
+    into 'build/generated/sources/modMetadata'
+}
+
+sourceSets.main.resources.srcDir generateModMetadata
+neoForge.ideSyncTask generateModMetadata

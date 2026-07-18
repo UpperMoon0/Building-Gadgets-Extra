@@ -3,12 +3,14 @@ package com.nstut.buildinggadgetsextra.mixin;
 import com.direwolf20.buildinggadgets.client.screen.ModeRadialMenu;
 import com.direwolf20.buildinggadgets.common.items.AbstractGadget;
 import com.direwolf20.buildinggadgets.common.items.GadgetCopyPaste;
+import com.nstut.buildinggadgetsextra.client.ClientStructureFiles;
 import com.nstut.buildinggadgetsextra.client.MirrorIconButton;
-import com.nstut.buildinggadgetsextra.client.StructureLibraryButton;
-import com.nstut.buildinggadgetsextra.client.StructureLibraryScreen;
 import com.nstut.buildinggadgetsextra.common.ExtraConstants;
+import com.nstut.buildinggadgetsextra.common.RadialButtonPolicy;
+import com.nstut.buildinggadgetsextra.common.RadialIconLayout;
 import com.nstut.buildinggadgetsextra.network.ExtraNetwork;
 import com.nstut.buildinggadgetsextra.network.MirrorPacket;
+import com.nstut.buildinggadgetsextra.network.CutSelectionPacket;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.gui.widget.Widget;
@@ -35,16 +37,44 @@ public abstract class ModeRadialMenuMixin extends Screen {
         if (!(gadget.getItem() instanceof GadgetCopyPaste)) return;
 
         Widget mirrorButton = this.buttons.stream()
-                .filter(widget -> widget.getMessage().getString().equals(
-                        new TranslationTextComponent("buildinggadgets.radialmenu.mirror").getString()))
+                .filter(widget -> widget.getMessage() instanceof TranslationTextComponent)
+                .filter(widget -> "buildinggadgets.radialmenu.mirror".equals(
+                        ((TranslationTextComponent) widget.getMessage()).getKey()))
                 .findFirst().orElse(null);
-        if (mirrorButton == null) return;
 
-        this.addButton(new MirrorIconButton(mirrorButton.x - 34, mirrorButton.y,
-                "mirror_vertical", new TranslationTextComponent(ExtraConstants.MIRROR_VERTICAL),
-                () -> ExtraNetwork.sendToServer(new MirrorPacket(true))));
-        this.addButton(new StructureLibraryButton(mirrorButton.x - 34, mirrorButton.y + 34,
-                new TranslationTextComponent(ExtraConstants.STRUCTURE_LIBRARY),
-                () -> minecraft.setScreen(new StructureLibraryScreen(this))));
+        boolean pasteMode = GadgetCopyPaste.getToolMode(gadget) == GadgetCopyPaste.ToolMode.PASTE;
+        String mode = pasteMode ? "paste" : "copy";
+        int mirrorX = mirrorButton == null ? this.width / 2 - 94 : mirrorButton.x;
+        int mirrorY = mirrorButton == null ? this.height / 2 - 29 : mirrorButton.y;
+        boolean showMirrors = RadialButtonPolicy.showMirrorButtons(mode);
+        if (mirrorButton != null) mirrorButton.visible = showMirrors;
+        int addonX = mirrorX - RadialIconLayout.BUTTON_SPACING;
+        int fileY = mirrorY;
+        if (showMirrors) {
+            this.addButton(new MirrorIconButton(
+                    addonX, mirrorY,
+                    "mirror_vertical", new TranslationTextComponent(ExtraConstants.MIRROR_VERTICAL),
+                    () -> ExtraNetwork.sendToServer(new MirrorPacket(true))));
+            fileY += RadialIconLayout.BUTTON_SPACING;
+        }
+
+        RadialButtonPolicy.FileAction fileAction = RadialButtonPolicy.fileAction(false, mode);
+        if (fileAction != RadialButtonPolicy.FileAction.NONE) {
+            boolean load = fileAction == RadialButtonPolicy.FileAction.LOAD;
+            this.addButton(new MirrorIconButton(
+                    addonX, fileY,
+                    load ? "load" : "save",
+                    new TranslationTextComponent(load
+                            ? ExtraConstants.LOAD_STRUCTURE : ExtraConstants.SAVE_STRUCTURE),
+                    load ? ClientStructureFiles::chooseLoad : ClientStructureFiles::chooseSave));
+            fileY += RadialIconLayout.BUTTON_SPACING;
+        }
+
+        if (RadialButtonPolicy.showLegacyCutAction(false, mode)) {
+            this.addButton(new MirrorIconButton(
+                    addonX, fileY, "cut", RadialIconLayout.MODERN_SETTING_ICON_SIZE,
+                    new TranslationTextComponent(ExtraConstants.CUT_SELECTION),
+                    () -> ExtraNetwork.sendToServer(new CutSelectionPacket())));
+        }
     }
 }

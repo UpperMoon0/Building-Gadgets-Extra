@@ -16,7 +16,7 @@ Its current features add horizontal and vertical template mirroring plus a playe
 - Load vanilla structure files back into a gadget, including block states and block-entity data.
 - Store exported structures in a player-owned library on the client computer rather than in the server world.
 - Transfer structures safely between the client and server while keeping gadget changes server-authoritative.
-- Use Minecraft's own Structure Template Manager for compressed NBT parsing and data-version updates.
+- Use Minecraft's native Structure Template and compressed NBT logic instead of a custom file parser.
 
 ## Project Direction
 
@@ -26,6 +26,7 @@ Building Gadgets Extra is intended to grow beyond mirroring. Future versions wil
 
 | Minecraft | Loader | Building Gadgets | Java |
 | --- | --- | --- | --- |
+| 26.1.2 | NeoForge 26.1.2.82+ | Building Gadgets 2 1.4.6 | 25 |
 | 1.21.1 | NeoForge 21.1.240+ | Building Gadgets 2 1.3.9 | 21 |
 | 1.20.1 | Forge 47.4.21 | Building Gadgets 2 1.0.8 | 17 |
 | 1.16.5 | Forge 36.2.42 | Building Gadgets 3.8.4 | 8 |
@@ -41,20 +42,19 @@ The mod must be installed on the server and on every connecting client.
 ## Usage
 
 1. Copy a structure with the Copy Paste Gadget or, on Building Gadgets 2, the Cut Paste Gadget.
-2. Open the gadget's radial menu.
-3. Use one of the two mirror buttons beside the existing Rotate button:
+2. Switch the gadget to **Paste** mode and open its radial menu.
+3. Use one of the two mirror buttons beside the existing Rotate button. Mirror controls are hidden in Copy/Cut selection modes:
    - **Mirror Horizontal** reflects the structure left-to-right relative to the direction the player is facing.
    - **Mirror Vertical** reflects the structure up-to-down.
 4. Preview and paste the transformed structure normally.
 
-### Native Structure Library
+### Native Structure Files
 
 1. Hold a Copy Paste Gadget or Cut Paste Gadget and open its radial menu.
-2. Select the **NBT** Structure Library button.
-3. Choose **Save to .nbt** to open your operating system's Save dialog and download the gadget's current selection to any folder on your computer.
-4. Choose **Load from .nbt** to open a native file picker, select a structure file, and upload it into the held gadget.
+2. In **Copy** or **Cut** mode, select **Save to .nbt** to immediately open your operating system's Save dialog and download the gadget's current selection.
+3. With the **Copy Paste Gadget** in **Paste** mode, select **Load from .nbt** to immediately open a native file picker and upload a local structure into the held gadget. The Cut Paste Gadget never shows Load because it can only paste its own cut selection.
 
-The dialogs initially open in `.minecraft/building_gadgets_extra/structures`, but files may be saved to or loaded from any accessible folder. This makes the library portable: you can save a build while playing on one server or world, then load it into a gadget somewhere else. Saving downloads the current server-authoritative gadget template to the chosen path; loading uploads the selected local file to the server and applies it to the held gadget after server-side validation. Transfers are chunked, size-limited, and work on dedicated multiplayer servers.
+Only the action relevant to the current gadget mode is shown; there is no intermediate submenu. The dialogs initially open in `.minecraft/building_gadgets_extra/structures`, but files may be saved to or loaded from any accessible folder. You can save a build while playing on one server or world, then load it into a gadget somewhere else. Saving downloads the current server-authoritative gadget template to the chosen path; loading uploads the selected local file to the server and applies it to the held gadget after server-side validation. Transfers are chunked, size-limited, and work on dedicated multiplayer servers.
 
 The files use the normal compressed vanilla structure format, so they can be copied to or from a world's `generated/<namespace>/structures` folder for use with Structure Blocks. Structure entities are intentionally not imported or exported; blocks, orientation, and block-entity NBT are preserved.
 
@@ -72,11 +72,18 @@ On Windows:
 .\gradlew.bat build
 ```
 
-The root build assembles every supported version. Compiled JARs are written to each version module's `build/libs` directory.
+The root build assembles every supported version and runs the Java 25 / Gradle 9 build for 26.1.2 automatically. Compiled JARs are written to each version module's `build/libs` directory.
+
+Run all shared and module test suites with:
+
+```bash
+./gradlew test
+```
 
 To build one module:
 
 ```bash
+cd neoforge-26.1.2 && ./gradlew build
 ./gradlew :neoforge-1.21.1:build
 ./gradlew :forge-1.20.1:build
 ./gradlew :forge-1.16.5:build
@@ -85,6 +92,7 @@ To build one module:
 To run a development client for one version:
 
 ```bash
+cd neoforge-26.1.2 && ./gradlew runClient
 ./gradlew :neoforge-1.21.1:runClient
 ./gradlew :forge-1.20.1:runClient
 ./gradlew :forge-1.16.5:runClient
@@ -93,14 +101,15 @@ To run a development client for one version:
 ## Project Structure
 
 - `common` contains Java 8-compatible mirror traversal, coordinate and structure-name rules, translation keys, and shared assets used by every module.
+- `neoforge-26.1.2` contains the Minecraft 26.1.2 NeoForge adapters and its Gradle 9 wrapper required for Java 25.
 - `neoforge-1.21.1` contains the Minecraft 1.21.1 NeoForge adapters.
 - `forge-1.20.1` contains the Minecraft 1.20.1 Forge and Building Gadgets 2 adapters.
 - `forge-1.16.5` contains the Minecraft 1.16.5 Forge and legacy Building Gadgets template-capability adapters.
-- Root Gradle files contain project-wide identity, version, author, and aggregate build configuration.
+- Root Gradle files contain project-wide identity, version, author, shared test configuration, and aggregate build configuration.
 
 ## Releases
 
-Every push to `main` runs the GitHub Actions release workflow. It builds all supported modules, creates a `v<mod_version>` tag at that commit, and attaches all three compiled JARs to a GitHub Release.
+Every push to `main` runs the GitHub Actions release workflow. It first runs the shared logic tests and compiles every supported module. Only after every test and build succeeds does it create a `v<mod_version>` tag and attach all four compiled JARs to a GitHub Release.
 
 To publish a version:
 

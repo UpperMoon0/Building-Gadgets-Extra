@@ -11,6 +11,7 @@ plugins {
 
 rootProject.name = 'building-gadgets-extra'
 
+include 'common'
 include 'neoforge-1.21.1'
 include 'forge-1.20.1'
 include 'forge-1.16.5'
