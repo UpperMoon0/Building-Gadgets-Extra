@@ -51,10 +51,10 @@ The mod must be installed on the server and on every connecting client.
 
 1. Hold a Copy Paste Gadget or Cut Paste Gadget and open its radial menu.
 2. Select the **NBT** Structure Library button.
-3. Enter a lowercase structure name. Subfolders are supported, for example `castle/gatehouse`.
-4. Choose **Save to .nbt** to download the gadget's current selection to your computer, or **Load from .nbt** to upload a local structure and replace the gadget's selection.
+3. Choose **Save to .nbt** to open your operating system's Save dialog and download the gadget's current selection to any folder on your computer.
+4. Choose **Load from .nbt** to open a native file picker, select a structure file, and upload it into the held gadget.
 
-Structures are stored on each player's computer under `.minecraft/building_gadgets_extra/structures`. This makes the library portable: you can save a build while playing on one server or world, then load it into a gadget somewhere else. Saving downloads the current server-authoritative gadget template to that local library; loading uploads the selected local file to the server and applies it to the held gadget after server-side validation. Transfers are chunked, size-limited, and work on dedicated multiplayer servers.
+The dialogs initially open in `.minecraft/building_gadgets_extra/structures`, but files may be saved to or loaded from any accessible folder. This makes the library portable: you can save a build while playing on one server or world, then load it into a gadget somewhere else. Saving downloads the current server-authoritative gadget template to the chosen path; loading uploads the selected local file to the server and applies it to the held gadget after server-side validation. Transfers are chunked, size-limited, and work on dedicated multiplayer servers.
 
 The files use the normal compressed vanilla structure format, so they can be copied to or from a world's `generated/<namespace>/structures` folder for use with Structure Blocks. Structure entities are intentionally not imported or exported; blocks, orientation, and block-entity NBT are preserved.
 

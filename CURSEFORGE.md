@@ -16,9 +16,9 @@ The addon is designed for both detailed builds and large construction projects w
 
 ### Player-Owned Structure Library
 
-- Save the gadget's current selection as a native compressed Minecraft structure `.nbt` file.
-- Load a local vanilla structure file into the held gadget.
-- Keep structures on your own computer under `.minecraft/building_gadgets_extra/structures` instead of inside a server world.
+- Open your operating system's native Save dialog to export the gadget's current selection as a compressed Minecraft structure `.nbt` file.
+- Open a native file picker to load a local vanilla structure file into the held gadget.
+- Save structures anywhere on your own computer, with `.minecraft/building_gadgets_extra/structures` used as the default library folder instead of storing files inside a server world.
 - Carry saved builds between singleplayer worlds and different multiplayer servers.
 - Transfer files between client and server in validated, size-limited chunks.
 - Use Minecraft's vanilla Structure Template Manager for parsing and data-version updates rather than a custom structure format.

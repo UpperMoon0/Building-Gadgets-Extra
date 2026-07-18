@@ -1,18 +1,2 @@
-package com.nstut.buildinggadgetsextra.client;
-
-import com.direwolf20.buildinggadgets2.client.screen.widgets.GuiIconActionable;
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.network.chat.Component;
-
-public final class StructureLibraryButton extends GuiIconActionable {
-    public StructureLibraryButton(int x,int y,Component tooltip,Runnable action){
-        super(x,y,"buildinggadgetsextra_placeholder",tooltip,false,send->{if(send)action.run();return false;});setWidth(24);setHeight(24);
-    }
-    @Override public void renderWidget(GuiGraphics graphics,int mouseX,int mouseY,float partialTick){
-        if(!visible)return; Minecraft minecraft=Minecraft.getInstance();
-        graphics.fill(getX(),getY(),getX()+width,getY()+height,0x32FFFFFF);
-        graphics.drawCenteredString(minecraft.font,"NBT",getX()+width/2,getY()+8,0xFFFFFFFF);
-        if(isHoveredOrFocused()){String tooltip=getMessage().getString();int x=mouseX>minecraft.getWindow().getGuiScaledWidth()/2?mouseX+2:mouseX-minecraft.font.width(tooltip);graphics.drawString(minecraft.font,tooltip,x,mouseY-10,0xFFFFFFFF,true);}
-    }
-}
+package com.nstut.buildinggadgetsextra.client;import com.direwolf20.buildinggadgets2.client.screen.widgets.GuiIconActionable;import com.mojang.blaze3d.systems.RenderSystem;import com.nstut.buildinggadgetsextra.common.ExtraConstants;import net.minecraft.client.Minecraft;import net.minecraft.client.gui.GuiGraphics;import net.minecraft.network.chat.Component;import net.minecraft.resources.ResourceLocation;
+public final class StructureLibraryButton extends GuiIconActionable{private static final ResourceLocation ICON=ResourceLocation.fromNamespaceAndPath(ExtraConstants.MOD_ID,"textures/gui/setting/library.png");public StructureLibraryButton(int x,int y,Component tip,Runnable action){super(x,y,"buildinggadgetsextra_placeholder",tip,false,s->{if(s)action.run();return false;});setWidth(24);setHeight(24);}@Override public void renderWidget(GuiGraphics g,int mx,int my,float p){if(!visible)return;Minecraft m=Minecraft.getInstance();g.fill(getX(),getY(),getX()+width,getY()+height,0x32FFFFFF);RenderSystem.enableBlend();g.blit(ICON,getX(),getY(),width,height,0,0,44,44,44,44);RenderSystem.disableBlend();if(isHoveredOrFocused()){String t=getMessage().getString();int x=mx>m.getWindow().getGuiScaledWidth()/2?mx+2:mx-m.font.width(t);g.drawString(m.font,t,x,my-10,0xFFFFFFFF,true);}}}

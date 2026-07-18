@@ -1,0 +1,13 @@
+{
+  "itemGroup.buildinggadgetsextra": "Example Mod Tab",
+  "block.buildinggadgetsextra.example_block": "Example Block",
+  "item.buildinggadgetsextra.example_item": "Example Item",
+
+  "buildinggadgetsextra.configuration.title": "Building Gadgets Extra Configs",
+  "buildinggadgetsextra.configuration.section.buildinggadgetsextra.common.toml": "Building Gadgets Extra Configs",
+  "buildinggadgetsextra.configuration.section.buildinggadgetsextra.common.toml.title": "Building Gadgets Extra Configs",
+  "buildinggadgetsextra.configuration.items": "Item List",
+  "buildinggadgetsextra.configuration.logDirtBlock": "Log Dirt Block",
+  "buildinggadgetsextra.configuration.magicNumberIntroduction": "Magic Number Text",
+  "buildinggadgetsextra.configuration.magicNumber": "Magic Number"
+}

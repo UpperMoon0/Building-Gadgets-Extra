@@ -15,5 +15,8 @@
   "buildinggadgetsextra.message.invalid_structure_name": "Use lowercase letters, numbers, /, ., _ or -",
   "buildinggadgetsextra.message.structure_save_failed": "Could not save structure %s",
   "buildinggadgetsextra.message.structure_too_large": "Structure %s is too large to load safely",
-  "buildinggadgetsextra.message.structure_load_failed": "Could not read structure %s"
+  "buildinggadgetsextra.message.structure_load_failed": "Could not read structure %s",
+  "buildinggadgetsextra.dialog.save_structure": "Save Minecraft Structure",
+  "buildinggadgetsextra.dialog.open_structure": "Open Minecraft Structure",
+  "buildinggadgetsextra.dialog.nbt_files": "Minecraft Structure (*.nbt)"
 }
