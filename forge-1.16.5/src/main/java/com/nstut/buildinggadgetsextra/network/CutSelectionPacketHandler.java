@@ -6,6 +6,7 @@ import com.direwolf20.buildinggadgets.common.items.GadgetCopyPaste;
 import com.direwolf20.buildinggadgets.common.tainted.building.Region;
 import com.direwolf20.buildinggadgets.common.tainted.template.Template;
 import com.nstut.buildinggadgetsextra.common.ExtraConstants;
+import com.nstut.buildinggadgetsextra.cut.LegacyCutScheduler;
 import net.minecraft.block.BlockState;
 import net.minecraft.entity.player.ServerPlayerEntity;
 import net.minecraft.item.ItemStack;
@@ -76,10 +77,10 @@ public final class CutSelectionPacketHandler {
             return;
         }
 
-        for (BlockPos pos : blocks) {
+        for (int i = 0; i < blocks.size(); i++) {
             item.applyDamage(gadget, player);
-            world.removeBlock(pos, false);
         }
+        LegacyCutScheduler.schedule(world, region, blocks);
         item.setMode(gadget, GadgetCopyPaste.ToolMode.PASTE.ordinal());
         player.inventory.setChanged();
         player.displayClientMessage(new TranslationTextComponent(ExtraConstants.CUT_COMPLETE, blocks.size()), true);

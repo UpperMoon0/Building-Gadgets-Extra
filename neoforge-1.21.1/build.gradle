@@ -8,6 +8,7 @@ version = mod_version
 group = mod_group_id
 
 repositories {
+    mavenCentral()
     maven { url = "https://www.cursemaven.com" }
 }
 
@@ -17,6 +18,8 @@ base {
 
 sourceSets.main.java.srcDir rootProject.file('common/src/main/java')
 sourceSets.main.resources.srcDir rootProject.file('common/src/main/resources')
+sourceSets.test.java.srcDir rootProject.file('common/src/test/java')
+sourceSets.test.java.srcDir rootProject.file('common/src/versionTest/java')
 
 java.toolchain.languageVersion = JavaLanguageVersion.of(21)
 
@@ -48,6 +51,17 @@ neoForge {
 
 dependencies {
     implementation "curse.maven:building-gadgets-298187:6850515"
+    testImplementation platform('org.junit:junit-bom:5.11.4')
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+tasks.named('test', Test).configure {
+    useJUnitPlatform()
+    systemProperty 'bge.moduleDir', projectDir.absolutePath
+    systemProperty 'bge.minecraftVersion', minecraft_version
+    systemProperty 'bge.loader', 'neoforge'
+    systemProperty 'bge.legacyCut', 'false'
 }
 
 def generateModMetadata = tasks.register("generateModMetadata", ProcessResources) {
