@@ -1,0 +1,82 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Build and release
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Make Gradle wrapper executable
+        run: chmod +x ./gradlew
+
+      - name: Read mod version
+        id: version
+        shell: bash
+        run: |
+          version="$(sed -n 's/^mod_version=//p' gradle.properties | tr -d '\r' | xargs)"
+          if [[ -z "$version" ]]; then
+            echo "mod_version is missing from gradle.properties" >&2
+            exit 1
+          fi
+          echo "value=$version" >> "$GITHUB_OUTPUT"
+
+      - name: Validate release tag
+        if: github.ref_type == 'tag'
+        shell: bash
+        run: |
+          expected="v${{ steps.version.outputs.value }}"
+          if [[ "${GITHUB_REF_NAME}" != "$expected" ]]; then
+            echo "Tag ${GITHUB_REF_NAME} does not match gradle.properties version $expected" >&2
+            exit 1
+          fi
+
+      - name: Build release JAR
+        run: ./gradlew build --no-daemon --no-configuration-cache
+
+      - name: Verify release JAR
+        id: artifact
+        shell: bash
+        run: |
+          jar_path="build/libs/buildinggadgetsextra-${{ steps.version.outputs.value }}.jar"
+          if [[ ! -f "$jar_path" ]]; then
+            echo "Expected release JAR was not produced: $jar_path" >&2
+            exit 1
+          fi
+          echo "path=$jar_path" >> "$GITHUB_OUTPUT"
+
+      - name: Upload workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: building-gadgets-extra-${{ steps.version.outputs.value }}
+          path: ${{ steps.artifact.outputs.path }}
+          if-no-files-found: error
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.version.outputs.value }}
+          name: Building Gadgets Extra v${{ steps.version.outputs.value }}
+          generate_release_notes: true
+          fail_on_unmatched_files: true
+          files: ${{ steps.artifact.outputs.path }}

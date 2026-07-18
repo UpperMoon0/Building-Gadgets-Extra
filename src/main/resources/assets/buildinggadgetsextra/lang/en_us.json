@@ -1,0 +1,8 @@
+{
+  "buildinggadgetsextra.radialmenu.mirror_horizontal": "Mirror Horizontal",
+  "buildinggadgetsextra.radialmenu.mirror_vertical": "Mirror Vertical",
+  "buildinggadgetsextra.message.mirrored_horizontal": "Template mirrored horizontally",
+  "buildinggadgetsextra.message.mirrored_vertical": "Template mirrored vertically",
+  "buildinggadgetsextra.message.no_template": "This gadget has no copied template to mirror",
+  "buildinggadgetsextra.message.busy": "Cannot mirror while the Cut Paste Gadget is working"
+}
