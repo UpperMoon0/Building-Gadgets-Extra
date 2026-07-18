@@ -1,0 +1,19 @@
+{
+  "buildinggadgetsextra.radialmenu.mirror_horizontal": "Mirror Horizontal",
+  "buildinggadgetsextra.radialmenu.mirror_vertical": "Mirror Vertical",
+  "buildinggadgetsextra.message.mirrored_horizontal": "Template mirrored horizontally",
+  "buildinggadgetsextra.message.mirrored_vertical": "Template mirrored vertically",
+  "buildinggadgetsextra.message.no_template": "This gadget has no copied template to mirror",
+  "buildinggadgetsextra.message.busy": "Cannot modify the template while the Cut Paste Gadget is working",
+  "buildinggadgetsextra.radialmenu.structure_library": "Structure Library",
+  "buildinggadgetsextra.screen.structure_name": "Structure name",
+  "buildinggadgetsextra.screen.save": "Save to .nbt",
+  "buildinggadgetsextra.screen.load": "Load from .nbt",
+  "buildinggadgetsextra.message.structure_saved": "Saved structure as %s",
+  "buildinggadgetsextra.message.structure_loaded": "Loaded structure %s",
+  "buildinggadgetsextra.message.structure_not_found": "Structure %s was not found",
+  "buildinggadgetsextra.message.invalid_structure_name": "Use lowercase letters, numbers, /, ., _ or -",
+  "buildinggadgetsextra.message.structure_save_failed": "Could not save structure %s",
+  "buildinggadgetsextra.message.structure_too_large": "Structure %s is too large to load safely",
+  "buildinggadgetsextra.message.structure_load_failed": "Could not read structure %s"
+}

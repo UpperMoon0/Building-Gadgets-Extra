@@ -46,22 +46,29 @@ jobs:
       - name: Build release JAR
         run: ./gradlew build --no-daemon --no-configuration-cache
 
-      - name: Verify release JAR
-        id: artifact
+      - name: Verify release JARs
         shell: bash
         run: |
-          jar_path="build/libs/buildinggadgetsextra-${{ steps.version.outputs.value }}.jar"
-          if [[ ! -f "$jar_path" ]]; then
-            echo "Expected release JAR was not produced: $jar_path" >&2
-            exit 1
-          fi
-          echo "path=$jar_path" >> "$GITHUB_OUTPUT"
+          jars=(
+            "neoforge-1.21.1/build/libs/building-gadgets-extra-neoforge-1.21.1-${{ steps.version.outputs.value }}.jar"
+            "forge-1.20.1/build/libs/building-gadgets-extra-forge-1.20.1-${{ steps.version.outputs.value }}.jar"
+            "forge-1.16.5/build/libs/building-gadgets-extra-forge-1.16.5-${{ steps.version.outputs.value }}.jar"
+          )
+          for jar_path in "${jars[@]}"; do
+            if [[ ! -f "$jar_path" ]]; then
+              echo "Expected release JAR was not produced: $jar_path" >&2
+              exit 1
+            fi
+          done
 
       - name: Upload workflow artifact
         uses: actions/upload-artifact@v4
         with:
           name: building-gadgets-extra-${{ steps.version.outputs.value }}
-          path: ${{ steps.artifact.outputs.path }}
+          path: |
+            neoforge-1.21.1/build/libs/building-gadgets-extra-neoforge-1.21.1-${{ steps.version.outputs.value }}.jar
+            forge-1.20.1/build/libs/building-gadgets-extra-forge-1.20.1-${{ steps.version.outputs.value }}.jar
+            forge-1.16.5/build/libs/building-gadgets-extra-forge-1.16.5-${{ steps.version.outputs.value }}.jar
           if-no-files-found: error
 
       - name: Create version tag
@@ -90,4 +97,7 @@ jobs:
           name: Building Gadgets Extra v${{ steps.version.outputs.value }}
           generate_release_notes: true
           fail_on_unmatched_files: true
-          files: ${{ steps.artifact.outputs.path }}
+          files: |
+            neoforge-1.21.1/build/libs/building-gadgets-extra-neoforge-1.21.1-${{ steps.version.outputs.value }}.jar
+            forge-1.20.1/build/libs/building-gadgets-extra-forge-1.20.1-${{ steps.version.outputs.value }}.jar
+            forge-1.16.5/build/libs/building-gadgets-extra-forge-1.16.5-${{ steps.version.outputs.value }}.jar

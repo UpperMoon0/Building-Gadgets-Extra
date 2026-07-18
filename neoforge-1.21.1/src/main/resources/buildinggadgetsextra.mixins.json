@@ -1,0 +1,16 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "com.nstut.buildinggadgetsextra.mixin",
+  "compatibilityLevel": "JAVA_21",
+  "client": [
+    "ModeRadialMenuMixin"
+  ],
+  "mixins": [
+    "StructurePaletteInvoker",
+    "StructureTemplateAccessor"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}
