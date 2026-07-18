@@ -42,7 +42,8 @@ public final class MirrorIconButton extends GuiIconActionable {
 
         RenderSystem.enableBlend();
         RenderSystem.setShaderColor(1, 1, 1, this.alpha);
-        guiGraphics.blit(icon, getX(), getY(), 0, 0, width, height, TEXTURE_SIZE, TEXTURE_SIZE);
+        guiGraphics.blit(icon, getX(), getY(), width, height,
+                0, 0, TEXTURE_SIZE, TEXTURE_SIZE, TEXTURE_SIZE, TEXTURE_SIZE);
         RenderSystem.setShaderColor(1, 1, 1, 1);
         RenderSystem.disableBlend();
 

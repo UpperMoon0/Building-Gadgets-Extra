@@ -55,14 +55,14 @@ The compiled JAR is written to `build/libs`.
 
 ## Releases
 
-The GitHub Actions release workflow builds the project with Java 21 and attaches the compiled JAR to a GitHub Release.
+Every push to `main` runs the GitHub Actions release workflow. It builds the project with Java 21, creates a `v<mod_version>` tag at that commit, and attaches the compiled JAR to a GitHub Release.
 
 To publish a version:
 
 1. Update `mod_version` in `gradle.properties`.
-2. Push a matching version tag, such as `v0.0.1`.
+2. Push the change to `main`.
 
-The workflow can also be started manually from the repository's **Actions** tab.
+Each released commit needs a new version. If its version tag already belongs to an older commit, the workflow stops and asks for `mod_version` to be bumped. The workflow can also be started manually from the repository's **Actions** tab.
 
 ## License
 
