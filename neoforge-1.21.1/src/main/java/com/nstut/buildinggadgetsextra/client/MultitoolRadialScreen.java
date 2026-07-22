@@ -6,6 +6,7 @@ import com.direwolf20.buildinggadgets2.client.screen.DestructionGUI;
 import com.direwolf20.buildinggadgets2.client.screen.MaterialListGUI;
 import com.direwolf20.buildinggadgets2.client.screen.widgets.GuiIconActionable;
 import com.direwolf20.buildinggadgets2.client.screen.widgets.IncrementalSliderWidget;
+import com.direwolf20.buildinggadgets2.common.items.BaseGadget;
 import com.direwolf20.buildinggadgets2.common.network.data.*;
 import com.direwolf20.buildinggadgets2.util.GadgetNBT;
 import com.direwolf20.buildinggadgets2.util.modes.BaseMode;
@@ -37,7 +38,7 @@ public final class MultitoolRadialScreen extends Screen {
     private static final int BACK_RADIUS = 28;
     private static MultitoolMenuState.Page rememberedPage = MultitoolMenuState.Page.GENERAL;
 
-    private final ItemStack stack;
+    private ItemStack stack;
     private final MultitoolMenuState navigation;
     private BaseMode selectedAction;
     private MultitoolMode hoveredTool;
@@ -57,6 +58,15 @@ public final class MultitoolRadialScreen extends Screen {
     @Override
     protected void init() {
         rebuildContextButtons();
+    }
+
+    @Override
+    public void tick() {
+        super.tick();
+        if (minecraft.player != null) {
+            ItemStack held = BaseGadget.getGadget(minecraft.player);
+            if (!held.isEmpty()) this.stack = held;
+        }
     }
 
     private void rebuildContextButtons() {

@@ -14,6 +14,7 @@ import net.minecraft.enchantment.Enchantments;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.ItemStack;
 import net.minecraft.util.ActionResult;
+import net.minecraft.util.ActionResultType;
 import net.minecraft.util.Hand;
 import net.minecraft.util.text.ITextComponent;
 import net.minecraft.util.text.TextFormatting;
@@ -33,12 +34,26 @@ public final class BuildersMultitool extends GadgetCopyPaste {
         return Math.max(Config.GADGETS.GADGET_EXCHANGER.energyCost.get(), Math.max(Math.max(Config.GADGETS.GADGET_BUILDING.energyCost.get(), Config.GADGETS.GADGET_COPY_PASTE.energyCost.get()), Config.GADGETS.GADGET_DESTRUCTION.energyCost.get()));
     }
     @Override public ActionResult<ItemStack> use(World world, PlayerEntity player, Hand hand) {
-        switch (MultitoolState.getActiveMode(player.getItemInHand(hand))) {
+        ItemStack stack = player.getItemInHand(hand);
+        switch (MultitoolState.getActiveMode(stack)) {
             case BUILD: return OurItems.BUILDING_GADGET_ITEM.get().use(world, player, hand);
             case EXCHANGING: return OurItems.EXCHANGING_GADGET_ITEM.get().use(world, player, hand);
             case DESTRUCTION: return OurItems.DESTRUCTION_GADGET_ITEM.get().use(world, player, hand);
+            case CUT_PASTE: {
+                boolean isPasteMode = GadgetCopyPaste.getToolMode(stack) == GadgetCopyPaste.ToolMode.PASTE;
+                boolean hasCutBuffer = stack.getOrCreateTag().getBoolean("cutBufferActive");
+                if (isPasteMode && !hasCutBuffer) {
+                    return ActionResult.fail(stack);
+                }
+                ActionResult<ItemStack> result = OurItems.COPY_PASTE_GADGET_ITEM.get().use(world, player, hand);
+                if (!world.isClientSide && isPasteMode && hasCutBuffer && result.getResult() == ActionResultType.SUCCESS) {
+                    stack.getOrCreateTag().putBoolean("cutBufferActive", false);
+                    setMode(stack, GadgetCopyPaste.ToolMode.COPY.ordinal());
+                    player.inventory.setChanged();
+                }
+                return result;
+            }
             case COPY_PASTE:
-            case CUT_PASTE:
             default: return OurItems.COPY_PASTE_GADGET_ITEM.get().use(world, player, hand);
         }
     }

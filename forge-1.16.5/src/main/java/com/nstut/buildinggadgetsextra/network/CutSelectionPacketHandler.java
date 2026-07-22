@@ -82,6 +82,7 @@ public final class CutSelectionPacketHandler {
         }
         LegacyCutScheduler.schedule(world, region, blocks);
         item.setMode(gadget, GadgetCopyPaste.ToolMode.PASTE.ordinal());
+        gadget.getOrCreateTag().putBoolean("cutBufferActive", true);
         player.inventory.setChanged();
         player.displayClientMessage(new TranslationTextComponent(ExtraConstants.CUT_COMPLETE, blocks.size()), true);
     }

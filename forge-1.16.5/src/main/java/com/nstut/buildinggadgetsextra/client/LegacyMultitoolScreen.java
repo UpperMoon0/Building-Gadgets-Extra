@@ -2,6 +2,7 @@ package com.nstut.buildinggadgetsextra.client;
 
 import com.direwolf20.buildinggadgets.client.screen.components.GuiIconActionable;
 import com.direwolf20.buildinggadgets.client.screen.CopyGUI;
+import com.direwolf20.buildinggadgets.client.screen.DestructionGUI;
 import com.direwolf20.buildinggadgets.client.screen.MaterialListGUI;
 import com.direwolf20.buildinggadgets.common.items.*;
 import com.direwolf20.buildinggadgets.common.items.modes.BuildingModes;
@@ -69,10 +70,8 @@ public final class LegacyMultitoolScreen extends Screen {
         int[] left = {height / 2 - 104}, right = {height / 2 - 104};
         MultitoolMode tool = selectedTool();
         if (tool == MultitoolMode.DESTRUCTION) {
-            setting(false, right, "destroy_overlay", "buildinggadgets.radialmenu.destruction_overlay", true,
-                    () -> GadgetDestruction.getOverlay(stack), LegacyMultitoolPacket.DESTROY_OVERLAY);
-            setting(false, right, "fluid_only", "buildinggadgets.radialmenu.fluid_only", true,
-                    () -> GadgetDestruction.getIsFluidOnly(stack), LegacyMultitoolPacket.FLUID_ONLY);
+            clientSetting(false, right, "copypaste_opengui", "buildinggadgetsextra.multitool.configure_destruction",
+                    () -> minecraft.setScreen(new DestructionGUI(stack)));
             return;
         }
         setting(false, right, "raytrace_fluid", "buildinggadgets.radialmenu.raytracefluids", true,
@@ -82,7 +81,7 @@ public final class LegacyMultitoolScreen extends Screen {
             setting(true, left, "undo", "buildinggadgets.radialmenu.undo", false, () -> false, LegacyMultitoolPacket.UNDO);
         }
 
-        if (tool == MultitoolMode.BUILD || tool == MultitoolMode.EXCHANGING) {
+        if (tool == MultitoolMode.BUILD) {
             setting(true, left, "rotate", "buildinggadgets.radialmenu.rotate", false,
                     () -> false, LegacyMultitoolPacket.ROTATE);
             setting(true, left, "mirror", "buildinggadgets.radialmenu.mirror", false,
@@ -91,10 +90,16 @@ public final class LegacyMultitoolScreen extends Screen {
                     () -> AbstractGadget.getFuzzy(stack), LegacyMultitoolPacket.FUZZY);
             setting(false, right, "connected_area", "buildinggadgets.radialmenu.connected_surface", true,
                     () -> AbstractGadget.getConnectedArea(stack), LegacyMultitoolPacket.CONNECTED);
-            if (tool == MultitoolMode.BUILD) {
-                setting(false, right, "building_place_atop", "buildinggadgets.radialmenu.place_atop", true,
-                        () -> GadgetBuilding.shouldPlaceAtop(stack), LegacyMultitoolPacket.PLACE_ATOP);
-            }
+            setting(false, right, "building_place_atop", "buildinggadgets.radialmenu.place_atop", true,
+                    () -> GadgetBuilding.shouldPlaceAtop(stack), LegacyMultitoolPacket.PLACE_ATOP);
+            addRange(right);
+        }
+
+        if (tool == MultitoolMode.EXCHANGING) {
+            setting(false, right, "fuzzy", "buildinggadgets.radialmenu.fuzzy", true,
+                    () -> AbstractGadget.getFuzzy(stack), LegacyMultitoolPacket.FUZZY);
+            setting(false, right, "connected_area", "buildinggadgets.radialmenu.connected_surface", true,
+                    () -> AbstractGadget.getConnectedArea(stack), LegacyMultitoolPacket.CONNECTED);
             addRange(right);
         }
 
@@ -248,7 +253,7 @@ public final class LegacyMultitoolScreen extends Screen {
         int half = RadialIconLayout.MULTITOOL_MODE_BUTTON_SIZE / 2;
         fill(matrices, x-half, y-half, x+half, y+half, 0xAA394149);
         outline(matrices, x-half, y-half, x+half, y+half, hovered ? 0xFF3598FF : selected ? 0xFF00E640 : 0);
-        minecraft.getTextureManager().bind(new ResourceLocation("buildinggadgets", action.icon));
+        minecraft.getTextureManager().bind(new ResourceLocation(action.namespace, action.icon));
         blit(matrices, x - BG1_ACTION_ICON_SIZE / 2, y - BG1_ACTION_ICON_SIZE / 2,
                 BG1_ACTION_ICON_SIZE, BG1_ACTION_ICON_SIZE,
                 0, 0,
@@ -285,8 +290,8 @@ public final class LegacyMultitoolScreen extends Screen {
         if(tool==MultitoolMode.BUILD)for(BuildingModes m:BuildingModes.values())result.add(new LegacyAction(m.getTranslationKey(),m.getIcon()));
         else if(tool==MultitoolMode.EXCHANGING)for(ExchangingModes m:ExchangingModes.values())result.add(new LegacyAction(m.getTranslationKey(),m.getIcon()));
         else if(tool==MultitoolMode.COPY_PASTE){result.add(new LegacyAction("buildinggadgets.modes.copy","textures/gui/mode/copy.png"));result.add(new LegacyAction("buildinggadgets.modes.paste","textures/gui/mode/paste.png"));}
-        else if(tool==MultitoolMode.CUT_PASTE){result.add(new LegacyAction("buildinggadgetsextra.multitool.action.cut","textures/gui/mode/copy.png"));result.add(new LegacyAction("buildinggadgets.modes.paste","textures/gui/mode/paste.png"));}
+        else if(tool==MultitoolMode.CUT_PASTE){result.add(new LegacyAction("buildinggadgetsextra.multitool.action.cut","textures/gui/setting/cut.png",ExtraConstants.MOD_ID));result.add(new LegacyAction("buildinggadgets.modes.paste","textures/gui/mode/paste.png"));}
         return result;
     }
-    private static final class LegacyAction { final String translation,icon; LegacyAction(String translation,String icon){this.translation=translation;this.icon=icon;} }
+    private static final class LegacyAction { final String translation, icon, namespace; LegacyAction(String translation, String icon, String namespace){this.translation=translation;this.icon=icon;this.namespace=namespace;} LegacyAction(String translation, String icon){this(translation, icon, "buildinggadgets");} }
 }
