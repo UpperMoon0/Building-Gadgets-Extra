@@ -21,5 +21,16 @@
   "buildinggadgetsextra.message.cut_template_mismatch": "The copied template does not match the selected area; copy it again before cutting",
   "buildinggadgetsextra.message.cut_not_allowed": "You cannot cut one or more blocks in this selection",
   "buildinggadgetsextra.message.cut_not_enough_energy": "The Copy Paste Gadget does not have enough energy to cut this selection",
-  "buildinggadgetsextra.message.cut_complete": "Cut %s blocks; the gadget is now ready to paste"
+  "buildinggadgetsextra.message.cut_complete": "Cut %s blocks; the gadget is now ready to paste",
+  "item.buildinggadgetsextra.builders_multitool": "Builder's Multitool",
+  "buildinggadgetsextra.multitool.mode.build": "Building",
+  "buildinggadgetsextra.multitool.mode.exchanging": "Exchanging",
+  "buildinggadgetsextra.multitool.mode.copy_paste": "Copy / Paste",
+  "buildinggadgetsextra.multitool.mode.cut_paste": "Cut / Paste",
+  "buildinggadgetsextra.multitool.action.cut": "Cut",
+  "buildinggadgetsextra.multitool.mode.destruction": "Destruction",
+  "buildinggadgetsextra.multitool.active": "Active tool: %s",
+  "buildinggadgetsextra.multitool.menu": "Select Tool",
+  "buildinggadgetsextra.multitool.back": "Back",
+  "buildinggadgetsextra.multitool.configure_destruction": "Configure Destruction"
 }

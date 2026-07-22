@@ -14,8 +14,13 @@ import net.minecraft.resources.ResourceLocation;
  */
 public final class MirrorIconButton extends GuiIconActionable {
     private final ResourceLocation icon;
+    private final int sourceSize;
 
     public MirrorIconButton(int x, int y, String iconName, Component tooltip, Runnable action) {
+        this(x, y, iconName, RadialIconLayout.SOURCE_TEXTURE_SIZE, tooltip, action);
+    }
+
+    public MirrorIconButton(int x, int y, String iconName, int sourceSize, Component tooltip, Runnable action) {
         // GuiIconActionable supplies the same click handling and beep as the upstream radial-menu buttons.
         super(x, y, "buildinggadgetsextra_placeholder", tooltip, false, send -> {
             if (send) {
@@ -25,6 +30,7 @@ public final class MirrorIconButton extends GuiIconActionable {
         });
         this.icon = ResourceLocation.fromNamespaceAndPath(BuildingGadgetsExtra.MODID,
                 "textures/gui/setting/" + iconName + ".png");
+        this.sourceSize = sourceSize;
         this.setWidth(RadialIconLayout.BUTTON_SIZE);
         this.setHeight(RadialIconLayout.BUTTON_SIZE);
     }
@@ -43,8 +49,8 @@ public final class MirrorIconButton extends GuiIconActionable {
         RenderSystem.setShaderColor(1, 1, 1, this.alpha);
         guiGraphics.blit(icon, getX(), getY(), width, height,
                 0, 0,
-                RadialIconLayout.SOURCE_TEXTURE_SIZE, RadialIconLayout.SOURCE_TEXTURE_SIZE,
-                RadialIconLayout.SOURCE_TEXTURE_SIZE, RadialIconLayout.SOURCE_TEXTURE_SIZE);
+                sourceSize, sourceSize,
+                sourceSize, sourceSize);
         RenderSystem.setShaderColor(1, 1, 1, 1);
         RenderSystem.disableBlend();
 

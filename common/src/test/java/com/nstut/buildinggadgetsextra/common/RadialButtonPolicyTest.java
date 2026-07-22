@@ -19,6 +19,14 @@ class RadialButtonPolicyTest {
     }
 
     @Test
+    void rotateOnlyAppearsInPasteMode() {
+        assertTrue(RadialButtonPolicy.showRotateButton("paste"));
+        assertFalse(RadialButtonPolicy.showRotateButton("copy"));
+        assertFalse(RadialButtonPolicy.showRotateButton("cut"));
+        assertFalse(RadialButtonPolicy.showRotateButton(null));
+    }
+
+    @Test
     void copyPasteToolSavesInCopyAndLoadsInPaste() {
         assertEquals(SAVE, RadialButtonPolicy.fileAction(false, "copy"));
         assertEquals(LOAD, RadialButtonPolicy.fileAction(false, "paste"));

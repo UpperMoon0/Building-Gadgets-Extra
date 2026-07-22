@@ -9,6 +9,10 @@ public final class ExtraPayloads {
 
     public static void register(RegisterPayloadHandlersEvent event) {
         PayloadRegistrar registrar = event.registrar("2");
+        registrar.playToServer(MultitoolSelectionPayload.TYPE, MultitoolSelectionPayload.STREAM_CODEC,
+                MultitoolSelectionHandler::handle);
+        registrar.playToServer(MultitoolCutPayload.TYPE, MultitoolCutPayload.STREAM_CODEC,
+                MultitoolCutHandler::handle);
         registrar.playToServer(MirrorPayload.TYPE, MirrorPayload.STREAM_CODEC, MirrorPayloadHandler::handle);
         registrar.playToServer(StructureFilePayload.TYPE, StructureFilePayload.STREAM_CODEC,
                 StructureFilePayloadHandler::handle);

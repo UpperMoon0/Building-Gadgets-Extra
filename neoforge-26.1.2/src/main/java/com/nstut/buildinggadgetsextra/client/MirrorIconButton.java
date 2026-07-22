@@ -11,14 +11,20 @@ import net.minecraft.resources.Identifier;
 
 public final class MirrorIconButton extends GuiIconActionable {
     private final Identifier icon;
+    private final int sourceSize;
 
     public MirrorIconButton(int x, int y, String iconName, Component tooltip, Runnable action) {
+        this(x, y, iconName, RadialIconLayout.SOURCE_TEXTURE_SIZE, tooltip, action);
+    }
+
+    public MirrorIconButton(int x, int y, String iconName, int sourceSize, Component tooltip, Runnable action) {
         super(x, y, "buildinggadgetsextra_placeholder", tooltip, false, send -> {
             if (send) action.run();
             return false;
         });
         icon = Identifier.fromNamespaceAndPath(ExtraConstants.MOD_ID,
                 "textures/gui/setting/" + iconName + ".png");
+        this.sourceSize = sourceSize;
         setWidth(RadialIconLayout.BUTTON_SIZE);
         setHeight(RadialIconLayout.BUTTON_SIZE);
     }
@@ -29,8 +35,7 @@ public final class MirrorIconButton extends GuiIconActionable {
                 RadialIconLayout.BACKGROUND_COLOR);
         graphics.blit(RenderPipelines.GUI_TEXTURED, icon, getX(), getY(), 0, 0,
                 width, height,
-                RadialIconLayout.SOURCE_TEXTURE_SIZE, RadialIconLayout.SOURCE_TEXTURE_SIZE,
-                RadialIconLayout.SOURCE_TEXTURE_SIZE, RadialIconLayout.SOURCE_TEXTURE_SIZE,
+                sourceSize, sourceSize, sourceSize, sourceSize,
                 0xFFFFFFFF);
         if (isHoveredOrFocused()) {
             Minecraft minecraft = Minecraft.getInstance();

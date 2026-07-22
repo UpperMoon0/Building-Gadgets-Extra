@@ -1,40 +1,35 @@
 # Building Gadgets Extra
 
-Building Gadgets Extra is a growing addon for **Building Gadgets** and **Building Gadgets 2** that expands their familiar building tools with new controls, portable structure workflows, and quality-of-life improvements.
+Building Gadgets Extra is a growing addon for **Building Gadgets** and **Building Gadgets 2** that gives builders more freedom and makes copied builds easier to reuse.
 
-The addon is designed for both detailed builds and large construction projects while preserving the normal Building Gadgets experience. Its features integrate directly into the existing gadget radial menu and work in singleplayer and multiplayer.
+Everything fits into the familiar Building Gadgets radial menu, so you can keep building the way you already know. Whether you are adjusting a small decoration or moving an entire build between worlds, the extra controls are always close at hand.
 
 ## Current Features
 
 ### Template Mirroring
 
-- **Mirror Horizontal** reflects a copied structure left-to-right relative to the direction you are facing.
-- **Mirror Vertical** flips a copied structure from top to bottom.
-- Works with the **Copy Paste Gadget** and, where available, the **Cut Paste Gadget**.
-- Mirror controls appear only while a gadget is in Paste mode.
-- Transforms block orientation and block-entity positions with the structure.
-- Runs server-side so previews and pasted results remain authoritative in multiplayer.
+- Flip a copied build left-to-right with **Mirror Horizontal**.
+- Turn it upside down with **Mirror Vertical**.
+- Use mirroring with the **Copy Paste Gadget** and, where available, the **Cut Paste Gadget**.
+- Find the mirror buttons directly in the radial menu whenever the gadget is ready to paste.
+- Stairs, doors, chests, and other directional blocks turn with the mirrored build.
 
-### Player-Owned Structure Files
+### Save and Reuse Your Builds
 
-- Shows **Save to .nbt** directly in Copy/Cut mode.
-- Shows **Load from .nbt** in Paste mode only for the Copy Paste Gadget; the Cut Paste Gadget can only paste its own cut selection.
-- Opens the matching native operating-system dialog immediately, without an intermediate menu.
-- Open your operating system's native Save dialog to export the gadget's current selection as a compressed Minecraft structure `.nbt` file.
-- Open a native file picker to load a local vanilla structure file into the held gadget.
-- Save structures anywhere on your own computer, with `.minecraft/building_gadgets_extra/structures` used as the default library folder instead of storing files inside a server world.
-- Carry saved builds between singleplayer worlds and different multiplayer servers.
-- Transfer files between client and server in validated, size-limited chunks.
-- Use Minecraft's vanilla Structure Template and compressed NBT logic rather than a custom structure parser or format.
-- Preserve block states, orientation, and block-entity NBT.
+- Save the build held by your gadget as a standard Minecraft structure file on your computer.
+- Load a saved build back into the **Copy Paste Gadget** whenever you are in Paste mode.
+- Choose the file with your normal Windows, macOS, or Linux file picker—no commands or extra menus required.
+- Take your favorite builds from one singleplayer world or multiplayer server to another.
+- Keep saved builds organized in the default `.minecraft/building_gadgets_extra/structures` folder, or choose any folder you prefer.
+- Preserve directional blocks and block contents when saving and loading.
 
-The files are compatible with Minecraft's native structure format. They can be copied to or from a world's `generated/<namespace>/structures` folder for use with Structure Blocks. Structure entities are intentionally not imported or exported.
+Saved builds use Minecraft's standard `.nbt` structure format, so they can also be used with vanilla Structure Blocks. Mobs and other entities are not included.
 
 ## Multiplayer
 
-Building Gadgets Extra must be installed on the server and on every connecting client. Gadget templates remain server-authoritative, while each player's saved `.nbt` library stays on their own computer.
+Building Gadgets Extra works in singleplayer and multiplayer. For multiplayer, install it on the server and on each player's client. Every player keeps their own saved-build collection on their computer.
 
-Mirroring and native structure transfer are only the beginning. Future releases will continue expanding Building Gadgets with additional tools, controls, and building-focused improvements.
+Mirroring and reusable builds are only the beginning. Future releases will add more tools, controls, and quality-of-life features for builders.
 
 ## Supported Versions
 

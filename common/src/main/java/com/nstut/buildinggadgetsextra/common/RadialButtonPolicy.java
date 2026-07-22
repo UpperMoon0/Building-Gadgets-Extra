@@ -9,6 +9,11 @@ public final class RadialButtonPolicy {
         return "paste".equals(mode);
     }
 
+    /** Rotation affects the stored template, so it is meaningful only while pasting. */
+    public static boolean showRotateButton(String mode) {
+        return "paste".equals(mode);
+    }
+
     public static FileAction fileAction(boolean cutPasteTool, String mode) {
         if (cutPasteTool) {
             return "cut".equals(mode) ? FileAction.SAVE : FileAction.NONE;

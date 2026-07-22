@@ -25,6 +25,8 @@ public final class ExtraNetwork {
         CHANNEL.registerMessage(3,StructureDownloadPacket.class,StructureDownloadPacket::encode,StructureDownloadPacket::decode,StructureDownloadPacket::handle);
         CHANNEL.registerMessage(4, CutSelectionPacket.class,
                 CutSelectionPacket::encode, CutSelectionPacket::decode, CutSelectionPacket::handle);
+        CHANNEL.registerMessage(5, LegacyMultitoolPacket.class,
+                LegacyMultitoolPacket::encode, LegacyMultitoolPacket::decode, LegacyMultitoolPacket::handle);
     }
 
     public static void sendToServer(MirrorPacket packet) {
@@ -34,5 +36,6 @@ public final class ExtraNetwork {
     public static void sendToServer(StructureFilePacket packet) { CHANNEL.sendToServer(packet); }
     public static void sendToServer(StructureUploadPacket packet){CHANNEL.sendToServer(packet);}
     public static void sendToServer(CutSelectionPacket packet) { CHANNEL.sendToServer(packet); }
+    public static void sendToServer(LegacyMultitoolPacket packet) { CHANNEL.sendToServer(packet); }
     public static void sendToPlayer(ServerPlayerEntity player,StructureDownloadPacket packet){CHANNEL.send(PacketDistributor.PLAYER.with(()->player),packet);}
 }

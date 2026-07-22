@@ -5,6 +5,8 @@ public final class RadialIconLayout {
     public static final int BUTTON_SIZE = 24;
     public static final int SOURCE_TEXTURE_SIZE = 44;
     public static final int MODERN_SETTING_ICON_SIZE = 15;
+    public static final int MULTITOOL_MODE_ICON_SIZE = 24;
+    public static final int MULTITOOL_MODE_BUTTON_SIZE = 36;
     public static final int BUTTON_SPACING = 34;
     public static final int BACKGROUND_COLOR = 0x32FFFFFF;
 

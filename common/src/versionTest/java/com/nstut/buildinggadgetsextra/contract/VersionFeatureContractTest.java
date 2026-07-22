@@ -138,6 +138,83 @@ class VersionFeatureContractTest {
                 "legacy cut packet registration");
     }
 
+    @Test
+    void multitoolPrototypeKeepsNavigationSettingsAndPreviewCompatibilityTogether() throws Exception {
+        Path radialPath = module.resolve(
+                "src/main/java/com/nstut/buildinggadgetsextra/client/MultitoolRadialScreen.java");
+        if (!Files.isRegularFile(radialPath)) return; // Port is introduced version-by-version.
+
+        String radial = read(radialPath);
+        contains(radial, "MultitoolMenuState", "shared two-level navigation state");
+        contains(radial, "rememberedPage", "submenu persistence across reopen");
+        contains(radial, "0xFF00E640", "green selected outline");
+        contains(radial, "0xFF3598FF", "blue hovered outline");
+        String[] settings = "forge".equals(loader)
+                ? new String[]{"PacketUndo", "PacketAnchor", "PacketRangeChange", "PacketRotate",
+                "PacketToggleSetting", "PacketRenderChange"}
+                : new String[]{"UndoPayload", "AnchorPayload", "RangeChangePayload", "RotatePayload",
+                "ToggleSettingPayload", "RenderChangePayload"};
+        for (String setting : settings) {
+            contains(radial, setting, "upstream setting support");
+        }
+        contains(radial, "DestructionGUI", "destruction configuration support");
+        contains(radial, "MaterialListGUI", "copy material-list support");
+
+        String preview = source("client/MultitoolPreviewRenderer.java");
+        contains(preview, "Registration.Building_Gadget", "building preview delegate");
+        contains(preview, "Registration.CopyPaste_Gadget", "copy/paste preview delegate");
+        contains(preview, "Registration.CutPaste_Gadget", "cut/paste preview delegate");
+        contains(preview, "Registration.Destruction_Gadget", "destruction preview delegate");
+        contains(preview, "forge".equals(loader) ? "setTag" : "applyComponents",
+                "data-identical preview stack");
+
+        String mixins = read(module.resolve("src/main/resources/buildinggadgetsextra.mixins.json"));
+        contains(mixins, "RenderLevelLastMultitoolMixin", "multitool preview hook registration");
+    }
+
+    @Test
+    void multitoolIncludesTheCompleteExchangingModeAndVersionCorrectRecipe() throws Exception {
+        String item = source("item/BuildersMultitool.java");
+        contains(item, "EXCHANGING", "exchanging mode dispatch");
+        contains(item, legacyCut ? "OurItems.EXCHANGING_GADGET_ITEM" : "Registration.Exchanging_Gadget",
+                "upstream exchanging gadget delegation");
+        contains(item, legacyCut ? "GADGET_EXCHANGER" : "EXCHANGINGGADGET_",
+                "exchanging energy configuration");
+        assertTrue(item.contains("SILK_TOUCH") || item.contains("isPrimaryItemFor"),
+                label("exchanging enchantment compatibility"));
+
+        Path modernRadial = module.resolve("src/main/java/com/nstut/buildinggadgetsextra/client/MultitoolRadialScreen.java");
+        Path legacyRadial = module.resolve("src/main/java/com/nstut/buildinggadgetsextra/client/LegacyMultitoolScreen.java");
+        String radial = read(Files.isRegularFile(modernRadial) ? modernRadial : legacyRadial);
+        contains(radial, "EXCHANGING", "exchanging radial-menu entry");
+        contains(radial, legacyCut ? "ExchangingModes" : "BuildersMultitool.target(tool)",
+                "all upstream exchanging shapes");
+        contains(radial, "fuzzy", "exchanging fuzzy option");
+        contains(radial, "connected", "exchanging connected-area option");
+        contains(radial, legacyCut ? "addRange" : "forge".equals(loader) ? "PacketRangeChange" : "RangeChangePayload",
+                "exchanging range option");
+
+        if (legacyCut) {
+            String renderer = source("client/LegacyMultitoolRenderer.java");
+            contains(renderer, "EXCHANGING_GADGET_ITEM", "legacy exchanging preview delegate");
+        } else {
+            String preview = source("client/MultitoolPreviewRenderer.java");
+            contains(preview, "Registration.Exchanging_Gadget", "exchanging hologram delegate");
+        }
+
+        String recipeFolder = "forge".equals(loader) ? "recipes" : "recipe";
+        String recipe = read(module.resolve("src/main/resources/data/buildinggadgetsextra/")
+                .resolve(recipeFolder).resolve("builders_multitool.json"));
+        contains(recipe, "BNE", "recipe top row: build, Netherite, exchange");
+        contains(recipe, "NSN", "recipe middle row: Netherite, Nether Star, Netherite");
+        contains(recipe, legacyCut ? "PND" : "PCD",
+                legacyCut ? "legacy Netherite cut-gadget substitution" : "five-gadget bottom row");
+        contains(recipe, "gadget_exchanging", "Exchanging Gadget ingredient");
+        contains(recipe, "nether_star", "Nether Star ingredient");
+        if (legacyCut) assertFalse(recipe.contains("gadget_cut_paste"), label("1.16.5 has no native Cut Paste ingredient"));
+        else contains(recipe, "gadget_cut_paste", "native Cut Paste ingredient");
+    }
+
     private String source(String relative) throws IOException {
         return read(module.resolve("src/main/java/com/nstut/buildinggadgetsextra").resolve(relative));
     }

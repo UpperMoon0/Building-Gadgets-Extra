@@ -10,6 +10,9 @@ import com.direwolf20.buildinggadgets2.util.datatypes.StatePos;
 import com.direwolf20.buildinggadgets2.util.datatypes.TagPos;
 import com.nstut.buildinggadgetsextra.transform.MirrorTransforms;
 import com.nstut.buildinggadgetsextra.common.ExtraConstants;
+import com.nstut.buildinggadgetsextra.common.MultitoolMode;
+import com.nstut.buildinggadgetsextra.item.BuildersMultitool;
+import com.nstut.buildinggadgetsextra.item.MultitoolState;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
@@ -41,7 +44,10 @@ public final class MirrorPayloadHandler {
             }
 
             UUID gadgetId = GadgetNBT.getUUID(gadget);
-            if (gadget.getItem() instanceof GadgetCutPaste && ServerTickHandler.gadgetWorking(gadgetId)) {
+            boolean cut = gadget.getItem() instanceof GadgetCutPaste
+                    || gadget.getItem() instanceof BuildersMultitool
+                    && MultitoolState.getActiveMode(gadget) == MultitoolMode.CUT_PASTE;
+            if (cut && ServerTickHandler.gadgetWorking(gadgetId)) {
                 player.displayClientMessage(
                         Component.translatable(ExtraConstants.BUSY), true);
                 return;

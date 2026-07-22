@@ -4,12 +4,16 @@
   "package": "com.nstut.buildinggadgetsextra.mixin",
   "compatibilityLevel": "JAVA_8",
   "mixins": [
+    "GadgetBuildingMixin",
+    "GadgetDestructionMixin",
+    "GadgetExchangerMixin",
     "TemplateAccessor",
     "VanillaPaletteAccessor",
     "VanillaTemplateAccessor"
   ],
   "client": [
-    "ModeRadialMenuMixin"
+    "ModeRadialMenuMixin",
+    "PasteGUIInvoker"
   ],
   "injectors": {
     "defaultRequire": 1

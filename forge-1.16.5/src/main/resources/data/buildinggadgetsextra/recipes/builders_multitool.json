@@ -1,0 +1,13 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "pattern": ["BNE", "NSN", "PND"],
+  "key": {
+    "B": { "item": "buildinggadgets:gadget_building" },
+    "E": { "item": "buildinggadgets:gadget_exchanging" },
+    "P": { "item": "buildinggadgets:gadget_copy_paste" },
+    "D": { "item": "buildinggadgets:gadget_destruction" },
+    "N": { "item": "minecraft:netherite_ingot" },
+    "S": { "item": "minecraft:nether_star" }
+  },
+  "result": { "item": "buildinggadgetsextra:builders_multitool", "count": 1 }
+}

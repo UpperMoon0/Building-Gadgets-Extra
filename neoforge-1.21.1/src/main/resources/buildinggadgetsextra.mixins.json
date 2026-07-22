@@ -4,9 +4,12 @@
   "package": "com.nstut.buildinggadgetsextra.mixin",
   "compatibilityLevel": "JAVA_21",
   "client": [
-    "ModeRadialMenuMixin"
+    "ModeRadialMenuMixin",
+    "PasteGUIInvoker",
+    "RenderLevelLastMultitoolMixin"
   ],
   "mixins": [
+    "GadgetNBTMultitoolMixin",
     "StructurePaletteInvoker",
     "StructureTemplateAccessor"
   ],

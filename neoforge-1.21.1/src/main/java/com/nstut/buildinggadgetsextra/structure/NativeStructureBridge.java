@@ -11,6 +11,9 @@ import com.direwolf20.buildinggadgets2.util.datatypes.TagPos;
 import com.nstut.buildinggadgetsextra.common.ExtraConstants;
 import com.nstut.buildinggadgetsextra.mixin.StructurePaletteInvoker;
 import com.nstut.buildinggadgetsextra.mixin.StructureTemplateAccessor;
+import com.nstut.buildinggadgetsextra.common.MultitoolMode;
+import com.nstut.buildinggadgetsextra.item.BuildersMultitool;
+import com.nstut.buildinggadgetsextra.item.MultitoolState;
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.NbtIo;
@@ -46,6 +49,7 @@ public final class NativeStructureBridge {
 
     public static void importStructure(ServerPlayer player,String name,byte[] bytes){
         ItemStack gadget=gadget(player);if(gadget==null||unavailable(player,gadget,false))return;
+        if(gadget.getItem() instanceof BuildersMultitool&&MultitoolState.getActiveMode(gadget)!=MultitoolMode.COPY_PASTE)return;
         final StructureTemplate template;try{template=player.server.getStructureManager().readStructure(NbtIo.readCompressed(new ByteArrayInputStream(bytes),NbtAccounter.create(512L*1024L*1024L)));}catch(Exception error){message(player,ExtraConstants.STRUCTURE_LOAD_FAILED,name);return;}
         StructureTemplateAccessor accessor=(StructureTemplateAccessor)(Object)template;
         if(accessor.buildingGadgetsExtra$getPalettes().isEmpty()||template.getSize().getX()<=0||template.getSize().getY()<=0||template.getSize().getZ()<=0){message(player,ExtraConstants.STRUCTURE_LOAD_FAILED,name);return;}
@@ -57,6 +61,7 @@ public final class NativeStructureBridge {
     }
 
     private static ItemStack gadget(ServerPlayer player){ItemStack stack=BaseGadget.getGadget(player);return stack.getItem() instanceof GadgetCopyPaste||stack.getItem() instanceof GadgetCutPaste?stack:null;}
-    private static boolean unavailable(ServerPlayer player,ItemStack gadget,boolean requireTemplate){if(requireTemplate&&!GadgetNBT.hasCopyUUID(gadget)){message(player,ExtraConstants.NO_TEMPLATE);return true;}if(gadget.getItem() instanceof GadgetCutPaste&&ServerTickHandler.gadgetWorking(GadgetNBT.getUUID(gadget))){message(player,ExtraConstants.BUSY);return true;}return false;}
+    private static boolean unavailable(ServerPlayer player,ItemStack gadget,boolean requireTemplate){if(requireTemplate&&!GadgetNBT.hasCopyUUID(gadget)){message(player,ExtraConstants.NO_TEMPLATE);return true;}if(isCut(gadget)&&ServerTickHandler.gadgetWorking(GadgetNBT.getUUID(gadget))){message(player,ExtraConstants.BUSY);return true;}return false;}
+    private static boolean isCut(ItemStack gadget){return gadget.getItem() instanceof GadgetCutPaste||(gadget.getItem() instanceof BuildersMultitool&&MultitoolState.getActiveMode(gadget)==MultitoolMode.CUT_PASTE);}
     private static void message(ServerPlayer player,String key,Object...args){player.displayClientMessage(Component.translatable(key,args),true);}
 }
