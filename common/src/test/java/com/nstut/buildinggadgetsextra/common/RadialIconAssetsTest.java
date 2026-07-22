@@ -18,6 +18,7 @@ class RadialIconAssetsTest {
         assertIcon("load");
         assertIcon("build");
         assertIcon("delete");
+        assertIcon("exchange");
         assertIcon("cut", RadialIconLayout.MODERN_SETTING_ICON_SIZE);
     }
 

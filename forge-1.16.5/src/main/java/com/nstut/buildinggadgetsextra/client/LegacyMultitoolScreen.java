@@ -39,7 +39,7 @@ public final class LegacyMultitoolScreen extends Screen {
             MultitoolMode.COPY_PASTE, MultitoolMode.CUT_PASTE, MultitoolMode.DESTRUCTION
     };
     private static MultitoolMenuState.Page rememberedPage = MultitoolMenuState.Page.GENERAL;
-    private final ItemStack stack;
+    private ItemStack stack;
     private final MultitoolMenuState navigation;
     private int selectedAction;
     private MultitoolMode hoveredTool;
@@ -56,6 +56,12 @@ public final class LegacyMultitoolScreen extends Screen {
     }
 
     @Override protected void init() { rebuildSettings(); }
+
+    @Override public void tick() {
+        if (minecraft.player == null) return;
+        ItemStack held = AbstractGadget.getGadget(minecraft.player);
+        if (!held.isEmpty()) this.stack = held;
+    }
 
     private void rebuildSettings() {
         buttons.clear(); children.clear(); rangeLabelY = -1;
@@ -228,7 +234,7 @@ public final class LegacyMultitoolScreen extends Screen {
         outline(matrices, x-half, y-half, x+half, y+half, hovered ? 0xFF3598FF : mode == selectedTool() ? 0xFF00E640 : 0);
         String namespace; String path; int source; int renderSize;
         if (mode == MultitoolMode.BUILD) { namespace = ExtraConstants.MOD_ID; path = "textures/gui/setting/build.png"; source = 44; renderSize = 24; }
-        else if (mode == MultitoolMode.EXCHANGING) { namespace = "buildinggadgets"; path = "textures/item/gadget_exchanging.png"; source = 16; renderSize = 16; }
+        else if (mode == MultitoolMode.EXCHANGING) { namespace = ExtraConstants.MOD_ID; path = "textures/gui/setting/exchange.png"; source = 44; renderSize = 24; }
         else if (mode == MultitoolMode.DESTRUCTION) { namespace = ExtraConstants.MOD_ID; path = "textures/gui/setting/delete.png"; source = 44; renderSize = 24; }
         else if (mode == MultitoolMode.CUT_PASTE) { namespace = ExtraConstants.MOD_ID; path = "textures/gui/setting/cut.png"; source = 15; renderSize = 16; }
         else { namespace = "buildinggadgets"; path = "textures/gui/mode/copy.png"; source = 15; renderSize = 16; }
