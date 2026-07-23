@@ -35,9 +35,10 @@ public final class LegacyMultitoolPacket {
             if (packet.operation == SELECT_TOOL) {
                 MultitoolMode[] modes = MultitoolMode.values();
                 if (packet.value >= 0 && packet.value < modes.length) MultitoolState.selectTool(stack, modes[packet.value]);
+                player.containerMenu.broadcastChanges();
                 return;
             }
-            if (packet.operation == SELECT_ACTION) { MultitoolState.applyProfile(stack, active, packet.value); return; }
+            if (packet.operation == SELECT_ACTION) { MultitoolState.applyProfile(stack, active, packet.value); player.containerMenu.broadcastChanges(); return; }
             AbstractGadget delegate = delegate(active);
             switch (packet.operation) {
                 case RANGE: GadgetUtils.setToolRange(stack, MathHelper.clamp(GadgetUtils.getToolRange(stack) + packet.value, 1, Config.GADGETS.maxRange.get())); break;
@@ -53,6 +54,7 @@ public final class LegacyMultitoolPacket {
                 case FLUID_ONLY: GadgetDestruction.toggleFluidMode(stack); break;
                 default: break;
             }
+            player.containerMenu.broadcastChanges();
         });
         context.setPacketHandled(true);
     }
