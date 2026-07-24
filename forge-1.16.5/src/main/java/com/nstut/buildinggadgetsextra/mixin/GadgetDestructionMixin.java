@@ -9,7 +9,7 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
-@Mixin(targets = "com.direwolf20.buildinggadgets.common.items.GadgetDestruction", remap = false)
+@Mixin(value = com.direwolf20.buildinggadgets.common.items.GadgetDestruction.class, remap = false)
 public class GadgetDestructionMixin {
     @Inject(method = "getGadget", at = @At("HEAD"), cancellable = true, remap = false)
     private static void buildinggadgetsextra$allowMultitool(PlayerEntity player, CallbackInfoReturnable<ItemStack> cir) {

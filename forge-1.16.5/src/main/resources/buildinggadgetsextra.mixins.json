@@ -2,6 +2,7 @@
   "required": true,
   "minVersion": "0.8",
   "package": "com.nstut.buildinggadgetsextra.mixin",
+  "plugin": "com.nstut.buildinggadgetsextra.mixin.BGEMixinPlugin",
   "compatibilityLevel": "JAVA_8",
   "mixins": [
     "GadgetBuildingMixin",
@@ -12,7 +13,8 @@
     "VanillaTemplateAccessor"
   ],
   "client": [
-    "ModeRadialMenuMixin"
+    "ModeRadialMenuMixin",
+    "PasteGUIInitMixin"
   ],
   "injectors": {
     "defaultRequire": 1

@@ -86,6 +86,8 @@ public final class MultitoolRadialScreen extends Screen {
 
         String mode = selectedAction == null ? "" : selectedAction.getId().getPath();
         boolean cutTool = selectedTool() == MultitoolMode.CUT_PASTE;
+        boolean hasCutBuffer = cutTool && GadgetNBT.hasCopyUUID(stack);
+        String effectiveMode = cutTool ? (hasCutBuffer ? "paste" : "cut") : mode;
 
         addUpstream(false, rightY, "raytrace_fluid",
                 Component.translatable("buildinggadgets2.radialmenu.raytracefluids"), true,
@@ -344,8 +346,13 @@ public final class MultitoolRadialScreen extends Screen {
     }
 
     private void sendSelection() {
-        PacketDistributor.sendToServer(new MultitoolSelectionPayload(selectedTool().ordinal(),
-                selectedAction == null ? "" : selectedAction.getId().toString()));
+        String modeStr;
+        if (selectedTool() == MultitoolMode.CUT_PASTE) {
+            modeStr = GadgetNBT.hasCopyUUID(stack) ? "buildinggadgets2:paste" : "buildinggadgets2:cut";
+        } else {
+            modeStr = selectedAction == null ? "" : selectedAction.getId().toString();
+        }
+        PacketDistributor.sendToServer(new MultitoolSelectionPayload(selectedTool().ordinal(), modeStr));
     }
 
     private MultitoolMode findTool(double dx, double dy) {
@@ -385,7 +392,7 @@ public final class MultitoolRadialScreen extends Screen {
     }
 
     private static List<BaseMode> actionsFor(MultitoolMode tool) {
-        if (tool == MultitoolMode.DESTRUCTION) return List.of();
+        if (tool == MultitoolMode.DESTRUCTION || tool == MultitoolMode.CUT_PASTE) return List.of();
         return new ArrayList<>(GadgetModes.INSTANCE.getModesForGadget(BuildersMultitool.target(tool)));
     }
 
@@ -396,7 +403,7 @@ public final class MultitoolRadialScreen extends Screen {
     private static String actionIconPath(MultitoolMode tool) {
         return switch (tool) {
             case BUILD -> "textures/gui/setting/build.png";
-            case EXCHANGING -> "textures/item/gadget_exchanging.png";
+            case EXCHANGING -> "textures/gui/setting/exchange.png";
             case COPY_PASTE -> "textures/gui/mode/copy.png";
             case CUT_PASTE -> "textures/gui/mode/cut.png";
             case DESTRUCTION -> "textures/gui/setting/delete.png";
@@ -405,15 +412,14 @@ public final class MultitoolRadialScreen extends Screen {
 
     private static String actionIconNamespace(MultitoolMode tool) {
         return switch (tool) {
-            case BUILD, DESTRUCTION -> ExtraConstants.MOD_ID;
-            case EXCHANGING, COPY_PASTE, CUT_PASTE -> "buildinggadgets2";
+            case BUILD, EXCHANGING, DESTRUCTION -> ExtraConstants.MOD_ID;
+            case COPY_PASTE, CUT_PASTE -> "buildinggadgets2";
         };
     }
 
     private static int actionIconSourceSize(MultitoolMode tool) {
         return switch (tool) {
-            case BUILD, DESTRUCTION -> RadialIconLayout.SOURCE_TEXTURE_SIZE;
-            case EXCHANGING -> 16;
+            case BUILD, EXCHANGING, DESTRUCTION -> RadialIconLayout.SOURCE_TEXTURE_SIZE;
             case COPY_PASTE, CUT_PASTE -> RadialIconLayout.MODERN_SETTING_ICON_SIZE;
         };
     }

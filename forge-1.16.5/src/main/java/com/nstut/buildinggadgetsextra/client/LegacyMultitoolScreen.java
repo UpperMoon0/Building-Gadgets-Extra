@@ -148,7 +148,7 @@ public final class LegacyMultitoolScreen extends Screen {
                         new TranslationTextComponent(ExtraConstants.SAVE_STRUCTURE),
                         ClientStructureFiles::chooseSave));
             } else {
-                clientSetting(false, right, "copypaste_opengui", "buildinggadgets.radialmenu.copypastemenu",
+                clientSetting(false, right, "copypaste_opengui", "buildinggadgetsextra.radialmenu.configure_paste",
                         () -> minecraft.setScreen(createPasteGUI(stack)));
                 setting(true, left, "rotate", "buildinggadgets.radialmenu.rotate", false, () -> false, LegacyMultitoolPacket.ROTATE);
                 addButton(new MirrorIconButton(width / 2 - 136, next(left), "mirror_horizontal",

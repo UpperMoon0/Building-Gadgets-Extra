@@ -406,7 +406,7 @@ public final class MultitoolRadialScreen extends Screen {
     private static String actionIconPath(MultitoolMode tool) {
         return switch (tool) {
             case BUILD -> "textures/gui/setting/build.png";
-            case EXCHANGING -> "textures/item/gadget_exchanging.png";
+            case EXCHANGING -> "textures/gui/setting/exchange.png";
             case COPY_PASTE -> "textures/gui/mode/copy.png";
             case CUT_PASTE -> "textures/gui/mode/cut.png";
             case DESTRUCTION -> "textures/gui/setting/delete.png";
@@ -415,15 +415,14 @@ public final class MultitoolRadialScreen extends Screen {
 
     private static String actionIconNamespace(MultitoolMode tool) {
         return switch (tool) {
-            case BUILD, DESTRUCTION -> ExtraConstants.MOD_ID;
-            case EXCHANGING, COPY_PASTE, CUT_PASTE -> "buildinggadgets2";
+            case BUILD, EXCHANGING, DESTRUCTION -> ExtraConstants.MOD_ID;
+            case COPY_PASTE, CUT_PASTE -> "buildinggadgets2";
         };
     }
 
     private static int actionIconSourceSize(MultitoolMode tool) {
         return switch (tool) {
-            case BUILD, DESTRUCTION -> RadialIconLayout.SOURCE_TEXTURE_SIZE;
-            case EXCHANGING -> 16;
+            case BUILD, EXCHANGING, DESTRUCTION -> RadialIconLayout.SOURCE_TEXTURE_SIZE;
             case COPY_PASTE, CUT_PASTE -> RadialIconLayout.MODERN_SETTING_ICON_SIZE;
         };
     }

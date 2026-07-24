@@ -9,6 +9,7 @@
   "buildinggadgetsextra.message.busy": "Cannot modify the template while the Cut Paste Gadget is working",
   "buildinggadgetsextra.radialmenu.save_structure": "Save to .nbt",
   "buildinggadgetsextra.radialmenu.load_structure": "Load from .nbt",
+  "buildinggadgetsextra.radialmenu.configure_paste": "Configure Paste",
   "buildinggadgetsextra.radialmenu.cut_selection": "Cut copied selection",
   "buildinggadgetsextra.message.structure_saved": "Saved structure as %s",
   "buildinggadgetsextra.message.structure_loaded": "Loaded structure %s",

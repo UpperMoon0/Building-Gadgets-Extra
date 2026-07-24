@@ -30,5 +30,5 @@ side="BOTH"
 modId="buildinggadgets"
 mandatory=true
 versionRange="${building_gadgets_version_range}"
-ordering="AFTER"
+ordering="BEFORE"
 side="BOTH"
