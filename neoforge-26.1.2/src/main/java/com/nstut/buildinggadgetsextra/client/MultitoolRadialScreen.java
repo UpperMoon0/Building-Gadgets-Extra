@@ -4,6 +4,7 @@ import com.direwolf20.buildinggadgets2.api.gadgets.GadgetModes;
 import com.direwolf20.buildinggadgets2.client.screen.CopyGUI;
 import com.direwolf20.buildinggadgets2.client.screen.DestructionGUI;
 import com.direwolf20.buildinggadgets2.client.screen.MaterialListGUI;
+import com.direwolf20.buildinggadgets2.client.screen.PasteGUI;
 import com.direwolf20.buildinggadgets2.client.screen.widgets.GuiIconActionable;
 import com.direwolf20.buildinggadgets2.client.screen.widgets.IncrementalSliderWidget;
 import com.direwolf20.buildinggadgets2.common.items.BaseGadget;
@@ -20,7 +21,6 @@ import com.nstut.buildinggadgetsextra.item.MultitoolState;
 import com.nstut.buildinggadgetsextra.network.MirrorPayload;
 import com.nstut.buildinggadgetsextra.network.MultitoolCutPayload;
 import com.nstut.buildinggadgetsextra.network.MultitoolSelectionPayload;
-import com.nstut.buildinggadgetsextra.mixin.PasteGUIInvoker;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.Screen;
@@ -33,6 +33,7 @@ import net.neoforged.neoforge.client.network.ClientPacketDistributor;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.lang.reflect.Constructor;
 
 public final class MultitoolRadialScreen extends Screen {
     private static final int TOOL_RADIUS = 68;
@@ -87,6 +88,8 @@ public final class MultitoolRadialScreen extends Screen {
 
         String mode = selectedAction == null ? "" : selectedAction.getId().getPath();
         boolean cutTool = selectedTool() == MultitoolMode.CUT_PASTE;
+        boolean hasCutBuffer = cutTool && GadgetNBT.hasCopyUUID(stack);
+        String effectiveMode = cutTool ? (hasCutBuffer ? "paste" : "cut") : mode;
 
         addUpstream(false, rightY, "raytrace_fluid",
                 Component.translatable("buildinggadgets2.radialmenu.raytracefluids"), true,
@@ -105,7 +108,7 @@ public final class MultitoolRadialScreen extends Screen {
         if (selectedTool() == MultitoolMode.BUILD) {
             addUpstream(false, rightY, "building_place_atop", Component.translatable("buildinggadgets2.screen.placeatop"), true,
                     GadgetNBT.ToggleableSettings.PLACE_ON_TOP, null);
-            if ("surface".equals(mode)) {
+            if ("surface".equals(effectiveMode)) {
                 addUpstream(false, rightY, "fuzzy", Component.translatable("buildinggadgets2.radialmenu.fuzzy"), true,
                         GadgetNBT.ToggleableSettings.FUZZY, null);
                 addUpstream(false, rightY, "connected_area", Component.translatable("buildinggadgets2.radialmenu.connected_area"), true,
@@ -123,7 +126,6 @@ public final class MultitoolRadialScreen extends Screen {
         }
 
         if (selectedTool() == MultitoolMode.BUILD || selectedTool() == MultitoolMode.EXCHANGING) {
-            // Range is a build/exchange setting, so keep it in the right-hand settings rail.
             IncrementalSliderWidget range = new IncrementalSliderWidget(width / 2 + 112, next(rightY),
                     82, 14, 1, 15, Component.translatable("buildinggadgets2.gui.range").append(": "),
                     GadgetNBT.getToolRange(stack), slider ->
@@ -135,13 +137,13 @@ public final class MultitoolRadialScreen extends Screen {
             addUpstream(false, rightY, "paste_replace", Component.translatable("buildinggadgets2.screen.paste_replace"), true,
                     GadgetNBT.ToggleableSettings.PASTE_REPLACE, null);
             addUpstream(false, rightY, "copypaste_opengui", Component.translatable("buildinggadgets2.radialmenu.copypastemenu"), false,
-                    null, () -> Minecraft.getInstance().setScreen("paste".equals(mode)
-                            ? PasteGUIInvoker.buildingGadgetsExtra$create(stack) : new CopyGUI(stack)));
-            if (RadialButtonPolicy.showRotateButton(mode)) {
+                    null, () -> Minecraft.getInstance().setScreen("paste".equals(effectiveMode)
+                            ? createPasteGUI(stack) : new CopyGUI(stack)));
+            if (RadialButtonPolicy.showRotateButton(effectiveMode)) {
                 addUpstream(true, leftY, "rotate", Component.translatable("buildinggadgets2.radialmenu.rotate"), false,
                         null, () -> ClientPacketDistributor.sendToServer(new RotatePayload()));
             }
-            if (!cutTool && "paste".equals(mode)) {
+            if (!cutTool && "paste".equals(effectiveMode)) {
                 addUpstream(false, rightY, "copypaste_materiallist", Component.translatable("buildinggadgets2.radialmenu.materiallist"), false,
                         null, () -> {
                             if (GadgetNBT.hasCopyUUID(stack)) Minecraft.getInstance().setScreen(new MaterialListGUI(stack));
@@ -149,7 +151,7 @@ public final class MultitoolRadialScreen extends Screen {
             }
         }
 
-        if (RadialButtonPolicy.showMirrorButtons(mode)
+        if (RadialButtonPolicy.showMirrorButtons(effectiveMode)
                 && (selectedTool() == MultitoolMode.COPY_PASTE || selectedTool() == MultitoolMode.CUT_PASTE)) {
             addRenderableWidget(new MirrorIconButton(width / 2 - 136, next(leftY), "mirror_horizontal",
                     Component.translatable(ExtraConstants.MIRROR_HORIZONTAL),
@@ -159,8 +161,7 @@ public final class MultitoolRadialScreen extends Screen {
                     () -> ClientPacketDistributor.sendToServer(new MirrorPayload(true))));
         }
 
-        RadialButtonPolicy.FileAction fileAction = RadialButtonPolicy.fileAction(
-                selectedTool() == MultitoolMode.CUT_PASTE, mode);
+        RadialButtonPolicy.FileAction fileAction = RadialButtonPolicy.fileAction(cutTool, effectiveMode);
         if (fileAction != RadialButtonPolicy.FileAction.NONE) {
             boolean load = fileAction == RadialButtonPolicy.FileAction.LOAD;
             addRenderableWidget(new MirrorIconButton(width / 2 + 112, next(rightY), load ? "load" : "save",
@@ -168,7 +169,7 @@ public final class MultitoolRadialScreen extends Screen {
                     load ? ClientStructureFiles::chooseLoad : ClientStructureFiles::chooseSave));
         }
 
-        if (selectedTool() == MultitoolMode.CUT_PASTE && "cut".equals(mode)) {
+        if (cutTool && !hasCutBuffer) {
             addRenderableWidget(new MirrorIconButton(width / 2 + 112, next(rightY),
                     "cut", RadialIconLayout.MODERN_SETTING_ICON_SIZE,
                     Component.translatable("buildinggadgets2.radialmenu.cut"),
@@ -348,8 +349,13 @@ public final class MultitoolRadialScreen extends Screen {
     }
 
     private void sendSelection() {
-        ClientPacketDistributor.sendToServer(new MultitoolSelectionPayload(selectedTool().ordinal(),
-                selectedAction == null ? "" : selectedAction.getId().toString()));
+        String modeStr;
+        if (selectedTool() == MultitoolMode.CUT_PASTE) {
+            modeStr = GadgetNBT.hasCopyUUID(stack) ? "buildinggadgets2:paste" : "buildinggadgets2:cut";
+        } else {
+            modeStr = selectedAction == null ? "" : selectedAction.getId().toString();
+        }
+        ClientPacketDistributor.sendToServer(new MultitoolSelectionPayload(selectedTool().ordinal(), modeStr));
     }
 
     private MultitoolMode findTool(double dx, double dy) {
@@ -389,7 +395,7 @@ public final class MultitoolRadialScreen extends Screen {
     }
 
     private static List<BaseMode> actionsFor(MultitoolMode tool) {
-        if (tool == MultitoolMode.DESTRUCTION) return List.of();
+        if (tool == MultitoolMode.DESTRUCTION || tool == MultitoolMode.CUT_PASTE) return List.of();
         return new ArrayList<>(GadgetModes.INSTANCE.getModesForGadget(BuildersMultitool.target(tool)));
     }
 
@@ -420,6 +426,16 @@ public final class MultitoolRadialScreen extends Screen {
             case EXCHANGING -> 16;
             case COPY_PASTE, CUT_PASTE -> RadialIconLayout.MODERN_SETTING_ICON_SIZE;
         };
+    }
+
+    private static PasteGUI createPasteGUI(ItemStack stack) {
+        try {
+            Constructor<PasteGUI> ctor = PasteGUI.class.getDeclaredConstructor(ItemStack.class);
+            ctor.setAccessible(true);
+            return ctor.newInstance(stack);
+        } catch (ReflectiveOperationException e) {
+            throw new RuntimeException("Failed to create PasteGUI", e);
+        }
     }
 
     @Override

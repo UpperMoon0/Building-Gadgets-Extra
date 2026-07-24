@@ -54,6 +54,14 @@ public final class MultitoolState {
         MultitoolMode previous = getActiveMode(stack);
         saveCurrentProfile(stack, previous);
         setActiveMode(stack, selected);
-        if (selected != MultitoolMode.DESTRUCTION) applyProfile(stack, selected, getProfile(stack, selected));
+        if (selected == MultitoolMode.DESTRUCTION) return;
+        if (selected == MultitoolMode.CUT_PASTE) {
+            boolean hasCutBuffer = stack.getOrCreateTag().getBoolean("cutBufferActive");
+            int modeIndex = hasCutBuffer ? GadgetCopyPaste.ToolMode.PASTE.ordinal() : GadgetCopyPaste.ToolMode.COPY.ordinal();
+            ((GadgetCopyPaste) OurItems.COPY_PASTE_GADGET_ITEM.get()).setMode(stack, modeIndex);
+            stack.getOrCreateTag().putInt(PROFILE + selected.serializedName(), modeIndex);
+            return;
+        }
+        applyProfile(stack, selected, getProfile(stack, selected));
     }
 }

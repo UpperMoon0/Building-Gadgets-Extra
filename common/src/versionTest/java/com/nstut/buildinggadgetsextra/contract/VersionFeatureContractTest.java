@@ -27,11 +27,10 @@ class VersionFeatureContractTest {
         contains(radial, "save", "save action");
         contains(radial, "load", "load action");
         assertFalse(radial.contains("StructureLibrary"), label("obsolete structure library button"));
+        assertFalse(radial.contains("showLegacyCutAction"), label("cut removed from copy-paste mixin"));
+        assertFalse(radial.contains("CutSelectionPacket"), label("cut removed from copy-paste mixin"));
 
-        if (legacyCut) {
-            contains(radial, "showLegacyCutAction", "legacy cut visibility policy");
-            contains(radial, "CutSelectionPacket", "legacy cut server request");
-        } else {
+        if (!legacyCut) {
             contains(radial, "GadgetCutPaste", "native Cut Paste integration");
         }
     }

@@ -1,4 +1,6 @@
 {
+  "buildinggadgets.radialmenu.copypastemenu": "Copy / Paste",
+  "buildinggadgets.radialmenu.materiallist": "Materials",
   "buildinggadgetsextra.radialmenu.mirror_horizontal": "Mirror Horizontal",
   "buildinggadgetsextra.radialmenu.mirror_vertical": "Mirror Vertical",
   "buildinggadgetsextra.message.mirrored_horizontal": "Template mirrored horizontally",

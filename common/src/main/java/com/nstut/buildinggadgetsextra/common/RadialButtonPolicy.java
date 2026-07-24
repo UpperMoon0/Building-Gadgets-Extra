@@ -23,11 +23,6 @@ public final class RadialButtonPolicy {
         return FileAction.NONE;
     }
 
-    /** The legacy 1.16 gadget has no native Cut Paste item, so Cut augments Copy mode only. */
-    public static boolean showLegacyCutAction(boolean cutPasteTool, String mode) {
-        return !cutPasteTool && "copy".equals(mode);
-    }
-
     public enum FileAction {
         NONE,
         SAVE,

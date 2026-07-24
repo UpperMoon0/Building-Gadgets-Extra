@@ -10,7 +10,6 @@ import com.nstut.buildinggadgetsextra.common.RadialButtonPolicy;
 import com.nstut.buildinggadgetsextra.common.RadialIconLayout;
 import com.nstut.buildinggadgetsextra.network.ExtraNetwork;
 import com.nstut.buildinggadgetsextra.network.MirrorPacket;
-import com.nstut.buildinggadgetsextra.network.CutSelectionPacket;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.gui.widget.Widget;
@@ -67,14 +66,6 @@ public abstract class ModeRadialMenuMixin extends Screen {
                     new TranslationTextComponent(load
                             ? ExtraConstants.LOAD_STRUCTURE : ExtraConstants.SAVE_STRUCTURE),
                     load ? ClientStructureFiles::chooseLoad : ClientStructureFiles::chooseSave));
-            fileY += RadialIconLayout.BUTTON_SPACING;
-        }
-
-        if (RadialButtonPolicy.showLegacyCutAction(false, mode)) {
-            this.addButton(new MirrorIconButton(
-                    addonX, fileY, "cut", RadialIconLayout.MODERN_SETTING_ICON_SIZE,
-                    new TranslationTextComponent(ExtraConstants.CUT_SELECTION),
-                    () -> ExtraNetwork.sendToServer(new CutSelectionPacket())));
         }
     }
 }

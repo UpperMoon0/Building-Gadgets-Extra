@@ -39,12 +39,4 @@ class RadialButtonPolicyTest {
         assertEquals(NONE, RadialButtonPolicy.fileAction(true, "paste"));
         assertEquals(NONE, RadialButtonPolicy.fileAction(true, "copy"));
     }
-
-    @Test
-    void legacyCutActionOnlyAugmentsCopyMode() {
-        assertTrue(RadialButtonPolicy.showLegacyCutAction(false, "copy"));
-        assertFalse(RadialButtonPolicy.showLegacyCutAction(false, "paste"));
-        assertFalse(RadialButtonPolicy.showLegacyCutAction(true, "copy"));
-        assertFalse(RadialButtonPolicy.showLegacyCutAction(false, null));
-    }
 }

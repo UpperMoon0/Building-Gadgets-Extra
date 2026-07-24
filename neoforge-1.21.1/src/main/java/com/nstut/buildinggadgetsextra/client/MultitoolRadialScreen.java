@@ -4,6 +4,7 @@ import com.direwolf20.buildinggadgets2.api.gadgets.GadgetModes;
 import com.direwolf20.buildinggadgets2.client.screen.CopyGUI;
 import com.direwolf20.buildinggadgets2.client.screen.DestructionGUI;
 import com.direwolf20.buildinggadgets2.client.screen.MaterialListGUI;
+import com.direwolf20.buildinggadgets2.client.screen.PasteGUI;
 import com.direwolf20.buildinggadgets2.client.screen.widgets.GuiIconActionable;
 import com.direwolf20.buildinggadgets2.client.screen.widgets.IncrementalSliderWidget;
 import com.direwolf20.buildinggadgets2.common.items.BaseGadget;
@@ -20,7 +21,6 @@ import com.nstut.buildinggadgetsextra.item.MultitoolState;
 import com.nstut.buildinggadgetsextra.network.MirrorPayload;
 import com.nstut.buildinggadgetsextra.network.MultitoolCutPayload;
 import com.nstut.buildinggadgetsextra.network.MultitoolSelectionPayload;
-import com.nstut.buildinggadgetsextra.mixin.PasteGUIInvoker;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
@@ -31,6 +31,7 @@ import net.neoforged.neoforge.network.PacketDistributor;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.lang.reflect.Constructor;
 
 public final class MultitoolRadialScreen extends Screen {
     private static final int TOOL_RADIUS = 68;
@@ -134,7 +135,7 @@ public final class MultitoolRadialScreen extends Screen {
                     GadgetNBT.ToggleableSettings.PASTE_REPLACE, null);
             addUpstream(false, rightY, "copypaste_opengui", Component.translatable("buildinggadgets2.radialmenu.copypastemenu"), false,
                     null, () -> Minecraft.getInstance().setScreen("paste".equals(mode)
-                            ? PasteGUIInvoker.buildingGadgetsExtra$create(stack) : new CopyGUI(stack)));
+                            ? createPasteGUI(stack) : new CopyGUI(stack)));
             if (RadialButtonPolicy.showRotateButton(mode)) {
                 addUpstream(true, leftY, "rotate", Component.translatable("buildinggadgets2.radialmenu.rotate"), false,
                         null, () -> PacketDistributor.sendToServer(new RotatePayload()));
@@ -415,6 +416,16 @@ public final class MultitoolRadialScreen extends Screen {
             case EXCHANGING -> 16;
             case COPY_PASTE, CUT_PASTE -> RadialIconLayout.MODERN_SETTING_ICON_SIZE;
         };
+    }
+
+    private static PasteGUI createPasteGUI(ItemStack stack) {
+        try {
+            Constructor<PasteGUI> ctor = PasteGUI.class.getDeclaredConstructor(ItemStack.class);
+            ctor.setAccessible(true);
+            return ctor.newInstance(stack);
+        } catch (ReflectiveOperationException e) {
+            throw new RuntimeException("Failed to create PasteGUI", e);
+        }
     }
 
     @Override
