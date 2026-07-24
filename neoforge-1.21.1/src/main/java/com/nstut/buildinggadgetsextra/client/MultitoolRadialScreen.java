@@ -106,7 +106,7 @@ public final class MultitoolRadialScreen extends Screen {
         if (selectedTool() == MultitoolMode.BUILD) {
             addUpstream(false, rightY, "building_place_atop", Component.translatable("buildinggadgets2.screen.placeatop"), true,
                     GadgetNBT.ToggleableSettings.PLACE_ON_TOP, null);
-            if ("surface".equals(mode)) {
+            if ("surface".equals(effectiveMode)) {
                 addUpstream(false, rightY, "fuzzy", Component.translatable("buildinggadgets2.radialmenu.fuzzy"), true,
                         GadgetNBT.ToggleableSettings.FUZZY, null);
                 addUpstream(false, rightY, "connected_area", Component.translatable("buildinggadgets2.radialmenu.connected_area"), true,
@@ -136,13 +136,13 @@ public final class MultitoolRadialScreen extends Screen {
             addUpstream(false, rightY, "paste_replace", Component.translatable("buildinggadgets2.screen.paste_replace"), true,
                     GadgetNBT.ToggleableSettings.PASTE_REPLACE, null);
             addUpstream(false, rightY, "copypaste_opengui", Component.translatable("buildinggadgets2.radialmenu.copypastemenu"), false,
-                    null, () -> Minecraft.getInstance().setScreen("paste".equals(mode)
+                    null, () -> Minecraft.getInstance().setScreen("paste".equals(effectiveMode)
                             ? createPasteGUI(stack) : new CopyGUI(stack)));
-            if (RadialButtonPolicy.showRotateButton(mode)) {
+            if (RadialButtonPolicy.showRotateButton(effectiveMode)) {
                 addUpstream(true, leftY, "rotate", Component.translatable("buildinggadgets2.radialmenu.rotate"), false,
                         null, () -> PacketDistributor.sendToServer(new RotatePayload()));
             }
-            if (!cutTool && "paste".equals(mode)) {
+            if (!cutTool && "paste".equals(effectiveMode)) {
                 addUpstream(false, rightY, "copypaste_materiallist", Component.translatable("buildinggadgets2.radialmenu.materiallist"), false,
                         null, () -> {
                             if (GadgetNBT.hasCopyUUID(stack)) Minecraft.getInstance().setScreen(new MaterialListGUI(stack));
@@ -150,7 +150,7 @@ public final class MultitoolRadialScreen extends Screen {
             }
         }
 
-        if (RadialButtonPolicy.showMirrorButtons(mode)
+        if (RadialButtonPolicy.showMirrorButtons(effectiveMode)
                 && (selectedTool() == MultitoolMode.COPY_PASTE || selectedTool() == MultitoolMode.CUT_PASTE)) {
             addRenderableWidget(new MirrorIconButton(width / 2 - 136, next(leftY), "mirror_horizontal",
                     Component.translatable(ExtraConstants.MIRROR_HORIZONTAL),
@@ -160,8 +160,7 @@ public final class MultitoolRadialScreen extends Screen {
                     () -> PacketDistributor.sendToServer(new MirrorPayload(true))));
         }
 
-        RadialButtonPolicy.FileAction fileAction = RadialButtonPolicy.fileAction(
-                selectedTool() == MultitoolMode.CUT_PASTE, mode);
+        RadialButtonPolicy.FileAction fileAction = RadialButtonPolicy.fileAction(cutTool, effectiveMode);
         if (fileAction != RadialButtonPolicy.FileAction.NONE) {
             boolean load = fileAction == RadialButtonPolicy.FileAction.LOAD;
             addRenderableWidget(new MirrorIconButton(width / 2 + 112, next(rightY), load ? "load" : "save",
@@ -169,7 +168,7 @@ public final class MultitoolRadialScreen extends Screen {
                     load ? ClientStructureFiles::chooseLoad : ClientStructureFiles::chooseSave));
         }
 
-        if (selectedTool() == MultitoolMode.CUT_PASTE && "cut".equals(mode)) {
+        if (cutTool && !hasCutBuffer) {
             addRenderableWidget(new MirrorIconButton(width / 2 + 112, next(rightY),
                     "cut", RadialIconLayout.MODERN_SETTING_ICON_SIZE,
                     Component.translatable("buildinggadgets2.radialmenu.cut"),
