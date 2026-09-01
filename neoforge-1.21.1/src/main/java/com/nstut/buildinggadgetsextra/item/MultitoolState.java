@@ -17,6 +17,7 @@ public final class MultitoolState {
     private static final String PROFILE_PREFIX = "BGEProfileMode_";
     private static final String TEMPLATE_PREFIX = "BGETemplateProfile_";
     private static final String UNDO_PREFIX = "BGEUndoProfile_";
+    private static final String UUID_PREFIX = "BGEGadgetProfile_";
 
     private MultitoolState() {
     }
@@ -43,6 +44,7 @@ public final class MultitoolState {
     }
 
     public static void saveTemplateProfile(ItemStack stack, MultitoolMode mode) {
+        saveGadgetUuidProfile(stack, mode);
         saveUndoProfile(stack, mode);
         if (mode != MultitoolMode.COPY_PASTE && mode != MultitoolMode.CUT_PASTE) return;
         CompoundTag profile = new CompoundTag();
@@ -56,24 +58,43 @@ public final class MultitoolState {
     }
 
     public static void restoreTemplateProfile(ItemStack stack, MultitoolMode mode) {
+        restoreGadgetUuidProfile(stack, mode);
         restoreUndoProfile(stack, mode);
         if (mode != MultitoolMode.COPY_PASTE && mode != MultitoolMode.CUT_PASTE) return;
         CompoundTag root = stack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag();
         CompoundTag profile = root.getCompound(TEMPLATE_PREFIX + mode.serializedName());
         if (profile.isEmpty()) {
-            stack.set(BG2DataComponents.GADGET_UUID, UUID.randomUUID());
             GadgetNBT.clearCopyUUID(stack);
             GadgetNBT.setCopyStartPos(stack, GadgetNBT.nullPos);
             GadgetNBT.setCopyEndPos(stack, GadgetNBT.nullPos);
             GadgetNBT.setRelativePaste(stack, net.minecraft.core.BlockPos.ZERO);
             return;
         }
-        stack.set(BG2DataComponents.GADGET_UUID, profile.getUUID("GadgetId"));
         if (profile.hasUUID("CopyId")) stack.set(BG2DataComponents.COPY_UUID, profile.getUUID("CopyId"));
         else GadgetNBT.clearCopyUUID(stack);
         GadgetNBT.setCopyStartPos(stack, net.minecraft.core.BlockPos.of(profile.getLong("Start")));
         GadgetNBT.setCopyEndPos(stack, net.minecraft.core.BlockPos.of(profile.getLong("End")));
         GadgetNBT.setRelativePaste(stack, net.minecraft.core.BlockPos.of(profile.getLong("Relative")));
+    }
+
+    private static void saveGadgetUuidProfile(ItemStack stack, MultitoolMode mode) {
+        UUID uuid = GadgetNBT.getUUID(stack);
+        CustomData.update(DataComponents.CUSTOM_DATA, stack,
+                tag -> tag.putUUID(UUID_PREFIX + mode.serializedName(), uuid));
+    }
+
+    private static void restoreGadgetUuidProfile(ItemStack stack, MultitoolMode mode) {
+        CompoundTag root = stack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag();
+        String key = UUID_PREFIX + mode.serializedName();
+        UUID uuid = root.hasUUID(key) ? root.getUUID(key) : null;
+        if (uuid == null && (mode == MultitoolMode.COPY_PASTE || mode == MultitoolMode.CUT_PASTE)) {
+            CompoundTag legacy = root.getCompound(TEMPLATE_PREFIX + mode.serializedName());
+            if (legacy.hasUUID("GadgetId")) uuid = legacy.getUUID("GadgetId");
+        }
+        if (uuid == null) uuid = UUID.randomUUID();
+        stack.set(BG2DataComponents.GADGET_UUID, uuid);
+        UUID finalUuid = uuid;
+        CustomData.update(DataComponents.CUSTOM_DATA, stack, tag -> tag.putUUID(key, finalUuid));
     }
 
     private static void saveUndoProfile(ItemStack stack, MultitoolMode mode) {
