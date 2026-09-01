@@ -9,6 +9,7 @@
   ],
   "mixins": [
     "GadgetNBTMultitoolMixin",
+    "GadgetCutPasteEmptyCutMixin",
     "StructurePaletteInvoker",
     "StructureTemplateAccessor"
   ],
