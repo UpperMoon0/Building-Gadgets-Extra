@@ -17,6 +17,7 @@ public final class MultitoolState {
     private static final String PROFILE_PREFIX = "BGEProfileMode_";
     private static final String TEMPLATE_PREFIX = "BGETemplateProfile_";
     private static final String UNDO_PREFIX = "BGEUndoProfile_";
+    private static final String UUID_PREFIX = "BGEGadgetProfile_";
 
     private MultitoolState() {
     }
@@ -44,6 +45,7 @@ public final class MultitoolState {
     }
 
     public static void saveTemplateProfile(ItemStack stack, MultitoolMode mode) {
+        saveGadgetUuidProfile(stack, mode);
         saveUndoProfile(stack, mode);
         if (mode != MultitoolMode.COPY_PASTE && mode != MultitoolMode.CUT_PASTE) return;
         CompoundTag profile = new CompoundTag();
@@ -57,25 +59,51 @@ public final class MultitoolState {
     }
 
     public static void restoreTemplateProfile(ItemStack stack, MultitoolMode mode) {
+        restoreGadgetUuidProfile(stack, mode);
         restoreUndoProfile(stack, mode);
         if (mode != MultitoolMode.COPY_PASTE && mode != MultitoolMode.CUT_PASTE) return;
         CompoundTag root = stack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag();
         CompoundTag profile = root.getCompoundOrEmpty(TEMPLATE_PREFIX + mode.serializedName());
         if (profile.isEmpty()) {
-            stack.set(BG2DataComponents.GADGET_UUID, UUID.randomUUID());
             GadgetNBT.clearCopyUUID(stack);
             GadgetNBT.setCopyStartPos(stack, GadgetNBT.nullPos);
             GadgetNBT.setCopyEndPos(stack, GadgetNBT.nullPos);
             GadgetNBT.setRelativePaste(stack, net.minecraft.core.BlockPos.ZERO);
             return;
         }
-        stack.set(BG2DataComponents.GADGET_UUID, UUID.fromString(profile.getStringOr("GadgetId", UUID.randomUUID().toString())));
         String copyId = profile.getStringOr("CopyId", "");
         if (!copyId.isEmpty()) stack.set(BG2DataComponents.COPY_UUID, UUID.fromString(copyId));
         else GadgetNBT.clearCopyUUID(stack);
         GadgetNBT.setCopyStartPos(stack, net.minecraft.core.BlockPos.of(profile.getLongOr("Start", GadgetNBT.nullPos.asLong())));
         GadgetNBT.setCopyEndPos(stack, net.minecraft.core.BlockPos.of(profile.getLongOr("End", GadgetNBT.nullPos.asLong())));
         GadgetNBT.setRelativePaste(stack, net.minecraft.core.BlockPos.of(profile.getLongOr("Relative", 0L)));
+    }
+
+    private static void saveGadgetUuidProfile(ItemStack stack, MultitoolMode mode) {
+        UUID uuid = GadgetNBT.getUUID(stack);
+        CustomData.update(DataComponents.CUSTOM_DATA, stack,
+                tag -> tag.putString(UUID_PREFIX + mode.serializedName(), uuid.toString()));
+    }
+
+    private static void restoreGadgetUuidProfile(ItemStack stack, MultitoolMode mode) {
+        CompoundTag root = stack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag();
+        String key = UUID_PREFIX + mode.serializedName();
+        UUID uuid = parseUuid(root.getStringOr(key, ""));
+        if (uuid == null && (mode == MultitoolMode.COPY_PASTE || mode == MultitoolMode.CUT_PASTE)) {
+            CompoundTag legacy = root.getCompoundOrEmpty(TEMPLATE_PREFIX + mode.serializedName());
+            uuid = parseUuid(legacy.getStringOr("GadgetId", ""));
+        }
+        if (uuid == null) uuid = UUID.randomUUID();
+        stack.set(BG2DataComponents.GADGET_UUID, uuid);
+        UUID finalUuid = uuid;
+        CustomData.update(DataComponents.CUSTOM_DATA, stack,
+                tag -> tag.putString(key, finalUuid.toString()));
+    }
+
+    private static UUID parseUuid(String value) {
+        if (value == null || value.isEmpty()) return null;
+        try { return UUID.fromString(value); }
+        catch (IllegalArgumentException ignored) { return null; }
     }
 
     private static void saveUndoProfile(ItemStack stack, MultitoolMode mode) {
@@ -93,11 +121,8 @@ public final class MultitoolState {
         LinkedList<UUID> undo = new LinkedList<>();
         int size = saved.getIntOr("Size", 0);
         for (int i = 0; i < size; i++) {
-            String value = saved.getStringOr("Entry" + i, "");
-            if (!value.isEmpty()) {
-                try { undo.add(UUID.fromString(value)); }
-                catch (IllegalArgumentException ignored) {}
-            }
+            UUID uuid = parseUuid(saved.getStringOr("Entry" + i, ""));
+            if (uuid != null) undo.add(uuid);
         }
         GadgetNBT.setUndoList(stack, undo);
     }
