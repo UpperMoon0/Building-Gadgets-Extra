@@ -10,7 +10,8 @@
   "mixins": [
     "StructurePaletteInvoker",
     "StructureTemplateAccessor",
-    "GadgetNBTMultitoolMixin"
+    "GadgetNBTMultitoolMixin",
+    "BuildingUtilsMultitoolEnergyMixin"
   ],
   "injectors": {
     "defaultRequire": 1
