@@ -11,6 +11,7 @@
     "StructurePaletteInvoker",
     "StructureTemplateAccessor",
     "GadgetNBTMultitoolMixin",
+    "BuildingUtilsMultitoolEnergyMixin",
     "GadgetCutPasteEmptyCutMixin"
   ],
   "injectors": {
