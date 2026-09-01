@@ -1,14 +1,19 @@
 package com.nstut.buildinggadgetsextra.structure;
 
+import com.direwolf20.buildinggadgets2.common.blocks.RenderBlock;
 import com.direwolf20.buildinggadgets2.common.events.ServerTickHandler;
 import com.direwolf20.buildinggadgets2.common.items.BaseGadget;
 import com.direwolf20.buildinggadgets2.common.items.GadgetCopyPaste;
 import com.direwolf20.buildinggadgets2.common.items.GadgetCutPaste;
 import com.direwolf20.buildinggadgets2.common.worlddata.BG2Data;
 import com.direwolf20.buildinggadgets2.util.GadgetNBT;
+import com.direwolf20.buildinggadgets2.util.GadgetUtils;
 import com.direwolf20.buildinggadgets2.util.datatypes.StatePos;
 import com.direwolf20.buildinggadgets2.util.datatypes.TagPos;
 import com.nstut.buildinggadgetsextra.common.ExtraConstants;
+import com.nstut.buildinggadgetsextra.common.MultitoolMode;
+import com.nstut.buildinggadgetsextra.item.BuildersMultitool;
+import com.nstut.buildinggadgetsextra.item.MultitoolState;
 import com.nstut.buildinggadgetsextra.mixin.StructurePaletteInvoker;
 import com.nstut.buildinggadgetsextra.mixin.StructureTemplateAccessor;
 import net.minecraft.core.BlockPos;
@@ -19,10 +24,11 @@ import net.minecraft.nbt.NbtIo;
 import net.minecraft.nbt.NbtUtils;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.util.datafix.DataFixTypes;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemplate;
-import net.minecraft.util.datafix.DataFixTypes;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -101,13 +107,13 @@ public final class NativeStructureBridge {
     }
 
     public static void importStructure(ServerPlayer player, String name, byte[] bytes) {
-        ItemStack gadget = gadget(player);
-        if (gadget == null || unavailable(player, gadget, false)) return;
+        ItemStack gadget = importGadget(player);
+        if (gadget == null) return;
 
         StructureTemplate template = new StructureTemplate();
         try {
             CompoundTag tag = NbtIo.readCompressed(new ByteArrayInputStream(bytes),
-                    NbtAccounter.create(512L * 1024L * 1024L));
+                    NbtAccounter.create(ExtraConstants.MAX_STRUCTURE_NBT_BYTES));
             int dataVersion = NbtUtils.getDataVersion(tag, 500);
             tag = DataFixTypes.STRUCTURE.updateToCurrentVersion(
                     Objects.requireNonNull(player.level().getServer()).getFixerUpper(), tag, dataVersion);
@@ -136,24 +142,34 @@ public final class NativeStructureBridge {
             nativeBlocks.put(info.pos(), info);
         }
 
-        ArrayList<StatePos> blocks = new ArrayList<>();
-        ArrayList<TagPos> tags = new ArrayList<>();
+        ArrayList<StatePos> blocks = new ArrayList<>((int) volume);
+        boolean strippedBlockEntityData = false;
         BlockPos max = new BlockPos(template.getSize().getX() - 1,
                 template.getSize().getY() - 1, template.getSize().getZ() - 1);
         for (BlockPos mutable : BlockPos.betweenClosed(BlockPos.ZERO, max)) {
             BlockPos pos = mutable.immutable();
             StructureTemplate.StructureBlockInfo info = nativeBlocks.get(pos);
-            blocks.add(new StatePos(info == null || info.state().is(Blocks.STRUCTURE_VOID)
-                    ? Blocks.AIR.defaultBlockState() : info.state(), pos));
-            if (info != null && info.nbt() != null) tags.add(new TagPos(info.nbt().copy(), pos));
+            BlockState state = Blocks.AIR.defaultBlockState();
+            if (info != null) {
+                strippedBlockEntityData |= info.nbt() != null;
+                BlockState imported = info.state();
+                if (!imported.is(Blocks.STRUCTURE_VOID)
+                        && !(imported.getBlock() instanceof RenderBlock)
+                        && GadgetUtils.isValidBlockState(imported, player.level(), player.blockPosition())) {
+                    state = GadgetUtils.cleanBlockState(imported);
+                }
+            }
+            blocks.add(new StatePos(state, pos));
         }
 
         UUID gadgetId = GadgetNBT.getUUID(gadget);
         BG2Data data = data(player);
         data.addToCopyPaste(gadgetId, blocks);
-        data.addToTEMap(gadgetId, tags);
+        data.addToTEMap(gadgetId, new ArrayList<>());
         GadgetNBT.setCopyUUID(gadget);
-        message(player, ExtraConstants.STRUCTURE_LOADED, name);
+        message(player, strippedBlockEntityData
+                ? ExtraConstants.STRUCTURE_BLOCK_ENTITY_STRIPPED
+                : ExtraConstants.STRUCTURE_LOADED, name);
     }
 
     private static BG2Data data(ServerPlayer player) {
@@ -166,17 +182,36 @@ public final class NativeStructureBridge {
                 ? stack : null;
     }
 
+    private static ItemStack importGadget(ServerPlayer player) {
+        ItemStack stack = BaseGadget.getGadget(player);
+        if (stack.getItem() instanceof GadgetCutPaste || !(stack.getItem() instanceof GadgetCopyPaste)) {
+            message(player, ExtraConstants.STRUCTURE_IMPORT_REQUIRES_COPY);
+            return null;
+        }
+        if (stack.getItem() instanceof BuildersMultitool
+                && MultitoolState.getActiveMode(stack) != MultitoolMode.COPY_PASTE) {
+            message(player, ExtraConstants.STRUCTURE_IMPORT_REQUIRES_COPY);
+            return null;
+        }
+        return stack;
+    }
+
     private static boolean unavailable(ServerPlayer player, ItemStack gadget, boolean requireTemplate) {
         if (requireTemplate && !GadgetNBT.hasCopyUUID(gadget)) {
             message(player, ExtraConstants.NO_TEMPLATE);
             return true;
         }
-        if (gadget.getItem() instanceof GadgetCutPaste
-                && ServerTickHandler.gadgetWorking(GadgetNBT.getUUID(gadget))) {
+        if (isCut(gadget) && ServerTickHandler.gadgetWorking(GadgetNBT.getUUID(gadget))) {
             message(player, ExtraConstants.BUSY);
             return true;
         }
         return false;
+    }
+
+    private static boolean isCut(ItemStack gadget) {
+        return gadget.getItem() instanceof GadgetCutPaste
+                || gadget.getItem() instanceof BuildersMultitool
+                && MultitoolState.getActiveMode(gadget) == MultitoolMode.CUT_PASTE;
     }
 
     private static void message(ServerPlayer player, String key, Object... arguments) {
