@@ -2,8 +2,8 @@ name: Release
 
 on:
   push:
-    branches:
-      - main
+    tags:
+      - 'v*'
   workflow_dispatch:
 
 permissions:
@@ -43,6 +43,16 @@ jobs:
           fi
           echo "value=$version" >> "$GITHUB_OUTPUT"
 
+      - name: Verify release tag
+        if: github.event_name == 'push'
+        shell: bash
+        run: |
+          expected="v${{ steps.version.outputs.value }}"
+          if [[ "${GITHUB_REF_NAME}" != "$expected" ]]; then
+            echo "Release tag ${GITHUB_REF_NAME} does not match mod_version ($expected)." >&2
+            exit 1
+          fi
+
       - name: Run tests
         run: ./gradlew test --no-daemon --no-configuration-cache
 
@@ -76,7 +86,8 @@ jobs:
             forge-1.16.5/build/libs/building-gadgets-extra-forge-1.16.5-${{ steps.version.outputs.value }}.jar
           if-no-files-found: error
 
-      - name: Create version tag
+      - name: Create version tag for manual releases
+        if: github.event_name == 'workflow_dispatch'
         shell: bash
         run: |
           tag="v${{ steps.version.outputs.value }}"
@@ -86,7 +97,6 @@ jobs:
               echo "Tag $tag already points to $tagged_commit. Bump mod_version before releasing another commit." >&2
               exit 1
             fi
-            echo "Tag $tag already points to this commit; reusing it."
           else
             git config user.name "github-actions[bot]"
             git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
