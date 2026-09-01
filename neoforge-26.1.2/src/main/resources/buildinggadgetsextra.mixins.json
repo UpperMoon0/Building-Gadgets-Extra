@@ -10,7 +10,8 @@
   "mixins": [
     "StructurePaletteInvoker",
     "StructureTemplateAccessor",
-    "GadgetNBTMultitoolMixin"
+    "GadgetNBTMultitoolMixin",
+    "GadgetCutPasteEmptyCutMixin"
   ],
   "injectors": {
     "defaultRequire": 1
