@@ -1,11 +1,14 @@
 package com.nstut.buildinggadgetsextra.gametest;
 
+import com.direwolf20.buildinggadgets2.util.DimBlockPos;
 import com.direwolf20.buildinggadgets2.util.GadgetNBT;
 import com.nstut.buildinggadgetsextra.common.ExtraConstants;
 import com.nstut.buildinggadgetsextra.common.MultitoolMode;
 import com.nstut.buildinggadgetsextra.item.BuildersMultitool;
 import com.nstut.buildinggadgetsextra.item.MultitoolState;
 import com.nstut.buildinggadgetsextra.setup.ExtraRegistration;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.world.item.ItemStack;
@@ -37,6 +40,9 @@ public final class MultitoolGameTests {
         GadgetNBT.setToolRange(stack, 7);
         GadgetNBT.setGadgetBlockState(stack, Blocks.STONE.defaultBlockState());
         GadgetNBT.toggleSetting(stack, "placeontop");
+        DimBlockPos buildBoundPos = new DimBlockPos(helper.getLevel(), new BlockPos(1, 2, 3));
+        GadgetNBT.setBoundPos(stack, buildBoundPos);
+        GadgetNBT.setToolValue(stack, Direction.NORTH.ordinal(), "binddirection");
 
         multitool.selectTool(stack, MultitoolMode.EXCHANGING);
         UUID exchangeId = GadgetNBT.getUUID(stack);
@@ -47,6 +53,10 @@ public final class MultitoolGameTests {
                 "new exchange profile must start at the native range default");
         helper.assertTrue(!GadgetNBT.getSetting(stack, "placeontop"),
                 "build-only settings must not leak into exchange");
+        helper.assertTrue(GadgetNBT.getBoundPos(stack) == null,
+                "new exchange profile must not inherit the build bound inventory");
+        helper.assertTrue(!stack.getOrCreateTag().contains("binddirection"),
+                "new exchange profile must not inherit the build bound face");
 
         UUID exchangeUndo = UUID.randomUUID();
         LinkedList<UUID> exchangeUndoList = new LinkedList<>();
@@ -55,6 +65,9 @@ public final class MultitoolGameTests {
         GadgetNBT.setToolRange(stack, 3);
         GadgetNBT.setGadgetBlockState(stack, Blocks.DIRT.defaultBlockState());
         GadgetNBT.toggleSetting(stack, "affecttiles");
+        DimBlockPos exchangeBoundPos = new DimBlockPos(helper.getLevel(), new BlockPos(4, 5, 6));
+        GadgetNBT.setBoundPos(stack, exchangeBoundPos);
+        GadgetNBT.setToolValue(stack, Direction.UP.ordinal(), "binddirection");
 
         multitool.selectTool(stack, MultitoolMode.BUILD);
         helper.assertTrue(GadgetNBT.getUUID(stack).equals(buildId), "build UUID must restore after a live mode switch");
@@ -65,6 +78,10 @@ public final class MultitoolGameTests {
                 "build selected block must restore after a live mode switch");
         helper.assertTrue(GadgetNBT.getSetting(stack, "placeontop"), "build setting must restore");
         helper.assertTrue(!GadgetNBT.getSetting(stack, "affecttiles"), "exchange setting must not leak into build");
+        helper.assertTrue(buildBoundPos.equals(GadgetNBT.getBoundPos(stack)),
+                "build bound inventory must restore after a live mode switch");
+        helper.assertTrue(GadgetNBT.getToolValue(stack, "binddirection") == Direction.NORTH.ordinal(),
+                "build bound face must restore with its bound inventory");
 
         multitool.selectTool(stack, MultitoolMode.EXCHANGING);
         helper.assertTrue(GadgetNBT.getUUID(stack).equals(exchangeId), "exchange UUID must restore after a live mode switch");
@@ -75,6 +92,10 @@ public final class MultitoolGameTests {
                 "exchange selected block must restore after a live mode switch");
         helper.assertTrue(GadgetNBT.getSetting(stack, "affecttiles"), "exchange setting must restore");
         helper.assertTrue(!GadgetNBT.getSetting(stack, "placeontop"), "build setting must not leak into exchange");
+        helper.assertTrue(exchangeBoundPos.equals(GadgetNBT.getBoundPos(stack)),
+                "exchange bound inventory must restore after a live mode switch");
+        helper.assertTrue(GadgetNBT.getToolValue(stack, "binddirection") == Direction.UP.ordinal(),
+                "exchange bound face must restore with its bound inventory");
 
         multitool.selectTool(stack, MultitoolMode.CUT_PASTE);
         helper.assertTrue(GadgetNBT.getPasteReplace(stack),
