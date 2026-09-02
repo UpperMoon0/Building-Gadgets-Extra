@@ -3,7 +3,6 @@ package com.nstut.buildinggadgetsextra.gametest;
 import com.direwolf20.buildinggadgets2.common.events.ServerTickHandler;
 import com.direwolf20.buildinggadgets2.util.BuildingUtils;
 import com.direwolf20.buildinggadgets2.util.GadgetNBT;
-import com.direwolf20.buildinggadgets2.util.datatypes.StatePos;
 import com.nstut.buildinggadgetsextra.common.ExtraConstants;
 import com.nstut.buildinggadgetsextra.common.MultitoolMode;
 import com.nstut.buildinggadgetsextra.item.BuildersMultitool;
@@ -19,7 +18,7 @@ import net.minecraft.world.level.block.Blocks;
 import net.neoforged.neoforge.gametest.GameTestHolder;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
 
-import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 @GameTestHolder(ExtraConstants.MOD_ID)
@@ -44,13 +43,14 @@ public final class MultitoolCreativeGameTests {
         helper.assertTrue(GadgetNBT.getToolRange(stack) == ExtraConfig.multitoolMaxRange(),
                 "multitool range reads must clamp stale item data to the server config");
 
+        multitool.selectTool(stack, MultitoolMode.DESTRUCTION);
         BlockPos relative = new BlockPos(1, 1, 1);
+        helper.setBlock(relative, Blocks.STONE);
         BlockPos absolute = helper.absolutePos(relative);
-        ArrayList<StatePos> buildList = new ArrayList<>();
-        buildList.add(new StatePos(Blocks.STONE.defaultBlockState(), absolute));
-        UUID buildId = BuildingUtils.build(helper.getLevel(), player, buildList, BlockPos.ZERO, stack, false);
-        helper.assertTrue(ServerTickHandler.buildMap.containsKey(buildId),
-                "creative Builder's Multitool with zero FE must queue real build work");
+        UUID destroyId = BuildingUtils.removeTickHandler(helper.getLevel(), player, List.of(absolute),
+                false, true, stack);
+        helper.assertTrue(ServerTickHandler.buildMap.containsKey(destroyId),
+                "creative Builder's Multitool with zero FE must queue real destruction work");
         helper.succeed();
     }
 }

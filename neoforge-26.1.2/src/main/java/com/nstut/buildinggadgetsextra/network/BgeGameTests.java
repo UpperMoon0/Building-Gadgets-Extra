@@ -6,7 +6,6 @@ import com.direwolf20.buildinggadgets2.setup.Config;
 import com.direwolf20.buildinggadgets2.util.BuildingUtils;
 import com.direwolf20.buildinggadgets2.util.GadgetNBT;
 import com.direwolf20.buildinggadgets2.util.modes.BaseMode;
-import com.direwolf20.buildinggadgets2.util.datatypes.StatePos;
 import com.nstut.buildinggadgetsextra.common.ExtraConstants;
 import com.nstut.buildinggadgetsextra.common.MultitoolMode;
 import com.nstut.buildinggadgetsextra.item.BuildersMultitool;
@@ -178,13 +177,14 @@ public final class BgeGameTests {
         helper.assertTrue(GadgetNBT.getToolRange(stack) == ExtraConfig.multitoolMaxRange(),
                 "multitool range reads must clamp stale item data to the server config");
 
-        BlockPos relative = new BlockPos(1, 1, 1);
-        BlockPos absolute = helper.absolutePos(relative);
-        ArrayList<StatePos> buildList = new ArrayList<>();
-        buildList.add(new StatePos(Blocks.STONE.defaultBlockState(), absolute));
-        UUID buildId = BuildingUtils.build(helper.getLevel(), player, buildList, BlockPos.ZERO, stack, false);
-        helper.assertTrue(ServerTickHandler.buildMap.containsKey(buildId),
-                "creative Builder's Multitool with zero FE must queue real build work");
+        multitool.selectTool(stack, MultitoolMode.DESTRUCTION);
+        BlockPos destroyRelative = new BlockPos(1, 1, 1);
+        helper.setBlock(destroyRelative, Blocks.STONE);
+        BlockPos destroyAbsolute = helper.absolutePos(destroyRelative);
+        UUID destroyId = BuildingUtils.removeTickHandler(helper.getLevel(), player, List.of(destroyAbsolute),
+                false, true, stack);
+        helper.assertTrue(ServerTickHandler.buildMap.containsKey(destroyId),
+                "creative Builder's Multitool with zero FE must queue real destruction work");
 
         multitool.selectTool(stack, MultitoolMode.CUT_PASTE);
         BaseMode cutMode = GadgetModes.INSTANCE.getModesForGadget(BuildersMultitool.target(MultitoolMode.CUT_PASTE))
