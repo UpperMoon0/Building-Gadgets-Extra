@@ -1,26 +1,19 @@
 # Building Gadgets Extra
 
-Building Gadgets Extra is a growing Forge and NeoForge addon for [Building Gadgets](https://www.curseforge.com/minecraft/mc-mods/building-gadgets). It expands the original mod with new tools, controls, and quality-of-life features designed to make large building projects easier and more flexible.
-
-Its current features add horizontal and vertical template mirroring plus a player-owned library for moving native Minecraft structure files between worlds and multiplayer servers. More Building Gadgets enhancements are planned for future releases.
+Building Gadgets Extra is a Forge and NeoForge addon for [Building Gadgets](https://www.curseforge.com/minecraft/mc-mods/building-gadgets). It adds builder-focused tools and quality-of-life features while keeping Building Gadgets' familiar workflow.
 
 ## Current Features
 
-- Mirror Copy Paste Gadget templates horizontally.
-- Mirror Copy Paste Gadget templates vertically.
-- Support the Cut Paste Gadget using the same mirror controls.
-- Preserve block orientation, block-entity positions, and copied template data.
-- Perform mirror operations on the server for dedicated-server and multiplayer compatibility.
-- Integrate directly into the existing Building Gadgets 2 radial menu.
+- Mirror Copy Paste Gadget templates horizontally or vertically.
+- Use the same mirror controls with the Cut Paste Gadget where supported.
+- Keep block orientation and template geometry correct through mirror operations.
+- Perform gadget/template mutations on the server for dedicated-server and multiplayer compatibility.
 - Save a Copy Paste or Cut Paste Gadget selection as a native vanilla structure `.nbt` file.
-- Load vanilla structure files back into a gadget, including block states and block-entity data.
+- Load vanilla structure files into a Copy Paste Gadget with server-side validation.
 - Store exported structures in a player-owned library on the client computer rather than in the server world.
-- Transfer structures safely between the client and server while keeping gadget changes server-authoritative.
-- Use Minecraft's native Structure Template and compressed NBT logic instead of a custom file parser.
-
-## Project Direction
-
-Building Gadgets Extra is intended to grow beyond mirroring. Future versions will continue expanding Building Gadgets 2 while preserving its familiar workflow and visual style. New features will be documented here as they are added.
+- Transfer structures in bounded chunks with request-bound save responses and server-authoritative import validation.
+- Use Minecraft's native Structure Template and compressed NBT logic rather than a custom file format.
+- Provide the Builder's Multitool on Building Gadgets 2 ports, with independent virtual gadget profiles for mode, template, settings, UUID and undo state while sharing one physical FE battery.
 
 ## Requirements
 
@@ -51,12 +44,14 @@ The mod must be installed on the server and on every connecting client.
 ### Native Structure Files
 
 1. Hold a Copy Paste Gadget or Cut Paste Gadget and open its radial menu.
-2. In **Copy** or **Cut** mode, select **Save to .nbt** to immediately open your operating system's Save dialog and download the gadget's current selection.
-3. With the **Copy Paste Gadget** in **Paste** mode, select **Load from .nbt** to immediately open a native file picker and upload a local structure into the held gadget. The Cut Paste Gadget never shows Load because it can only paste its own cut selection.
+2. In **Copy** or **Cut** mode, select **Save to .nbt** to open your operating system's Save dialog and export the current server-authoritative template.
+3. With the **Copy Paste Gadget** in **Paste** mode, select **Load from .nbt** to choose a local structure file. External imports are deliberately rejected for Cut/Paste semantics.
 
-Only the action relevant to the current gadget mode is shown; there is no intermediate submenu. The dialogs initially open in `.minecraft/building_gadgets_extra/structures`, but files may be saved to or loaded from any accessible folder. You can save a build while playing on one server or world, then load it into a gadget somewhere else. Saving downloads the current server-authoritative gadget template to the chosen path; loading uploads the selected local file to the server and applies it to the held gadget after server-side validation. Transfers are chunked, size-limited, and work on dedicated multiplayer servers.
+The dialogs initially open in `.minecraft/building_gadgets_extra/structures`, but files may be saved to or loaded from any accessible folder. Transfers are chunked and size-limited, each save response is bound to the initiating request, and uploads are bound to the initiating gadget/profile and revalidated before commit.
 
-The files use the normal compressed vanilla structure format, so they can be copied to or from a world's `generated/<namespace>/structures` folder for use with Structure Blocks. Structure entities are intentionally not imported or exported; blocks, orientation, and block-entity NBT are preserved.
+The files use Minecraft's normal compressed structure format and can also be used with vanilla Structure Blocks. Structure entities are not imported or exported. Exported server-owned templates may contain their normal block-entity NBT, but **external block-entity NBT is intentionally stripped on import** so an untrusted client file cannot replay inventories or arbitrary block-entity data on a server. On Building Gadgets 2 ports, imported block states are also passed through upstream validity/cleanup rules.
+
+Imports are currently limited to 100,000 blocks, an 8 MiB compressed transfer, and a 64 MiB decoded-NBT budget. These limits protect the server thread from malformed or excessively expensive structure files.
 
 ## Building from Source
 
@@ -74,11 +69,13 @@ On Windows:
 
 The root build assembles every supported version and runs the Java 25 / Gradle 9 build for 26.1.2 automatically. Compiled JARs are written to each version module's `build/libs` directory.
 
-Run all shared and module test suites with:
+Run shared and module unit/contract tests with:
 
 ```bash
 ./gradlew test
 ```
+
+The maintained BG2 ports also have in-game GameTest coverage. CI runs Forge 1.20.1, NeoForge 1.21.1, and NeoForge 26.1.2 GameTest servers in addition to normal builds.
 
 To build one module:
 
@@ -100,7 +97,7 @@ cd neoforge-26.1.2 && ./gradlew runClient
 
 ## Project Structure
 
-- `common` contains Java 8-compatible mirror traversal, coordinate and structure-name rules, translation keys, and shared assets used by every module.
+- `common` contains shared validation, transfer rules, translations, assets, and contract tests.
 - `neoforge-26.1.2` contains the Minecraft 26.1.2 NeoForge adapters and its Gradle 9 wrapper required for Java 25.
 - `neoforge-1.21.1` contains the Minecraft 1.21.1 NeoForge adapters.
 - `forge-1.20.1` contains the Minecraft 1.20.1 Forge and Building Gadgets 2 adapters.
@@ -109,14 +106,20 @@ cd neoforge-26.1.2 && ./gradlew runClient
 
 ## Releases
 
-Every push to `main` runs the GitHub Actions release workflow. It first runs the shared logic tests and compiles every supported module. Only after every test and build succeeds does it create a `v<mod_version>` tag and attach all four compiled JARs to a GitHub Release.
+Verification and publishing are separate workflows. Pull requests and pushes to `main` run CI; they do **not** publish a release.
 
-To publish a version:
+A release is started only by either:
 
-1. Update `mod_version` in `gradle.properties`.
-2. Push the change to `main`.
+- pushing a `v<mod_version>` tag, for example `v0.0.4`; or
+- explicitly running the Release workflow from the **Actions** tab.
 
-Each released commit needs a new version. If its version tag already belongs to an older commit, the workflow stops and asks for `mod_version` to be bumped. The workflow can also be started manually from the repository's **Actions** tab.
+Before publishing:
+
+1. Update `mod_version` in `gradle.properties` and update `CHANGELOG.md`.
+2. Merge the tested changes to `main`.
+3. Create the matching `v<mod_version>` tag on the exact commit you want to release, or run the workflow manually.
+
+For tag-triggered releases the workflow verifies that the tag exactly matches `mod_version`; mismatched or reused versions fail instead of publishing the wrong artifacts.
 
 ## License
 

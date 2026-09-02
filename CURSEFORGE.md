@@ -1,8 +1,8 @@
 # Building Gadgets Extra
 
-Building Gadgets Extra is a growing addon for **Building Gadgets** and **Building Gadgets 2** that gives builders more freedom and makes copied builds easier to reuse.
+Building Gadgets Extra is an addon for **Building Gadgets** and **Building Gadgets 2** that gives builders more freedom and makes copied builds easier to reuse.
 
-Everything fits into the familiar Building Gadgets radial menu, so you can keep building the way you already know. Whether you are adjusting a small decoration or moving an entire build between worlds, the extra controls are always close at hand.
+Everything fits into the familiar Building Gadgets workflow, so the extra controls stay close to the tools you already use.
 
 ## Current Features
 
@@ -17,19 +17,23 @@ Everything fits into the familiar Building Gadgets radial menu, so you can keep 
 ### Save and Reuse Your Builds
 
 - Save the build held by your gadget as a standard Minecraft structure file on your computer.
-- Load a saved build back into the **Copy Paste Gadget** whenever you are in Paste mode.
+- Load a saved build into the **Copy Paste Gadget** whenever you are in Paste mode.
 - Choose the file with your normal Windows, macOS, or Linux file picker—no commands or extra menus required.
-- Take your favorite builds from one singleplayer world or multiplayer server to another.
-- Keep saved builds organized in the default `.minecraft/building_gadgets_extra/structures` folder, or choose any folder you prefer.
-- Preserve directional blocks and block contents when saving and loading.
+- Take builds from one singleplayer world or multiplayer server to another.
+- Keep saved builds in the default `.minecraft/building_gadgets_extra/structures` folder, or choose another folder.
+- Preserve block geometry and orientation through the structure-file workflow.
 
 Saved builds use Minecraft's standard `.nbt` structure format, so they can also be used with vanilla Structure Blocks. Mobs and other entities are not included.
 
+For multiplayer safety, external structure files can only be imported into Copy/Paste semantics. Imported block-entity NBT is deliberately stripped, so inventories and other arbitrary block-entity contents from a local file are **not** restored onto a server. Building Gadgets 2 ports also sanitize imported block states through upstream validation. Structure uploads and decompression are bounded to protect the server from malformed or oversized files.
+
+### Builder's Multitool
+
+On Building Gadgets 2 versions, the Builder's Multitool combines the supported gadget roles into one physical tool. Each virtual profile keeps its own mode, range/settings, template identity and undo history, while the tool shares one FE battery. Energy use follows the currently active gadget profile.
+
 ## Multiplayer
 
-Building Gadgets Extra works in singleplayer and multiplayer. For multiplayer, install it on the server and on each player's client. Every player keeps their own saved-build collection on their computer.
-
-Mirroring and reusable builds are only the beginning. Future releases will add more tools, controls, and quality-of-life features for builders.
+Building Gadgets Extra works in singleplayer and multiplayer. For multiplayer, install it on the server and on each player's client. Every player keeps their own saved-build collection on their computer, while gadget/template changes remain server-authoritative.
 
 ## Supported Versions
 
