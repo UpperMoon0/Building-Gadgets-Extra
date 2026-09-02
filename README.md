@@ -13,7 +13,8 @@ Building Gadgets Extra is a Forge and NeoForge addon for [Building Gadgets](http
 - Store exported structures in a player-owned library on the client computer rather than in the server world.
 - Transfer structures in bounded chunks with request-bound save responses and server-authoritative import validation.
 - Use Minecraft's native Structure Template and compressed NBT logic rather than a custom file format.
-- Provide the Builder's Multitool on Building Gadgets 2 ports, with independent virtual gadget profiles for mode, template, settings, UUID and undo state while sharing one physical FE battery.
+- Provide the Builder's Multitool with independent virtual gadget profiles for mode, template, settings, UUID and undo state while sharing one physical FE battery.
+- Give the endgame Builder's Multitool its own server-configurable Build/Exchange range cap, defaulting to 32 without raising native gadget limits.
 
 ## Requirements
 
@@ -40,6 +41,14 @@ The mod must be installed on the server and on every connecting client.
    - **Mirror Horizontal** reflects the structure left-to-right relative to the direction the player is facing.
    - **Mirror Vertical** reflects the structure up-to-down.
 4. Preview and paste the transformed structure normally.
+
+### Builder's Multitool
+
+The Builder's Multitool keeps each virtual gadget profile independent while sharing a single physical FE battery. Fresh profiles start on the intended native Building Gadgets mode: Build To Me for Build, Surface for Exchange, Copy for Copy/Paste, and Cut for Cut/Paste.
+
+The server config option `multitoolMaxRange` controls the maximum range of the multitool's **Build** and **Exchange** profiles. The default is **32** and the allowed configuration range is **1-64**. Native Building Gadgets/Building Gadgets 2 tools keep their upstream range limits. The multitool radial slider, range hotkey, server packet validation, and restored item/profile state all use the same server-authoritative cap, so old item data cannot bypass a lower server setting.
+
+Creative players can use multitool operations with an empty FE battery. Survival players continue to consume and require the energy configured for the corresponding native gadget profile.
 
 ### Native Structure Files
 
@@ -75,7 +84,7 @@ Run shared and module unit/contract tests with:
 ./gradlew test
 ```
 
-The maintained BG2 ports also have in-game GameTest coverage. CI runs Forge 1.20.1, NeoForge 1.21.1, and NeoForge 26.1.2 GameTest servers in addition to normal builds.
+The maintained BG2 ports also have in-game GameTest coverage. CI runs Forge 1.20.1, NeoForge 1.21.1, and NeoForge 26.1.2 GameTest servers in addition to normal builds. These runtime tests cover multitool profile defaults, range clamping, creative zero-FE behavior, and version-specific gadget operations.
 
 To build one module:
 
