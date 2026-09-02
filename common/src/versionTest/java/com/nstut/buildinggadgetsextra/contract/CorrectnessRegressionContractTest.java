@@ -21,7 +21,7 @@ class CorrectnessRegressionContractTest {
     @Test
     void externalStructureImportsStayOnTheUntrustedCopyPastePath() throws Exception {
         String bridge = source("structure/NativeStructureBridge.java");
-        contains(bridge, "MAX_STRUCTURE_BLOCKS", "bounded decoded structure volume");
+        contains(bridge, "StructureLimits.checkedVolume", "overflow-safe decoded structure volume validation");
         contains(bridge, "STRUCTURE_BLOCK_ENTITY_STRIPPED", "untrusted block-entity stripping feedback");
 
         if (legacyCut) {
