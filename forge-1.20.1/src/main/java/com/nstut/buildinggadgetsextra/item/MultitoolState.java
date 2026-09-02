@@ -25,7 +25,7 @@ public final class MultitoolState {
      * excluded so the physical multitool still has one battery and one cosmetic identity.
      */
     private static final String[] GENERAL_KEYS = {
-            "bound", "anchor", "anchorList", "anchorside", "rendertype",
+            "bound", "binddirection", "anchor", "anchorList", "anchorside", "rendertype",
             "blockstate", "range", "templatename",
             "raytracefluid", "placeontop", "affecttiles", "pastereplace",
             "bind", "fuzzy", "connected_area",
