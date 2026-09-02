@@ -20,6 +20,7 @@ import net.minecraft.world.level.block.Blocks;
 
 import java.util.ArrayList;
 import java.util.LinkedList;
+import java.util.List;
 import java.util.UUID;
 
 public final class MultitoolState {
@@ -102,7 +103,7 @@ public final class MultitoolState {
 
         BlockPos anchor = GadgetNBT.getAnchorPos(stack);
         if (!GadgetNBT.nullPos.equals(anchor)) profile.putLong("Anchor", anchor.asLong());
-        ArrayList<BlockPos> anchors = GadgetNBT.getAnchorList(stack);
+        List<BlockPos> anchors = GadgetNBT.getAnchorList(stack);
         long[] anchorValues = new long[anchors.size()];
         for (int i = 0; i < anchors.size(); i++) anchorValues[i] = anchors.get(i).asLong();
         profile.putLongArray("AnchorList", anchorValues);
