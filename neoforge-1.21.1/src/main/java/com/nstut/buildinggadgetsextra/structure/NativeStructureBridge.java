@@ -110,19 +110,7 @@ public final class NativeStructureBridge {
 
         Map<BlockPos, StructureTemplate.StructureBlockInfo> nativeBlocks = new HashMap<>();
         for (StructureTemplate.StructureBlockInfo info : accessor.buildingGadgetsExtra$getPalettes().get(0).blocks()) {
-            BlockPos pos = info.pos();
-            if (pos.getX() < 0 || pos.getY() < 0 || pos.getZ() < 0
-                    || pos.getX() >= template.getSize().getX()
-                    || pos.getY() >= template.getSize().getY()
-                    || pos.getZ() >= template.getSize().getZ()) {
-                message(player, ExtraConstants.STRUCTURE_LOAD_FAILED, name);
-                return;
-            }
-            nativeBlocks.put(pos, info);
-            if (nativeBlocks.size() > ExtraConstants.MAX_STRUCTURE_BLOCKS) {
-                message(player, ExtraConstants.STRUCTURE_TOO_LARGE, name);
-                return;
-            }
+            nativeBlocks.put(info.pos(), info);
         }
 
         ArrayList<StatePos> blocks = new ArrayList<>((int) volume);
