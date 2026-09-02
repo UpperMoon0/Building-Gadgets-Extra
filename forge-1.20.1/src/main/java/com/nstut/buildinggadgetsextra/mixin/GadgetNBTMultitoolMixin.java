@@ -1,5 +1,6 @@
 package com.nstut.buildinggadgetsextra.mixin;
 
+import com.direwolf20.buildinggadgets2.api.gadgets.GadgetModes;
 import com.direwolf20.buildinggadgets2.api.gadgets.GadgetTarget;
 import com.direwolf20.buildinggadgets2.common.items.BaseGadget;
 import com.direwolf20.buildinggadgets2.util.GadgetNBT;
@@ -15,6 +16,22 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 @Mixin(value = GadgetNBT.class, remap = false)
 public abstract class GadgetNBTMultitoolMixin {
+    @Inject(method = "getMode", at = @At("HEAD"), cancellable = true)
+    private static void buildingGadgetsExtra$freshProfileDefault(ItemStack stack,
+                                                                  CallbackInfoReturnable<com.direwolf20.buildinggadgets2.util.modes.BaseMode> cir) {
+        if (!(stack.getItem() instanceof BuildersMultitool)) return;
+        if (!stack.getOrCreateTag().getString("mode").isEmpty()) return;
+
+        MultitoolMode active = MultitoolState.getActiveMode(stack);
+        GadgetTarget target = active == MultitoolMode.DESTRUCTION
+                ? GadgetTarget.COPYPASTE : BuildersMultitool.target(active);
+        String wanted = defaultMode(active);
+        GadgetModes.INSTANCE.getModesForGadget(target).stream()
+                .filter(mode -> mode.getId().getPath().equals(wanted))
+                .findFirst()
+                .ifPresent(cir::setReturnValue);
+    }
+
     @Redirect(method = "getMode", at = @At(value = "INVOKE", target = "Lcom/direwolf20/buildinggadgets2/common/items/BaseGadget;gadgetTarget()Lcom/direwolf20/buildinggadgets2/api/gadgets/GadgetTarget;"))
     private static GadgetTarget buildingGadgetsExtra$activeTarget(BaseGadget gadget, ItemStack stack) {
         if (!(gadget instanceof BuildersMultitool multitool)) return gadget.gadgetTarget();
@@ -31,5 +48,15 @@ public abstract class GadgetNBTMultitoolMixin {
             stack.getOrCreateTag().putBoolean("pastereplace", true);
             cir.setReturnValue(true);
         }
+    }
+
+    private static String defaultMode(MultitoolMode mode) {
+        return switch (mode) {
+            case BUILD -> "build_to_me";
+            case EXCHANGING -> "surface";
+            case COPY_PASTE -> "copy";
+            case CUT_PASTE -> "cut";
+            case DESTRUCTION -> "copy";
+        };
     }
 }
