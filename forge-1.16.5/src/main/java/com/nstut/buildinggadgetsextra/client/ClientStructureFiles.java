@@ -16,17 +16,17 @@ import org.lwjgl.util.tinyfd.TinyFileDialogs;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.ArrayDeque;
 import java.util.Arrays;
-import java.util.Deque;
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 
 public final class ClientStructureFiles {
+    // Packet receive always runs on the Minecraft client thread. Keep this map
+    // strictly client-thread-owned; the native file-dialog thread never touches it.
     private static final Map<UUID, ChunkAccumulator> DOWNLOADS = new HashMap<>();
-    private static final Map<String, Deque<PendingSaveTarget>> DESTINATIONS = new HashMap<>();
+    private static final Map<UUID, PendingSaveTarget> SAVE_DESTINATIONS = new HashMap<>();
 
     private ClientStructureFiles() {}
 
@@ -50,13 +50,13 @@ public final class ClientStructureFiles {
                         path = Paths.get(result + ".nbt");
                     }
                     String name = name(path);
-                    pruneTransfers();
-                    synchronized (DESTINATIONS) {
-                        DESTINATIONS.computeIfAbsent(name, key -> new ArrayDeque<>())
-                                .add(new PendingSaveTarget(path));
+                    UUID requestId = UUID.randomUUID();
+                    pruneSaveDestinations();
+                    synchronized (SAVE_DESTINATIONS) {
+                        SAVE_DESTINATIONS.put(requestId, new PendingSaveTarget(path));
                     }
-                    Minecraft.getInstance().execute(
-                            () -> ExtraNetwork.sendToServer(new StructureFilePacket(false, name)));
+                    Minecraft.getInstance().execute(() ->
+                            ExtraNetwork.sendToServer(new StructureFilePacket(false, name, requestId)));
                 }
             } catch (Exception error) {
                 message(ExtraConstants.STRUCTURE_SAVE_FAILED, "structure");
@@ -82,7 +82,8 @@ public final class ClientStructureFiles {
     }
 
     public static void receive(StructureDownloadPacket packet) {
-        pruneTransfers();
+        pruneDownloads();
+        pruneSaveDestinations();
         try {
             ChunkAccumulator transfer = DOWNLOADS.computeIfAbsent(packet.id,
                     key -> new ChunkAccumulator(packet.total));
@@ -93,7 +94,7 @@ public final class ClientStructureFiles {
             if (!transfer.isComplete()) return;
 
             DOWNLOADS.remove(packet.id);
-            Path file = pollDestination(packet.name);
+            Path file = removeDestination(packet.id);
             if (file == null) file = root().resolve(packet.name + ".nbt");
             Files.createDirectories(file.toAbsolutePath().getParent());
             Files.write(file, transfer.join());
@@ -125,19 +126,19 @@ public final class ClientStructureFiles {
         }
     }
 
-    private static void pruneTransfers() {
+    private static void pruneDownloads() {
         DOWNLOADS.entrySet().removeIf(entry -> entry.getValue().isExpired());
-        synchronized (DESTINATIONS) {
-            DESTINATIONS.values().forEach(queue -> queue.removeIf(PendingSaveTarget::isExpired));
-            DESTINATIONS.entrySet().removeIf(entry -> entry.getValue().isEmpty());
+    }
+
+    private static void pruneSaveDestinations() {
+        synchronized (SAVE_DESTINATIONS) {
+            SAVE_DESTINATIONS.entrySet().removeIf(entry -> entry.getValue().isExpired());
         }
     }
 
-    private static Path pollDestination(String name) {
-        synchronized (DESTINATIONS) {
-            Deque<PendingSaveTarget> queue = DESTINATIONS.get(name);
-            PendingSaveTarget target = queue == null ? null : queue.poll();
-            if (queue != null && queue.isEmpty()) DESTINATIONS.remove(name);
+    private static Path removeDestination(UUID requestId) {
+        synchronized (SAVE_DESTINATIONS) {
+            PendingSaveTarget target = SAVE_DESTINATIONS.remove(requestId);
             return target == null ? null : target.path();
         }
     }

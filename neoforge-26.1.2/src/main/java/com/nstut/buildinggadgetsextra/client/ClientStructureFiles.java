@@ -15,17 +15,17 @@ import org.lwjgl.util.tinyfd.TinyFileDialogs;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayDeque;
 import java.util.Arrays;
-import java.util.Deque;
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 
 public final class ClientStructureFiles {
+    // Packet receive always runs on the Minecraft client thread. Keep this map
+    // strictly client-thread-owned; the native file-dialog thread never touches it.
     private static final Map<UUID, ChunkAccumulator> DOWNLOADS = new HashMap<>();
-    private static final Map<String, Deque<PendingSaveTarget>> SAVE_DESTINATIONS = new HashMap<>();
+    private static final Map<UUID, PendingSaveTarget> SAVE_DESTINATIONS = new HashMap<>();
 
     private ClientStructureFiles() {}
 
@@ -49,13 +49,13 @@ public final class ClientStructureFiles {
                         path = Path.of(result + ".nbt");
                     }
                     String name = transferName(path);
-                    pruneTransfers();
+                    UUID requestId = UUID.randomUUID();
+                    pruneSaveDestinations();
                     synchronized (SAVE_DESTINATIONS) {
-                        SAVE_DESTINATIONS.computeIfAbsent(name, ignored -> new ArrayDeque<>())
-                                .add(new PendingSaveTarget(path));
+                        SAVE_DESTINATIONS.put(requestId, new PendingSaveTarget(path));
                     }
                     Minecraft.getInstance().execute(() ->
-                            ClientPacketDistributor.sendToServer(new StructureFilePayload(false, name)));
+                            ClientPacketDistributor.sendToServer(new StructureFilePayload(false, name, requestId)));
                 }
             } catch (Exception error) {
                 message(ExtraConstants.STRUCTURE_SAVE_FAILED, "structure");
@@ -81,7 +81,8 @@ public final class ClientStructureFiles {
     }
 
     public static void receive(StructureDownloadPayload payload) {
-        pruneTransfers();
+        pruneDownloads();
+        pruneSaveDestinations();
         try {
             ChunkAccumulator transfer = DOWNLOADS.computeIfAbsent(payload.transferId(),
                     ignored -> new ChunkAccumulator(payload.total()));
@@ -92,7 +93,7 @@ public final class ClientStructureFiles {
             if (!transfer.isComplete()) return;
             DOWNLOADS.remove(payload.transferId());
 
-            Path file = pollDestination(payload.name());
+            Path file = removeDestination(payload.transferId());
             if (file == null) file = root().resolve(payload.name() + ".nbt");
             Files.createDirectories(file.toAbsolutePath().getParent());
             Files.write(file, transfer.join());
@@ -124,19 +125,19 @@ public final class ClientStructureFiles {
         }
     }
 
-    private static void pruneTransfers() {
+    private static void pruneDownloads() {
         DOWNLOADS.entrySet().removeIf(entry -> entry.getValue().isExpired());
+    }
+
+    private static void pruneSaveDestinations() {
         synchronized (SAVE_DESTINATIONS) {
-            SAVE_DESTINATIONS.values().forEach(queue -> queue.removeIf(PendingSaveTarget::isExpired));
-            SAVE_DESTINATIONS.entrySet().removeIf(entry -> entry.getValue().isEmpty());
+            SAVE_DESTINATIONS.entrySet().removeIf(entry -> entry.getValue().isExpired());
         }
     }
 
-    private static Path pollDestination(String name) {
+    private static Path removeDestination(UUID requestId) {
         synchronized (SAVE_DESTINATIONS) {
-            Deque<PendingSaveTarget> queue = SAVE_DESTINATIONS.get(name);
-            PendingSaveTarget target = queue == null ? null : queue.poll();
-            if (queue != null && queue.isEmpty()) SAVE_DESTINATIONS.remove(name);
+            PendingSaveTarget target = SAVE_DESTINATIONS.remove(requestId);
             return target == null ? null : target.path();
         }
     }
