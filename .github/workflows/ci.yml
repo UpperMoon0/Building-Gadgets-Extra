@@ -52,7 +52,7 @@ jobs:
           - name: Forge 1.20.1 + GameTest
             java: '21'
             working-directory: .
-            command: ./gradlew :forge-1.20.1:build :forge-1.20.1:gameTest --configure-on-demand --no-daemon --no-configuration-cache
+            command: ./gradlew :forge-1.20.1:build :forge-1.20.1:runGameTestServer --no-daemon --no-configuration-cache
           - name: NeoForge 1.21.1 + GameTest
             java: '21'
             working-directory: .

@@ -39,15 +39,6 @@ minecraft {
     }
 }
 
-// ForgeGradle 6 materializes run tasks lazily. A stable verification alias lets
-// Gradle select this project under --configure-on-demand before resolving the
-// generated runGameTestServer dependency.
-tasks.register('gameTest') {
-    group = 'verification'
-    description = 'Runs the Forge GameTest server for Building Gadgets Extra.'
-    dependsOn 'runGameTestServer'
-}
-
 repositories {
     mavenCentral()
     maven { url = 'https://www.cursemaven.com' }
