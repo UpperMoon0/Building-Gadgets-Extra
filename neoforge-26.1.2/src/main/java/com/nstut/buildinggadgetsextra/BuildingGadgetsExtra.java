@@ -1,6 +1,7 @@
 package com.nstut.buildinggadgetsextra;
 
 import com.nstut.buildinggadgetsextra.common.ExtraConstants;
+import com.nstut.buildinggadgetsextra.network.BgeGameTests;
 import com.nstut.buildinggadgetsextra.network.ExtraPayloads;
 import com.nstut.buildinggadgetsextra.setup.ExtraRegistration;
 import net.neoforged.bus.api.IEventBus;
@@ -12,6 +13,7 @@ public final class BuildingGadgetsExtra {
 
     public BuildingGadgetsExtra(IEventBus modEventBus) {
         ExtraRegistration.register(modEventBus);
+        BgeGameTests.register(modEventBus);
         modEventBus.addListener(ExtraPayloads::register);
     }
 }

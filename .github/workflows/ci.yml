@@ -57,10 +57,10 @@ jobs:
             java: '21'
             working-directory: .
             command: ./gradlew :neoforge-1.21.1:build :neoforge-1.21.1:runGameTestServer --configure-on-demand --no-daemon --no-configuration-cache
-          - name: NeoForge 26.1.2
+          - name: NeoForge 26.1.2 + GameTest
             java: '25'
             working-directory: neoforge-26.1.2
-            command: ./gradlew build --no-daemon --no-configuration-cache
+            command: ./gradlew build runGameTestServer --no-daemon --no-configuration-cache
 
     steps:
       - name: Checkout repository

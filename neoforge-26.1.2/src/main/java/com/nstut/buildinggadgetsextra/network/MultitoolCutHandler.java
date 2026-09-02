@@ -41,7 +41,9 @@ public final class MultitoolCutHandler {
         context.enqueueWork(() -> cut(context.player()));
     }
 
-    private static void cut(Player player) {
+    // Package-private so the 26.1 registry-based GameTest can exercise the exact
+    // server operation without fabricating an IPayloadContext.
+    static void cut(Player player) {
         ItemStack stack = BaseGadget.getGadget(player);
         if (!(stack.getItem() instanceof BuildersMultitool)
                 || MultitoolState.getActiveMode(stack) != MultitoolMode.CUT_PASTE
