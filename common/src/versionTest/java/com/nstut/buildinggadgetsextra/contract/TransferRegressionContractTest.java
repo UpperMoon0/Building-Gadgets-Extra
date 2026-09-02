@@ -11,7 +11,7 @@ import java.nio.file.Paths;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-/** Prevents structure save/download request correlation and client-thread ownership regressions. */
+/** Prevents structure transfer correlation, authorization, and client-thread ownership regressions. */
 class TransferRegressionContractTest {
     private final Path module = Paths.get(requiredProperty("bge.moduleDir"));
     private final String minecraftVersion = requiredProperty("bge.minecraftVersion");
@@ -40,6 +40,19 @@ class TransferRegressionContractTest {
         contains(handler, "requestId", "server echoes the request id as the download transfer id");
     }
 
+    @Test
+    void uploadsRequirePasteModeAtStartAndRevalidation() throws Exception {
+        String upload = source("network/" + ("forge".equals(loader)
+                ? "StructureUploadPacket.java" : "StructureUploadHandler.java"));
+        String pasteGuard = "1.16.5".equals(minecraftVersion)
+                ? "GadgetCopyPaste.ToolMode.PASTE"
+                : "instanceof Paste";
+        assertTrue(occurrences(upload, pasteGuard) >= 2,
+                label("upload authorization must require Paste mode both at transfer capture and revalidation"));
+        contains(upload, "if (!transfer.matches(player))", "per-chunk upload revalidation");
+        contains(upload, "if (transfer.matches(player))", "final pre-commit upload revalidation");
+    }
+
     private String source(String relative) throws IOException {
         return read(module.resolve("src/main/java/com/nstut/buildinggadgetsextra").resolve(relative));
     }
@@ -51,6 +64,16 @@ class TransferRegressionContractTest {
 
     private void contains(String source, String expected, String feature) {
         assertTrue(source.contains(expected), label(feature + " must contain " + expected));
+    }
+
+    private static int occurrences(String source, String needle) {
+        int count = 0;
+        int offset = 0;
+        while ((offset = source.indexOf(needle, offset)) >= 0) {
+            count++;
+            offset += needle.length();
+        }
+        return count;
     }
 
     private String label(String message) {

@@ -108,6 +108,7 @@ public final class StructureUploadPacket {
             if (!(stack.getItem() instanceof GadgetCopyPaste)) return null;
             boolean isMultitool = stack.getItem() instanceof BuildersMultitool;
             if (isMultitool && MultitoolState.getActiveMode(stack) != MultitoolMode.COPY_PASTE) return null;
+            if (GadgetCopyPaste.getToolMode(stack) != GadgetCopyPaste.ToolMode.PASTE) return null;
             try {
                 return new TransferState(new ChunkAccumulator(total),
                         ((AbstractGadget) stack.getItem()).getUUID(stack), isMultitool);
@@ -120,6 +121,7 @@ public final class StructureUploadPacket {
             ItemStack stack = AbstractGadget.getGadget(player);
             if (!(stack.getItem() instanceof GadgetCopyPaste)) return false;
             if (((AbstractGadget) stack.getItem()).getUUID(stack).equals(gadgetId) == false) return false;
+            if (GadgetCopyPaste.getToolMode(stack) != GadgetCopyPaste.ToolMode.PASTE) return false;
             if (!multitool) return !(stack.getItem() instanceof BuildersMultitool);
             return stack.getItem() instanceof BuildersMultitool
                     && MultitoolState.getActiveMode(stack) == MultitoolMode.COPY_PASTE;

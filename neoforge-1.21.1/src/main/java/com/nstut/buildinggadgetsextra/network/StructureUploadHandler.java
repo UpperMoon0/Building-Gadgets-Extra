@@ -4,6 +4,7 @@ import com.direwolf20.buildinggadgets2.common.items.BaseGadget;
 import com.direwolf20.buildinggadgets2.common.items.GadgetCopyPaste;
 import com.direwolf20.buildinggadgets2.common.items.GadgetCutPaste;
 import com.direwolf20.buildinggadgets2.util.GadgetNBT;
+import com.direwolf20.buildinggadgets2.util.modes.Paste;
 import com.nstut.buildinggadgetsextra.common.ChunkAccumulator;
 import com.nstut.buildinggadgetsextra.common.ExtraConstants;
 import com.nstut.buildinggadgetsextra.common.MultitoolMode;
@@ -83,6 +84,7 @@ public final class StructureUploadHandler {
                 profile = MultitoolState.getActiveMode(stack);
                 if (profile != MultitoolMode.COPY_PASTE) return null;
             }
+            if (!(GadgetNBT.getMode(stack) instanceof Paste)) return null;
             try {
                 return new TransferState(new ChunkAccumulator(total), GadgetNBT.getUUID(stack), profile);
             } catch (IllegalArgumentException error) {
@@ -94,6 +96,7 @@ public final class StructureUploadHandler {
             ItemStack stack = BaseGadget.getGadget(player);
             if (stack.getItem() instanceof GadgetCutPaste || !(stack.getItem() instanceof GadgetCopyPaste)) return false;
             if (!GadgetNBT.getUUID(stack).equals(gadgetId)) return false;
+            if (!(GadgetNBT.getMode(stack) instanceof Paste)) return false;
             if (profile == null) return !(stack.getItem() instanceof BuildersMultitool);
             return stack.getItem() instanceof BuildersMultitool
                     && MultitoolState.getActiveMode(stack) == profile;
