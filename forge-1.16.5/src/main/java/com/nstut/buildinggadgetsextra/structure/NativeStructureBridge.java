@@ -24,6 +24,7 @@ import net.minecraft.entity.player.ServerPlayerEntity;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.CompoundNBT;
 import net.minecraft.nbt.CompressedStreamTools;
+import net.minecraft.nbt.NBTSizeTracker;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.text.TranslationTextComponent;
 import net.minecraft.world.gen.feature.template.Template;
@@ -31,10 +32,12 @@ import net.minecraftforge.fml.network.PacketDistributor;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.io.DataInputStream;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.zip.GZIPInputStream;
 
 public final class NativeStructureBridge {
     private NativeStructureBridge() {}
@@ -90,9 +93,11 @@ public final class NativeStructureBridge {
         Context c = context(player, true);
         if (c == null) return;
         final Template template;
-        try {
-            template = player.getServer().getStructureManager().readStructure(
-                    CompressedStreamTools.readCompressed(new ByteArrayInputStream(bytes)));
+        try (DataInputStream input = new DataInputStream(
+                new GZIPInputStream(new ByteArrayInputStream(bytes)))) {
+            CompoundNBT root = CompressedStreamTools.read(
+                    input, new NBTSizeTracker(ExtraConstants.MAX_STRUCTURE_NBT_BYTES));
+            template = player.getServer().getStructureManager().readStructure(root);
         } catch (Exception e) {
             message(player, ExtraConstants.STRUCTURE_LOAD_FAILED, name);
             return;

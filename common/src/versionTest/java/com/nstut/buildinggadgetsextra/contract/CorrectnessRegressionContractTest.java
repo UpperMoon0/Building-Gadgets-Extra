@@ -26,6 +26,8 @@ class CorrectnessRegressionContractTest {
 
         if (legacyCut) {
             contains(bridge, "TileSupport.dummyTileEntityData()", "BG1 safe imported tile-data path");
+            contains(bridge, "NBTSizeTracker", "BG1 bounded decompressed NBT budget");
+            contains(bridge, "MAX_STRUCTURE_NBT_BYTES", "BG1 configured decompressed NBT limit");
             assertFalse(bridge.contains("new NBTTileEntityData(info.nbt.copy())"),
                     label("BG1 must not replay arbitrary imported tile NBT"));
         } else {
@@ -45,7 +47,7 @@ class CorrectnessRegressionContractTest {
     }
 
     @Test
-    void bg2MultitoolKeepsIdentityUndoAndEnergyProfileLocal() throws Exception {
+    void bg2MultitoolKeepsIdentityUndoGeneralStateAndEnergyProfileLocal() throws Exception {
         if (legacyCut) return;
 
         String state = source("item/MultitoolState.java");
@@ -53,6 +55,9 @@ class CorrectnessRegressionContractTest {
         contains(state, "BGEGadgetProfile_", "per-profile gadget UUID");
         contains(state, "restoreGadgetUuidProfile", "profile UUID restoration");
         contains(state, "restoreUndoProfile", "profile undo restoration");
+        contains(state, "BGEStateProfile_", "per-profile general gadget state");
+        contains(state, "saveGeneralProfile", "general gadget state snapshot");
+        contains(state, "restoreGeneralProfile", "general gadget state restoration");
 
         String energy = source("mixin/BuildingUtilsMultitoolEnergyMixin.java");
         contains(energy, "BUILDINGGADGET_COST", "building energy parity");
