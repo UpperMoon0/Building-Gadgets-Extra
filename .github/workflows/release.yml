@@ -43,6 +43,21 @@ jobs:
           fi
           echo "value=$version" >> "$GITHUB_OUTPUT"
 
+      - name: Verify manual release ref
+        if: github.event_name == 'workflow_dispatch'
+        shell: bash
+        run: |
+          if [[ "$GITHUB_REF" != "refs/heads/main" ]]; then
+            echo "Manual releases must be dispatched from the main branch, not $GITHUB_REF." >&2
+            exit 1
+          fi
+          git fetch --no-tags origin main
+          main_sha="$(git rev-parse origin/main)"
+          if [[ "$GITHUB_SHA" != "$main_sha" ]]; then
+            echo "Manual release SHA $GITHUB_SHA is not the current origin/main commit $main_sha." >&2
+            exit 1
+          fi
+
       - name: Verify release tag
         if: github.event_name == 'push'
         shell: bash
