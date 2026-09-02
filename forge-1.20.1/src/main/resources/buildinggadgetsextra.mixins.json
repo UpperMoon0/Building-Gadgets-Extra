@@ -5,13 +5,18 @@
   "compatibilityLevel": "JAVA_17",
   "client": [
     "ModeRadialMenuMixin",
-    "RenderLevelLastMultitoolMixin"
+    "RenderLevelLastMultitoolMixin",
+    "MultitoolRadialScreenRangeMixin"
   ],
   "mixins": [
     "StructurePaletteInvoker",
     "StructureTemplateAccessor",
     "GadgetNBTMultitoolMixin",
-    "BuildingUtilsMultitoolEnergyMixin"
+    "GadgetNBTRangeMixin",
+    "BuildingUtilsMultitoolEnergyMixin",
+    "BuildersMultitoolDefaultsMixin",
+    "PacketRangeChangeAccessor",
+    "PacketRangeChangeMultitoolMixin"
   ],
   "injectors": {
     "defaultRequire": 1

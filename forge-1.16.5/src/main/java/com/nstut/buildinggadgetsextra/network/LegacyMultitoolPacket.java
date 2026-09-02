@@ -1,15 +1,15 @@
 package com.nstut.buildinggadgetsextra.network;
 
-import com.direwolf20.buildinggadgets.common.config.Config;
 import com.direwolf20.buildinggadgets.common.items.*;
 import com.direwolf20.buildinggadgets.common.util.GadgetUtils;
 import com.nstut.buildinggadgetsextra.common.MultitoolMode;
+import com.nstut.buildinggadgetsextra.common.MultitoolRangePolicy;
 import com.nstut.buildinggadgetsextra.item.BuildersMultitool;
 import com.nstut.buildinggadgetsextra.item.MultitoolState;
+import com.nstut.buildinggadgetsextra.setup.ExtraConfig;
 import net.minecraft.entity.player.ServerPlayerEntity;
 import net.minecraft.item.ItemStack;
 import net.minecraft.network.PacketBuffer;
-import net.minecraft.util.math.MathHelper;
 import net.minecraftforge.fml.network.NetworkEvent;
 
 import java.util.function.Supplier;
@@ -41,7 +41,12 @@ public final class LegacyMultitoolPacket {
             if (packet.operation == SELECT_ACTION) { MultitoolState.applyProfile(stack, active, packet.value); player.containerMenu.broadcastChanges(); return; }
             AbstractGadget delegate = delegate(active);
             switch (packet.operation) {
-                case RANGE: GadgetUtils.setToolRange(stack, MathHelper.clamp(GadgetUtils.getToolRange(stack) + packet.value, 1, Config.GADGETS.maxRange.get())); break;
+                case RANGE:
+                    if (active == MultitoolMode.BUILD || active == MultitoolMode.EXCHANGING) {
+                        int requested = GadgetUtils.getToolRange(stack) + packet.value;
+                        GadgetUtils.setToolRange(stack, MultitoolRangePolicy.clamp(requested, ExtraConfig.multitoolMaxRange()));
+                    }
+                    break;
                 case ROTATE: delegate.onRotate(stack, player); break;
                 case MIRROR: delegate.onMirror(stack, player); break;
                 case UNDO: multitool.undo(player.level, player, stack); break;

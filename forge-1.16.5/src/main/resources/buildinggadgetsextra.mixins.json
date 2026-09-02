@@ -8,6 +8,7 @@
     "GadgetBuildingMixin",
     "GadgetDestructionMixin",
     "GadgetExchangerMixin",
+    "GadgetUtilsMultitoolRangeMixin",
     "TemplateAccessor",
     "VanillaPaletteAccessor",
     "VanillaTemplateAccessor"

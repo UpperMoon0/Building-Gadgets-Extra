@@ -6,10 +6,12 @@ import com.direwolf20.buildinggadgets2.setup.Config;
 import com.direwolf20.buildinggadgets2.util.BuildingUtils;
 import com.direwolf20.buildinggadgets2.util.GadgetNBT;
 import com.direwolf20.buildinggadgets2.util.modes.BaseMode;
+import com.direwolf20.buildinggadgets2.util.datatypes.StatePos;
 import com.nstut.buildinggadgetsextra.common.ExtraConstants;
 import com.nstut.buildinggadgetsextra.common.MultitoolMode;
 import com.nstut.buildinggadgetsextra.item.BuildersMultitool;
 import com.nstut.buildinggadgetsextra.item.MultitoolState;
+import com.nstut.buildinggadgetsextra.setup.ExtraConfig;
 import com.nstut.buildinggadgetsextra.setup.ExtraRegistration;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;
@@ -52,6 +54,7 @@ public final class BgeGameTests {
     public static void register(IEventBus modEventBus) {
         test("multitool_energy_and_profile_state", 40, BgeGameTests::energyAndProfileState);
         test("multitool_cut_queues_real_server_work", 40, BgeGameTests::cutQueuesRealServerWork);
+        test("multitool_creative_zero_energy", 40, BgeGameTests::creativeZeroEnergy);
         FUNCTIONS.register(modEventBus);
         modEventBus.addListener(BgeGameTests::onRegisterGameTests);
     }
@@ -102,6 +105,8 @@ public final class BgeGameTests {
                 "fresh Exchange profile must not inherit Build range");
         helper.assertTrue(GadgetNBT.getGadgetBlockState(stack).is(Blocks.AIR),
                 "fresh Exchange profile must not inherit Build selected block");
+        helper.assertTrue(GadgetNBT.getMode(stack).getId().getPath().equals("surface"),
+                "fresh Exchange profile must use BG2's native Surface default");
         GadgetNBT.setToolRange(stack, 3);
         GadgetNBT.setGadgetBlockState(stack, Blocks.DIRT.defaultBlockState());
         int beforeExchange = energy.getAmountAsInt();
@@ -153,6 +158,47 @@ public final class BgeGameTests {
         helper.assertTrue(GadgetNBT.getCopyStartPos(stack).equals(GadgetNBT.nullPos)
                         && GadgetNBT.getCopyEndPos(stack).equals(GadgetNBT.nullPos),
                 "successful multitool Cut must clear the selection");
+        helper.succeed();
+    }
+
+    private static void creativeZeroEnergy(GameTestHelper helper) {
+        var player = helper.makeMockPlayer(GameType.CREATIVE);
+        ItemStack stack = new ItemStack(ExtraRegistration.BUILDERS_MULTITOOL.get());
+        BuildersMultitool multitool = (BuildersMultitool) stack.getItem();
+        player.setItemInHand(InteractionHand.MAIN_HAND, stack);
+
+        EnergyHandler energy = stack.getCapability(Capabilities.Energy.ITEM, null);
+        helper.assertTrue(energy != null && energy.getAmountAsInt() == 0,
+                "creative regression must start with an empty multitool battery");
+
+        multitool.selectTool(stack, MultitoolMode.BUILD);
+        helper.assertTrue(GadgetNBT.getMode(stack).getId().getPath().equals("build_to_me"),
+                "fresh Build profile must use BG2's native Build To Me default");
+        GadgetNBT.setToolRange(stack, ExtraConfig.multitoolMaxRange() + 20);
+        helper.assertTrue(GadgetNBT.getToolRange(stack) == ExtraConfig.multitoolMaxRange(),
+                "multitool range reads must clamp stale item data to the server config");
+
+        BlockPos relative = new BlockPos(1, 1, 1);
+        BlockPos absolute = helper.absolutePos(relative);
+        ArrayList<StatePos> buildList = new ArrayList<>();
+        buildList.add(new StatePos(Blocks.STONE.defaultBlockState(), absolute));
+        UUID buildId = BuildingUtils.build(helper.getLevel(), player, buildList, BlockPos.ZERO, stack, false);
+        helper.assertTrue(ServerTickHandler.buildMap.containsKey(buildId),
+                "creative Builder's Multitool with zero FE must queue real build work");
+
+        multitool.selectTool(stack, MultitoolMode.CUT_PASTE);
+        BaseMode cutMode = GadgetModes.INSTANCE.getModesForGadget(BuildersMultitool.target(MultitoolMode.CUT_PASTE))
+                .stream().filter(mode -> mode.getId().getPath().equals("cut")).findFirst().orElse(null);
+        helper.assertTrue(cutMode != null, "BG2 must expose the native Cut mode");
+        GadgetNBT.setMode(stack, cutMode);
+        BlockPos cutRelative = new BlockPos(2, 1, 1);
+        helper.setBlock(cutRelative, Blocks.STONE);
+        BlockPos cutAbsolute = helper.absolutePos(cutRelative);
+        GadgetNBT.setCopyStartPos(stack, cutAbsolute);
+        GadgetNBT.setCopyEndPos(stack, cutAbsolute);
+        MultitoolCutHandler.cut(player);
+        helper.assertTrue(GadgetNBT.hasCopyUUID(stack),
+                "creative Builder's Multitool with zero FE must execute Cut");
         helper.succeed();
     }
 }
