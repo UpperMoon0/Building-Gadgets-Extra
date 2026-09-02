@@ -25,11 +25,13 @@ Everything fits into the familiar Building Gadgets workflow, so the extra contro
 
 Saved builds use Minecraft's standard `.nbt` structure format, so they can also be used with vanilla Structure Blocks. Mobs and other entities are not included.
 
-For multiplayer safety, external structure files can only be imported into Copy/Paste semantics. Imported block-entity NBT is deliberately stripped, so inventories and other arbitrary block-entity contents from a local file are **not** restored onto a server. Building Gadgets 2 ports also sanitize imported block states through upstream validation. Structure uploads and decompression are bounded to protect the server from malformed or oversized files.
+For multiplayer safety, external structure files can only be imported into the Copy Paste Gadget while it remains in Paste mode. Uploads stay bound to the initiating gadget/profile and are revalidated through final commit, so switching gadget, multitool profile, or mode aborts the pending import. Imported block-entity NBT is deliberately stripped, so inventories and other arbitrary block-entity contents from a local file are **not** restored onto a server. Building Gadgets 2 ports also sanitize imported block states through upstream validation.
+
+Imports are limited to a 100,000-position bounding volume, an 8 MiB compressed transfer, and a 64 MiB decoded-NBT budget. The volume includes air inside the declared dimensions. Concurrent transfers are also capped per player.
 
 ### Builder's Multitool
 
-On Building Gadgets 2 versions, the Builder's Multitool combines the supported gadget roles into one physical tool. Each virtual profile keeps its own mode, range/settings, template identity and undo history, while the tool shares one FE battery. Energy use follows the currently active gadget profile.
+On Building Gadgets 2 versions, the Builder's Multitool combines the supported gadget roles into one physical tool. Each virtual profile keeps its own mode, range/settings, template identity and undo history, while the tool shares one FE battery. Bound inventory position and side are profile-local as well, and energy use follows the currently active gadget profile.
 
 ## Multiplayer
 

@@ -47,11 +47,11 @@ The mod must be installed on the server and on every connecting client.
 2. In **Copy** or **Cut** mode, select **Save to .nbt** to open your operating system's Save dialog and export the current server-authoritative template.
 3. With the **Copy Paste Gadget** in **Paste** mode, select **Load from .nbt** to choose a local structure file. External imports are deliberately rejected for Cut/Paste semantics.
 
-The dialogs initially open in `.minecraft/building_gadgets_extra/structures`, but files may be saved to or loaded from any accessible folder. Transfers are chunked and size-limited, each save response is bound to the initiating request, and uploads are bound to the initiating gadget/profile and revalidated before commit.
+The dialogs initially open in `.minecraft/building_gadgets_extra/structures`, but files may be saved to or loaded from any accessible folder. Transfers are chunked and size-limited, each save response is bound to the initiating request, and uploads are bound to the initiating gadget/profile. The server revalidates that the same gadget/profile is still active and still in Paste mode while chunks arrive and immediately before commit; changing gadget, profile, or mode aborts the pending import.
 
 The files use Minecraft's normal compressed structure format and can also be used with vanilla Structure Blocks. Structure entities are not imported or exported. Exported server-owned templates may contain their normal block-entity NBT, but **external block-entity NBT is intentionally stripped on import** so an untrusted client file cannot replay inventories or arbitrary block-entity data on a server. On Building Gadgets 2 ports, imported block states are also passed through upstream validity/cleanup rules.
 
-Imports are currently limited to 100,000 blocks, an 8 MiB compressed transfer, and a 64 MiB decoded-NBT budget. These limits protect the server thread from malformed or excessively expensive structure files.
+Imports are currently limited to a 100,000-position bounding volume, an 8 MiB compressed transfer, and a 64 MiB decoded-NBT budget. The bounding-volume limit counts every coordinate inside the declared structure dimensions, including air. These limits protect the server thread from malformed or excessively expensive structure files.
 
 ## Building from Source
 
@@ -111,15 +111,15 @@ Verification and publishing are separate workflows. Pull requests and pushes to 
 A release is started only by either:
 
 - pushing a `v<mod_version>` tag, for example `v0.0.4`; or
-- explicitly running the Release workflow from the **Actions** tab.
+- explicitly running the Release workflow from the **Actions** tab on `main`.
 
 Before publishing:
 
 1. Update `mod_version` in `gradle.properties` and update `CHANGELOG.md`.
-2. Merge the tested changes to `main`.
-3. Create the matching `v<mod_version>` tag on the exact commit you want to release, or run the workflow manually.
+2. Merge the changes to `main` and let CI pass on that exact commit.
+3. Create the matching `v<mod_version>` tag on the current `main` commit, or run the Release workflow manually from `main`.
 
-For tag-triggered releases the workflow verifies that the tag exactly matches `mod_version`; mismatched or reused versions fail instead of publishing the wrong artifacts.
+The release workflow rejects a tag or manual dispatch whose checked-out commit is not the current `origin/main`, rejects tags that do not exactly match `mod_version`, and requires at least one successful CI run for the exact release commit. It then reruns the unit/contract tests, rebuilds all four release JARs, verifies the expected artifacts exist, and only then publishes the GitHub release.
 
 ## License
 

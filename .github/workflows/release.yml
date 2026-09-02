@@ -8,6 +8,7 @@ on:
 
 permissions:
   contents: write
+  actions: read
 
 jobs:
   release:
@@ -43,18 +44,18 @@ jobs:
           fi
           echo "value=$version" >> "$GITHUB_OUTPUT"
 
-      - name: Verify manual release ref
-        if: github.event_name == 'workflow_dispatch'
+      - name: Verify release source is current main
         shell: bash
         run: |
-          if [[ "$GITHUB_REF" != "refs/heads/main" ]]; then
+          if [[ "$GITHUB_EVENT_NAME" == "workflow_dispatch" && "$GITHUB_REF" != "refs/heads/main" ]]; then
             echo "Manual releases must be dispatched from the main branch, not $GITHUB_REF." >&2
             exit 1
           fi
           git fetch --no-tags origin main
+          release_sha="$(git rev-parse HEAD)"
           main_sha="$(git rev-parse origin/main)"
-          if [[ "$GITHUB_SHA" != "$main_sha" ]]; then
-            echo "Manual release SHA $GITHUB_SHA is not the current origin/main commit $main_sha." >&2
+          if [[ "$release_sha" != "$main_sha" ]]; then
+            echo "Release commit $release_sha is not the current origin/main commit $main_sha." >&2
             exit 1
           fi
 
@@ -65,6 +66,21 @@ jobs:
           expected="v${{ steps.version.outputs.value }}"
           if [[ "${GITHUB_REF_NAME}" != "$expected" ]]; then
             echo "Release tag ${GITHUB_REF_NAME} does not match mod_version ($expected)." >&2
+            exit 1
+          fi
+
+      - name: Verify exact-commit CI
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          release_sha="$(git rev-parse HEAD)"
+          successful_runs="$(gh api \
+            -H 'Accept: application/vnd.github+json' \
+            "/repos/${GITHUB_REPOSITORY}/actions/workflows/ci.yml/runs?head_sha=${release_sha}&status=completed&per_page=20" \
+            --jq '[.workflow_runs[] | select(.conclusion == "success")] | length')"
+          if [[ "$successful_runs" -lt 1 ]]; then
+            echo "No successful CI run exists for exact release commit $release_sha. Let CI finish successfully, then rerun Release." >&2
             exit 1
           fi
 
@@ -108,14 +124,14 @@ jobs:
           tag="v${{ steps.version.outputs.value }}"
           if git show-ref --tags --verify --quiet "refs/tags/$tag"; then
             tagged_commit="$(git rev-list -n 1 "$tag")"
-            if [[ "$tagged_commit" != "$GITHUB_SHA" ]]; then
+            if [[ "$tagged_commit" != "$(git rev-parse HEAD)" ]]; then
               echo "Tag $tag already points to $tagged_commit. Bump mod_version before releasing another commit." >&2
               exit 1
             fi
           else
             git config user.name "github-actions[bot]"
             git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git tag -a "$tag" -m "Building Gadgets Extra $tag" "$GITHUB_SHA"
+            git tag -a "$tag" -m "Building Gadgets Extra $tag" "$(git rev-parse HEAD)"
             git push origin "$tag"
           fi
 
