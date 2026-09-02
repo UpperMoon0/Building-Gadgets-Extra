@@ -15,7 +15,6 @@ java.toolchain.languageVersion = JavaLanguageVersion.of(8)
 
 sourceSets.main.java.srcDir rootProject.file('common/src/main/java')
 sourceSets.main.resources.srcDir rootProject.file('common/src/main/resources')
-sourceSets.test.java.srcDir rootProject.file('common/src/test/java')
 sourceSets.test.java.srcDir rootProject.file('common/src/versionTest/java')
 
 minecraft {
@@ -53,6 +52,12 @@ tasks.named('test', Test).configure {
     systemProperty 'bge.minecraftVersion', minecraft_version
     systemProperty 'bge.loader', 'forge'
     systemProperty 'bge.legacyCut', 'true'
+    testLogging {
+        events 'failed'
+        exceptionFormat = 'full'
+        showCauses = true
+        showStackTraces = true
+    }
 }
 
 tasks.named('processResources', ProcessResources).configure {
