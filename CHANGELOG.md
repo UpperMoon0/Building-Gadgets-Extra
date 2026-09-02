@@ -5,6 +5,7 @@
 ### Fixed
 
 - Fixed the Builder's Multitool energy capability on NeoForge 26.1.2.
+- Fixed the Builder's Multitool recipe on Minecraft 26.1.2 after the ingredient JSON format changed.
 - Fixed multitool Cut execution on Forge 1.20.1 and NeoForge 26.1.2.
 - Fixed Cut energy/reporting so only blocks that actually pass validation are counted.
 - Prevented the upstream empty-Cut crash path on NeoForge 1.21.1 and 26.1.2.

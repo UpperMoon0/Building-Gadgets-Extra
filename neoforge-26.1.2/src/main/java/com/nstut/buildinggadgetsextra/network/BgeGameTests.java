@@ -146,8 +146,10 @@ public final class BgeGameTests {
 
         helper.assertTrue(GadgetNBT.hasCopyUUID(stack), "successful multitool Cut must create a paste operation UUID");
         UUID buildId = GadgetNBT.getCopyUUID(stack);
-        helper.assertTrue(ServerTickHandler.gadgetWorking(buildId),
-                "successful multitool Cut must queue real ServerTickHandler work");
+        helper.assertTrue(ServerTickHandler.buildMap.containsKey(buildId),
+                "successful multitool Cut must queue the generated build UUID in ServerTickHandler");
+        helper.assertTrue(ServerTickHandler.gadgetWorking(GadgetNBT.getUUID(stack)),
+                "queued multitool Cut must make the active virtual gadget busy");
         helper.assertTrue(GadgetNBT.getCopyStartPos(stack).equals(GadgetNBT.nullPos)
                         && GadgetNBT.getCopyEndPos(stack).equals(GadgetNBT.nullPos),
                 "successful multitool Cut must clear the selection");
