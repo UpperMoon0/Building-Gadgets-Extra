@@ -48,6 +48,8 @@ The Builder's Multitool keeps each virtual gadget profile independent while shar
 
 The server config option `multitoolMaxRange` controls the maximum range of the multitool's **Build** and **Exchange** profiles. The default is **32** and the allowed configuration range is **1-64**. Native Building Gadgets/Building Gadgets 2 tools keep their upstream range limits. The multitool radial slider, range hotkey, server packet validation, and restored item/profile state all use the same server-authoritative cap, so old item data cannot bypass a lower server setting.
 
+For diagnosing multitool range/state synchronization, set the server config option `debugInstrumentation=true`. It is **disabled by default**. When enabled, the mod logs structured range-request outcomes such as packet source, active profile, current/requested/resolved range, configured cap, rejection reason, and authoritative publication/state. Logging uses a shared per-category token bucket with a burst of **4** and refill of **2 messages/second**; throttled entries are counted and the next emitted entry reports `suppressedSinceLastLog` so repeated slider/key input cannot flood the server log.
+
 Creative players can use multitool operations with an empty FE battery. Survival players continue to consume and require the energy configured for the corresponding native gadget profile.
 
 ### Native Structure Files
