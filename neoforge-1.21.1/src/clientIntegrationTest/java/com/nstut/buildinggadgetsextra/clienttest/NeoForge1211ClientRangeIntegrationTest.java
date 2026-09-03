@@ -9,8 +9,8 @@ import net.neoforged.neoforge.client.event.ClientTickEvent;
 @EventBusSubscriber(modid = BuildingGadgetsExtra.MODID, value = Dist.CLIENT)
 public final class NeoForge1211ClientRangeIntegrationTest {
     private static final boolean ENABLED = Boolean.getBoolean(ClientRangeRoundTripScenario.ENABLE_PROPERTY);
-    private static final ClientRangeRoundTripScenario SCENARIO =
-            new ClientRangeRoundTripScenario(new ModernClientRangeAdapter());
+    private static final ClientRangeRoundTripScenario SCENARIO = new ClientRangeRoundTripScenario(
+            new ModernClientRangeAdapter((screen, x, y) -> screen.mouseClicked(x, y, 0)));
 
     private NeoForge1211ClientRangeIntegrationTest() {}
 
