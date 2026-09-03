@@ -3,7 +3,6 @@ package com.nstut.buildinggadgetsextra.clienttest;
 import com.direwolf20.buildinggadgets2.util.GadgetNBT;
 import com.nstut.buildinggadgetsextra.item.BuildersMultitool;
 import com.nstut.buildinggadgetsextra.setup.ExtraRegistration;
-import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.item.ItemStack;
@@ -13,12 +12,13 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 /** Shared authoritative-server observer for BG2-based ports (1.20.1+). */
 public final class ModernServerRangeObserver {
+    private static ServerPlayer watchedPlayer;
+    private static int ticks;
+    private static boolean finished;
+
     private ModernServerRangeObserver() {}
 
     public static void setupAndWatch(ServerPlayer player) {
@@ -26,39 +26,28 @@ public final class ModernServerRangeObserver {
         GadgetNBT.setToolRange(stack, ClientRangeRoundTripScenario.START_RANGE);
         player.setItemInHand(InteractionHand.MAIN_HAND, stack);
         player.containerMenu.broadcastChanges();
-
-        MinecraftServer server = player.getServer();
-        if (server == null) throw new IllegalStateException("test player has no server");
-        Thread watcher = new Thread(() -> watch(server, player), "BGE client integration server observer");
-        watcher.setDaemon(true);
-        watcher.start();
+        watchedPlayer = player;
+        ticks = 0;
+        finished = false;
     }
 
-    private static void watch(MinecraftServer server, ServerPlayer player) {
-        try {
-            for (int i = 0; i < ClientRangeRoundTripScenario.TIMEOUT_TICKS; i++) {
-                AtomicBoolean matched = new AtomicBoolean(false);
-                CountDownLatch latch = new CountDownLatch(1);
-                server.execute(() -> {
-                    try {
-                        ItemStack held = player.getItemInHand(InteractionHand.MAIN_HAND);
-                        matched.set(held.getItem() instanceof BuildersMultitool
-                                && GadgetNBT.getToolRange(held) == ClientRangeRoundTripScenario.TARGET_RANGE);
-                        if (matched.get()) {
-                            write("server-pass.txt", "authoritative server range=" + GadgetNBT.getToolRange(held));
-                        }
-                    } finally {
-                        latch.countDown();
-                    }
-                });
-                latch.await(2, TimeUnit.SECONDS);
-                if (matched.get()) return;
-                Thread.sleep(50L);
-            }
-            write("server-fail.txt", "server never observed authoritative range=" + ClientRangeRoundTripScenario.TARGET_RANGE);
-        } catch (Throwable error) {
-            error.printStackTrace();
-            write("server-fail.txt", error.toString());
+    /** Must be called from the loader's normal post-server-tick event. */
+    public static void tick() {
+        if (finished || watchedPlayer == null) return;
+        ticks++;
+
+        ItemStack held = watchedPlayer.getItemInHand(InteractionHand.MAIN_HAND);
+        if (held.getItem() instanceof BuildersMultitool
+                && GadgetNBT.getToolRange(held) == ClientRangeRoundTripScenario.TARGET_RANGE) {
+            finished = true;
+            write("server-pass.txt", "authoritative server range=" + GadgetNBT.getToolRange(held));
+            return;
+        }
+
+        if (ticks > ClientRangeRoundTripScenario.TIMEOUT_TICKS) {
+            finished = true;
+            write("server-fail.txt", "server never observed authoritative range="
+                    + ClientRangeRoundTripScenario.TARGET_RANGE + "; current=" + GadgetNBT.getToolRange(held));
         }
     }
 
