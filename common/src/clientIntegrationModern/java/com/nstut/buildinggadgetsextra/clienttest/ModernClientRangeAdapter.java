@@ -18,6 +18,17 @@ import java.nio.file.Paths;
 
 /** Shared client driver for BG2-based ports (1.20.1+). */
 public final class ModernClientRangeAdapter implements ClientRangeRoundTripScenario.Adapter {
+    @FunctionalInterface
+    public interface ScreenClicker {
+        void click(Screen screen, double x, double y);
+    }
+
+    private final ScreenClicker clicker;
+
+    public ModernClientRangeAdapter(ScreenClicker clicker) {
+        this.clicker = clicker;
+    }
+
     private Minecraft minecraft() {
         return Minecraft.getInstance();
     }
@@ -62,7 +73,7 @@ public final class ModernClientRangeAdapter implements ClientRangeRoundTripScena
     public void enterBuildSubmenu() {
         Screen screen = minecraft().screen;
         if (!(screen instanceof MultitoolRadialScreen)) throw new IllegalStateException("range screen missing");
-        screen.mouseClicked(screen.width / 2.0, screen.height / 2.0 - 68.0, 0);
+        clicker.click(screen, screen.width / 2.0, screen.height / 2.0 - 68.0);
     }
 
     @Override
@@ -70,7 +81,7 @@ public final class ModernClientRangeAdapter implements ClientRangeRoundTripScena
         Screen screen = minecraft().screen;
         if (!(screen instanceof MultitoolRadialScreen)) throw new IllegalStateException("range screen missing");
         // Actual + component created by IncrementalSliderWidget.getComponents() for the Build range rail.
-        screen.mouseClicked(screen.width / 2.0 + 206.0, screen.height / 2.0 - 37.0, 0);
+        clicker.click(screen, screen.width / 2.0 + 206.0, screen.height / 2.0 - 37.0);
     }
 
     @Override
