@@ -51,7 +51,9 @@ public final class Forge1165ServerRangeIntegrationTest {
                             ItemStack held = player.getItemInHand(Hand.MAIN_HAND);
                             matched.set(held.getItem() instanceof BuildersMultitool
                                     && GadgetUtils.getToolRange(held) == ClientRangeRoundTripScenario.TARGET_RANGE);
-                            if (matched.get()) write("server-pass.txt", "authoritative server range=" + GadgetUtils.getToolRange(held));
+                            if (matched.get()) {
+                                write("server-pass.txt", "authoritative server range=" + GadgetUtils.getToolRange(held));
+                            }
                         } finally {
                             latch.countDown();
                         }
@@ -63,20 +65,21 @@ public final class Forge1165ServerRangeIntegrationTest {
                 write("server-fail.txt", "server never observed authoritative range=" + ClientRangeRoundTripScenario.TARGET_RANGE);
             } catch (Throwable error) {
                 error.printStackTrace();
-                try {
-                    write("server-fail.txt", error.toString());
-                } catch (IOException ignored) {
-                }
+                write("server-fail.txt", error.toString());
             }
         }, "BGE client integration server observer");
         watcher.setDaemon(true);
         watcher.start();
     }
 
-    private static void write(String file, String detail) throws IOException {
-        Path dir = Paths.get(System.getProperty("bge.clientIntegrationResultDir", "build/client-integration"));
-        Files.createDirectories(dir);
-        Files.write(dir.resolve(file), (detail + "\n").getBytes(StandardCharsets.UTF_8));
-        System.out.println("[BGE client integration] " + detail);
+    private static void write(String file, String detail) {
+        try {
+            Path dir = Paths.get(System.getProperty("bge.clientIntegrationResultDir", "build/client-integration"));
+            Files.createDirectories(dir);
+            Files.write(dir.resolve(file), (detail + "\n").getBytes(StandardCharsets.UTF_8));
+            System.out.println("[BGE client integration] " + detail);
+        } catch (IOException error) {
+            throw new IllegalStateException("cannot write client integration marker " + file, error);
+        }
     }
 }
