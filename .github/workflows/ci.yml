@@ -48,15 +48,11 @@ jobs:
                   "java": "21",
                   "working_directory": ".",
                   "command": "./gradlew :forge-1.16.5:build --configure-on-demand --no-daemon --no-configuration-cache",
-                  "client_kind": "dedicated",
-                  "integration_server_task": ":forge-1.16.5:runClientIntegrationTestServer",
-                  "integration_client_task": ":forge-1.16.5:runClientIntegrationTest",
-                  "integration_server_dir": "forge-1.16.5/run-client-integration-server",
-                  "integration_result_dir": "forge-1.16.5/build/client-integration"
+                  "client_kind": "none"
               },
               "forge1201": {
                   "id": "forge1201",
-                  "name": "Forge 1.20.1 + GameTest",
+                  "name": "Forge 1.20.1 + GameTest + client",
                   "java": "21",
                   "working_directory": ".",
                   "command": "./gradlew :forge-1.20.1:build :forge-1.20.1:runGameTestServer --no-daemon --no-configuration-cache",
@@ -72,15 +68,11 @@ jobs:
                   "java": "21",
                   "working_directory": ".",
                   "command": "./gradlew :neoforge-1.21.1:build :neoforge-1.21.1:runGameTestServer --configure-on-demand --no-daemon --no-configuration-cache",
-                  "client_kind": "dedicated",
-                  "integration_server_task": ":neoforge-1.21.1:runClientIntegrationTestServer",
-                  "integration_client_task": ":neoforge-1.21.1:runClientIntegrationTest",
-                  "integration_server_dir": "neoforge-1.21.1/run-client-integration-server",
-                  "integration_result_dir": "neoforge-1.21.1/build/client-integration"
+                  "client_kind": "none"
               },
               "neoforge2612": {
                   "id": "neoforge2612",
-                  "name": "NeoForge 26.1.2 + GameTest",
+                  "name": "NeoForge 26.1.2 + GameTest + client",
                   "java": "25",
                   "working_directory": "neoforge-26.1.2",
                   "command": "./gradlew build runGameTestServer --no-daemon --no-configuration-cache",
@@ -109,12 +101,13 @@ jobs:
                   select_all = True
 
           selected = set(entries) if select_all else set()
-          docs_only = {
+          light_only = {
               "README.md",
               "CHANGELOG.md",
               "CURSEFORGE.md",
               "LICENSE",
-              ".github/workflows/release.yml"
+              ".github/workflows/release.yml",
+              ".github/workflows/client-e2e.yml"
           }
           global_files = {
               "build.gradle",
@@ -136,7 +129,7 @@ jobs:
                   selected.add("neoforge1211")
               elif path.startswith("neoforge-26.1.2/"):
                   selected.add("neoforge2612")
-              elif path in docs_only or path.startswith("docs/"):
+              elif path in light_only or path.startswith("docs/"):
                   pass
               else:
                   # Unknown repository-level changes are safer to verify everywhere.
@@ -154,8 +147,7 @@ jobs:
                   "client_kind": "none"
               }]
 
-          output = os.environ["GITHUB_OUTPUT"]
-          with open(output, "a", encoding="utf-8") as handle:
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as handle:
               handle.write("matrix=" + json.dumps({"include": include}, separators=(",", ":")) + "\n")
               handle.write("run_versions=" + ("true" if selected else "false") + "\n")
 
@@ -218,7 +210,7 @@ jobs:
           ${{ matrix.command }}
 
       - name: Install headless display support
-        if: matrix.client_kind == 'integrated' || (github.event_name == 'push' && matrix.client_kind == 'dedicated')
+        if: matrix.client_kind == 'integrated'
         shell: bash
         run: |
           if ! command -v xvfb-run >/dev/null 2>&1; then
@@ -269,83 +261,5 @@ jobs:
           test ! -f "$RESULT_DIR/client-fail.txt"
           test -f "$RESULT_DIR/server-pass.txt"
           test ! -f "$RESULT_DIR/server-fail.txt"
-          cat "$RESULT_DIR/client-pass.txt"
-          cat "$RESULT_DIR/server-pass.txt"
-
-      - name: Verify real client UI-server round trip on dedicated server
-        if: github.event_name == 'push' && matrix.client_kind == 'dedicated'
-        working-directory: ${{ matrix.working_directory }}
-        shell: bash
-        env:
-          LIBGL_ALWAYS_SOFTWARE: '1'
-        run: |
-          set -euo pipefail
-          SERVER_DIR='${{ matrix.integration_server_dir }}'
-          RESULT_DIR='${{ matrix.integration_result_dir }}'
-          SERVER_LOG="$RESULT_DIR/server.log"
-
-          rm -rf "$RESULT_DIR"
-          mkdir -p "$SERVER_DIR" "$RESULT_DIR"
-          printf 'eula=true\n' > "$SERVER_DIR/eula.txt"
-          cat > "$SERVER_DIR/server.properties" <<'EOF'
-          online-mode=false
-          server-port=25565
-          gamemode=creative
-          level-name=bge-client-integration
-          motd=BGE client integration test
-          spawn-protection=0
-          view-distance=2
-          simulation-distance=2
-          EOF
-
-          chmod +x ./gradlew
-          setsid ./gradlew '${{ matrix.integration_server_task }}' --no-daemon --no-configuration-cache > "$SERVER_LOG" 2>&1 &
-          SERVER_PID=$!
-          cleanup() {
-            kill -- -"$SERVER_PID" >/dev/null 2>&1 || true
-          }
-          trap cleanup EXIT
-
-          READY=0
-          for _ in $(seq 1 180); do
-            if grep -q 'Done (' "$SERVER_LOG"; then
-              READY=1
-              break
-            fi
-            if ! kill -0 "$SERVER_PID" >/dev/null 2>&1; then
-              cat "$SERVER_LOG"
-              exit 1
-            fi
-            sleep 1
-          done
-          if [[ "$READY" -ne 1 ]]; then
-            echo 'Dedicated integration server did not become ready.'
-            cat "$SERVER_LOG"
-            exit 1
-          fi
-
-          xvfb-run -a ./gradlew '${{ matrix.integration_client_task }}' --no-daemon --no-configuration-cache
-
-          test -f "$RESULT_DIR/client-pass.txt"
-          test ! -f "$RESULT_DIR/client-fail.txt"
-
-          SERVER_RESULT=0
-          for _ in $(seq 1 40); do
-            if [[ -f "$RESULT_DIR/server-fail.txt" ]]; then
-              cat "$RESULT_DIR/server-fail.txt"
-              exit 1
-            fi
-            if [[ -f "$RESULT_DIR/server-pass.txt" ]]; then
-              SERVER_RESULT=1
-              break
-            fi
-            sleep 0.1
-          done
-          if [[ "$SERVER_RESULT" -ne 1 ]]; then
-            echo 'Client passed but authoritative server pass marker was not observed.'
-            cat "$SERVER_LOG"
-            exit 1
-          fi
-
           cat "$RESULT_DIR/client-pass.txt"
           cat "$RESULT_DIR/server-pass.txt"
