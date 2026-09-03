@@ -12,6 +12,7 @@ import net.minecraft.item.ItemStack;
 import net.minecraft.network.PacketBuffer;
 import net.minecraftforge.fml.network.NetworkEvent;
 
+import java.util.OptionalInt;
 import java.util.function.Supplier;
 
 public final class LegacyMultitoolPacket {
@@ -42,10 +43,11 @@ public final class LegacyMultitoolPacket {
             AbstractGadget delegate = delegate(active);
             switch (packet.operation) {
                 case RANGE:
-                    if (active == MultitoolMode.BUILD || active == MultitoolMode.EXCHANGING) {
-                        int requested = GadgetUtils.getToolRange(stack) + packet.value;
-                        GadgetUtils.setToolRange(stack, MultitoolRangePolicy.clamp(requested, ExtraConfig.multitoolMaxRange()));
-                    }
+                    OptionalInt range = MultitoolRangePolicy.resolve(
+                            active,
+                            GadgetUtils.getToolRange(stack) + packet.value,
+                            ExtraConfig.multitoolMaxRange());
+                    if (range.isPresent()) GadgetUtils.setToolRange(stack, range.getAsInt());
                     break;
                 case ROTATE: delegate.onRotate(stack, player); break;
                 case MIRROR: delegate.onMirror(stack, player); break;
