@@ -100,6 +100,8 @@ jobs:
       - name: Verify real client UI-server round trip
         working-directory: ${{ matrix.working_directory }}
         shell: bash
+        env:
+          LIBGL_ALWAYS_SOFTWARE: '1'
         run: |
           set -euo pipefail
           SERVER_DIR='${{ matrix.integration_server_dir }}'
@@ -154,8 +156,25 @@ jobs:
           xvfb-run -a ./gradlew '${{ matrix.integration_client_task }}' --no-daemon --no-configuration-cache
 
           test -f "$RESULT_DIR/client-pass.txt"
-          test -f "$RESULT_DIR/server-pass.txt"
           test ! -f "$RESULT_DIR/client-fail.txt"
-          test ! -f "$RESULT_DIR/server-fail.txt"
+
+          SERVER_RESULT=0
+          for _ in $(seq 1 40); do
+            if [ -f "$RESULT_DIR/server-fail.txt" ]; then
+              cat "$RESULT_DIR/server-fail.txt"
+              exit 1
+            fi
+            if [ -f "$RESULT_DIR/server-pass.txt" ]; then
+              SERVER_RESULT=1
+              break
+            fi
+            sleep 0.1
+          done
+          if [ "$SERVER_RESULT" -ne 1 ]; then
+            echo 'Client passed but authoritative server pass marker was not observed.'
+            cat "$SERVER_LOG"
+            exit 1
+          fi
+
           cat "$RESULT_DIR/client-pass.txt"
           cat "$RESULT_DIR/server-pass.txt"
