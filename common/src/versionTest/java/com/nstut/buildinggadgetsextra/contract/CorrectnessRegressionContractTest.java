@@ -86,6 +86,41 @@ class CorrectnessRegressionContractTest {
     }
 
     @Test
+    void allPortsKeepRealClientUiServerRoundTripCoverage() throws Exception {
+        Path root = module.getParent();
+        String build = read(module.resolve("build.gradle"));
+        contains(build, "clientIntegrationTest", "dedicated client-integration source set");
+        contains(build, "run-client-integration", "isolated real-client run directory");
+        contains(build, "bge.clientIntegrationTest", "real-client test enablement property");
+        contains(build, "clientIntegrationTestServer", "dedicated integration server run");
+
+        String scenario = read(root.resolve("common/src/clientIntegrationTest/java/com/nstut/buildinggadgetsextra/clienttest/ClientRangeRoundTripScenario.java"));
+        contains(scenario, "clickRangePlus", "real UI interaction phase");
+        contains(scenario, "clientRange()", "synchronized client ItemStack assertion");
+        contains(scenario, "closeScreen", "close/reopen regression phase");
+        contains(scenario, "visibleScreenRange() == TARGET_RANGE", "reopened UI value assertion");
+        assertFalse(scenario.contains("MultitoolRangePacket.apply"),
+                label("real-client scenario must not bypass networking by calling the server mutation helper"));
+
+        String adapter;
+        if (legacyCut) {
+            adapter = read(module.resolve("src/clientIntegrationTest/java/com/nstut/buildinggadgetsextra/clienttest/Forge1165ClientRangeIntegrationTest.java"));
+            contains(adapter, "mouseClicked", "legacy real-screen click path");
+        } else {
+            adapter = read(root.resolve("common/src/clientIntegrationModern/java/com/nstut/buildinggadgetsextra/clienttest/ModernClientRangeAdapter.java"));
+            contains(adapter, "IncrementalSliderWidget", "modern real range widget observation");
+            contains(adapter, "mouseClicked", "modern real-screen click path");
+            String observer = read(root.resolve("common/src/clientIntegrationModern/java/com/nstut/buildinggadgetsextra/clienttest/ModernServerRangeObserver.java"));
+            contains(observer, "authoritative server range", "independent authoritative-server observation");
+        }
+
+        String workflow = read(root.resolve(".github/workflows/ci.yml"));
+        contains(workflow, "Verify real client UI-server round trip", "CI real-client execution");
+        contains(workflow, "server-pass.txt", "CI authoritative-server pass marker");
+        contains(workflow, "client-pass.txt", "CI client pass marker");
+    }
+
+    @Test
     void bg2MultitoolKeepsIdentityUndoGeneralStateAndEnergyProfileLocal() throws Exception {
         if (legacyCut) return;
 
