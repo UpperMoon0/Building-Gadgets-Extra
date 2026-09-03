@@ -9,8 +9,8 @@ import net.minecraftforge.fml.common.Mod;
 @Mod.EventBusSubscriber(modid = ExtraConstants.MOD_ID, value = Dist.CLIENT)
 public final class Forge1201ClientRangeIntegrationTest {
     private static final boolean ENABLED = Boolean.getBoolean(ClientRangeRoundTripScenario.ENABLE_PROPERTY);
-    private static final ClientRangeRoundTripScenario SCENARIO =
-            new ClientRangeRoundTripScenario(new ModernClientRangeAdapter());
+    private static final ClientRangeRoundTripScenario SCENARIO = new ClientRangeRoundTripScenario(
+            new ModernClientRangeAdapter((screen, x, y) -> screen.mouseClicked(x, y, 0)));
 
     private Forge1201ClientRangeIntegrationTest() {}
 
