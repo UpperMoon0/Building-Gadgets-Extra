@@ -1,0 +1,136 @@
+name: Dedicated Client E2E
+
+on:
+  workflow_call:
+  workflow_dispatch:
+  schedule:
+    - cron: '23 3 * * *'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: dedicated-client-e2e-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  dedicated-e2e:
+    name: ${{ matrix.name }} dedicated round trip
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Forge 1.20.1
+            java: '21'
+            working_directory: .
+            integration_server_task: :forge-1.20.1:runClientIntegrationTestServer
+            integration_client_task: :forge-1.20.1:runDedicatedClientIntegrationTest
+            integration_server_dir: forge-1.20.1/run-client-integration-server
+            integration_result_dir: forge-1.20.1/build/client-integration-dedicated
+          - name: NeoForge 26.1.2
+            java: '25'
+            working_directory: neoforge-26.1.2
+            integration_server_task: runClientIntegrationTestServer
+            integration_client_task: runDedicatedClientIntegrationTest
+            integration_server_dir: run-client-integration-server
+            integration_result_dir: build/client-integration-dedicated
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Setup Java ${{ matrix.java }}
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: ${{ matrix.java }}
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Install headless display support
+        shell: bash
+        run: |
+          if ! command -v xvfb-run >/dev/null 2>&1; then
+            sudo apt-get update -qq
+            sudo apt-get install -y xvfb libgl1-mesa-dri
+          fi
+
+      - name: Verify real client against dedicated server
+        working-directory: ${{ matrix.working_directory }}
+        shell: bash
+        env:
+          LIBGL_ALWAYS_SOFTWARE: '1'
+        run: |
+          set -euo pipefail
+          SERVER_DIR='${{ matrix.integration_server_dir }}'
+          RESULT_DIR='${{ matrix.integration_result_dir }}'
+          SERVER_LOG="$RESULT_DIR/server.log"
+
+          rm -rf "$RESULT_DIR" "$SERVER_DIR/bge-client-integration"
+          mkdir -p "$SERVER_DIR" "$RESULT_DIR"
+          printf 'eula=true\n' > "$SERVER_DIR/eula.txt"
+          cat > "$SERVER_DIR/server.properties" <<'EOF'
+          online-mode=false
+          server-port=25565
+          gamemode=creative
+          level-name=bge-client-integration
+          motd=BGE dedicated client integration test
+          spawn-protection=0
+          view-distance=2
+          simulation-distance=2
+          EOF
+
+          chmod +x ./gradlew
+          setsid ./gradlew '${{ matrix.integration_server_task }}' --no-daemon --no-configuration-cache > "$SERVER_LOG" 2>&1 &
+          SERVER_PID=$!
+          cleanup() {
+            kill -- -"$SERVER_PID" >/dev/null 2>&1 || true
+          }
+          trap cleanup EXIT
+
+          READY=0
+          for _ in $(seq 1 180); do
+            if grep -q 'Done (' "$SERVER_LOG"; then
+              READY=1
+              break
+            fi
+            if ! kill -0 "$SERVER_PID" >/dev/null 2>&1; then
+              cat "$SERVER_LOG"
+              exit 1
+            fi
+            sleep 1
+          done
+          if [[ "$READY" -ne 1 ]]; then
+            echo 'Dedicated integration server did not become ready.' >&2
+            cat "$SERVER_LOG"
+            exit 1
+          fi
+
+          xvfb-run -a ./gradlew '${{ matrix.integration_client_task }}' --no-daemon --no-configuration-cache
+
+          test -f "$RESULT_DIR/client-pass.txt"
+          test ! -f "$RESULT_DIR/client-fail.txt"
+
+          SERVER_RESULT=0
+          for _ in $(seq 1 40); do
+            if [[ -f "$RESULT_DIR/server-fail.txt" ]]; then
+              cat "$RESULT_DIR/server-fail.txt"
+              exit 1
+            fi
+            if [[ -f "$RESULT_DIR/server-pass.txt" ]]; then
+              SERVER_RESULT=1
+              break
+            fi
+            sleep 0.1
+          done
+          if [[ "$SERVER_RESULT" -ne 1 ]]; then
+            echo 'Client passed but authoritative server pass marker was not observed.' >&2
+            cat "$SERVER_LOG"
+            exit 1
+          fi
+
+          cat "$RESULT_DIR/client-pass.txt"
+          cat "$RESULT_DIR/server-pass.txt"
