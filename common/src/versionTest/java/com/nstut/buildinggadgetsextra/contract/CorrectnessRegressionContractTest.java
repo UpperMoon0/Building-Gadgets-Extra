@@ -96,6 +96,28 @@ class CorrectnessRegressionContractTest {
     }
 
     @Test
+    void forge1201RangePacketPersistsAndPublishesTheAuthoritativeStack() throws Exception {
+        if (!"1.20.1".equals(minecraftVersion) || !"forge".equals(loader)) return;
+
+        String packet = source("network/MultitoolRangePacket.java");
+        contains(packet, "BuildersMultitool", "multitool-specific range acceptance");
+        contains(packet, "MultitoolRangePolicy.clamp", "server-authoritative range validation");
+        contains(packet, "GadgetNBT.setToolRange", "server-authoritative range persistence");
+        contains(packet, "containerMenu.broadcastChanges", "server-to-client held-stack publication");
+
+        String upstreamBridge = source("mixin/PacketRangeChangeMultitoolMixin.java");
+        contains(upstreamBridge, "MultitoolRangePacket.apply", "BG2 radial range packet bridge");
+
+        String network = source("network/ExtraNetwork.java");
+        contains(network, "MultitoolRangePacket.class", "range hotkey packet registration");
+
+        String gameTest = source("gametest/MultitoolGameTests.java");
+        contains(gameTest, "rangePacketPersistsAndSynchronizesHeldStack", "runtime range sync regression");
+        contains(gameTest, "ContainerSynchronizer", "runtime client-bound inventory sync observation");
+        contains(gameTest, "clientSlotUpdate", "runtime synchronized stack assertion");
+    }
+
+    @Test
     void neoForge2612RegistersTheMultitoolEnergyCapability() throws Exception {
         if (!"26.1.2".equals(minecraftVersion)) return;
 
