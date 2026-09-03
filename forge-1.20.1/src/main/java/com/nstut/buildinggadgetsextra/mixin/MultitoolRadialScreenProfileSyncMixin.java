@@ -29,7 +29,7 @@ public abstract class MultitoolRadialScreenProfileSyncMixin {
 
     @Unique private boolean buildingGadgetsExtra$waitingForProfileSync;
 
-    @Inject(method = "rebuildContextButtons", at = @At("HEAD"), cancellable = true)
+    @Inject(method = "rebuildContextButtons", at = @At("HEAD"), cancellable = true, remap = false)
     private void buildingGadgetsExtra$waitForSelectedProfile(CallbackInfo ci) {
         if (buildingGadgetsExtra$isProfilePending()) {
             buildingGadgetsExtra$waitingForProfileSync = true;
@@ -37,7 +37,7 @@ public abstract class MultitoolRadialScreenProfileSyncMixin {
         }
     }
 
-    @Inject(method = "mouseClicked", at = @At("HEAD"), cancellable = true)
+    @Inject(method = "mouseClicked", at = @At("HEAD"), cancellable = true, remap = true)
     private void buildingGadgetsExtra$blockStaleProfileClicks(double mouseX, double mouseY, int button,
                                                                CallbackInfoReturnable<Boolean> cir) {
         if (buildingGadgetsExtra$waitingForProfileSync) {
@@ -45,7 +45,7 @@ public abstract class MultitoolRadialScreenProfileSyncMixin {
         }
     }
 
-    @Inject(method = "render", at = @At("HEAD"), cancellable = true)
+    @Inject(method = "render", at = @At("HEAD"), cancellable = true, remap = true)
     private void buildingGadgetsExtra$reopenAfterProfileSync(GuiGraphics graphics, int mouseX, int mouseY,
                                                               float partialTick, CallbackInfo ci) {
         if (!buildingGadgetsExtra$waitingForProfileSync) return;
