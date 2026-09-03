@@ -4,7 +4,7 @@ import com.direwolf20.buildinggadgets2.client.KeyBindings;
 import com.direwolf20.buildinggadgets2.common.items.BaseGadget;
 import com.direwolf20.buildinggadgets2.util.GadgetNBT;
 import com.nstut.buildinggadgetsextra.common.ExtraConstants;
-import com.nstut.buildinggadgetsextra.common.MultitoolMode;
+import com.nstut.buildinggadgetsextra.common.MultitoolRangePolicy;
 import com.nstut.buildinggadgetsextra.item.BuildersMultitool;
 import com.nstut.buildinggadgetsextra.item.MultitoolState;
 import com.nstut.buildinggadgetsextra.network.ExtraNetwork;
@@ -17,6 +17,8 @@ import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.eventbus.api.EventPriority;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
+
+import java.util.OptionalInt;
 
 @Mod.EventBusSubscriber(modid = ExtraConstants.MOD_ID, value = Dist.CLIENT)
 public final class MultitoolClientEvents {
@@ -35,12 +37,12 @@ public final class MultitoolClientEvents {
             return;
         }
         if (KeyBindings.range.consumeClick()) {
-            MultitoolMode mode = MultitoolState.getActiveMode(stack);
-            if (mode != MultitoolMode.BUILD && mode != MultitoolMode.EXCHANGING) return;
-            int max = ExtraConfig.multitoolMaxRange();
-            int oldRange = GadgetNBT.getToolRange(stack);
-            int newRange = oldRange >= max ? 1 : oldRange + 1;
-            ExtraNetwork.sendToServer(new MultitoolRangePacket(newRange));
+            OptionalInt nextRange = MultitoolRangePolicy.next(
+                    MultitoolState.getActiveMode(stack),
+                    GadgetNBT.getToolRange(stack),
+                    ExtraConfig.multitoolMaxRange());
+            if (!nextRange.isPresent()) return;
+            ExtraNetwork.sendToServer(new MultitoolRangePacket(nextRange.getAsInt()));
         }
     }
 }
