@@ -76,6 +76,7 @@ minecraft {
             client true
             workingDirectory project.file('run-client-integration-dedicated')
             property 'bge.clientIntegrationTest', 'true'
+            property 'bge.clientIntegrationDedicated', 'true'
             property 'bge.clientIntegrationResultDir', project.file('build/client-integration-dedicated').absolutePath
             args '--quickPlayMultiplayer', '127.0.0.1:25565'
             mods {
