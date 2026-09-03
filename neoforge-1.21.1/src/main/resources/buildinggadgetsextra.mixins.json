@@ -6,7 +6,9 @@
   "client": [
     "ModeRadialMenuMixin",
     "RenderLevelLastMultitoolMixin",
-    "MultitoolRadialScreenRangeMixin"
+    "MultitoolRadialScreenRangeMixin",
+    "MultitoolRadialScreenProfileSyncMixin",
+    "CopyGUIMultitoolMixin"
   ],
   "mixins": [
     "GadgetNBTMultitoolMixin",
