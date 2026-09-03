@@ -11,8 +11,13 @@ permissions:
   actions: read
 
 jobs:
+  client-e2e:
+    name: Dedicated client E2E
+    uses: ./.github/workflows/client-e2e.yml
+
   release:
     name: Build and release
+    needs: client-e2e
     runs-on: ubuntu-latest
 
     steps:
