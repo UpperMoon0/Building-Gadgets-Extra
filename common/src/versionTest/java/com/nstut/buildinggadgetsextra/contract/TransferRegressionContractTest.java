@@ -41,16 +41,28 @@ class TransferRegressionContractTest {
     }
 
     @Test
-    void uploadsRequirePasteModeAtStartAndRevalidation() throws Exception {
+    void uploadsRequirePasteModeAtStartAndThroughFinalCommit() throws Exception {
         String upload = source("network/" + ("forge".equals(loader)
                 ? "StructureUploadPacket.java" : "StructureUploadHandler.java"));
         String pasteGuard = "1.16.5".equals(minecraftVersion)
                 ? "GadgetCopyPaste.ToolMode.PASTE"
                 : "instanceof Paste";
-        assertTrue(occurrences(upload, pasteGuard) >= 2,
-                label("upload authorization must require Paste mode both at transfer capture and revalidation"));
-        contains(upload, "if (!transfer.matches(player))", "per-chunk upload revalidation");
-        contains(upload, "if (transfer.matches(player))", "final pre-commit upload revalidation");
+
+        String capture = section(upload, "private static TransferState capture", "private boolean matches");
+        String matches = upload.substring(upload.indexOf("private boolean matches"));
+        contains(capture, pasteGuard, "Paste-mode authorization at transfer capture");
+        contains(matches, pasteGuard, "Paste-mode authorization during transfer revalidation");
+
+        int perChunkRevalidation = upload.indexOf("if (!transfer.matches(player))");
+        int acceptChunk = upload.indexOf("transfer.chunks.accept");
+        assertTrue(perChunkRevalidation >= 0 && acceptChunk > perChunkRevalidation,
+                label("authorization must be revalidated before accepting each upload chunk"));
+
+        int complete = upload.indexOf("if (transfer.chunks.isComplete())");
+        int finalRevalidation = upload.indexOf("if (transfer.matches(player))", complete);
+        int commit = upload.indexOf("NativeStructureBridge.importStructure", finalRevalidation);
+        assertTrue(complete >= 0 && finalRevalidation > complete && commit > finalRevalidation,
+                label("Paste mode and gadget/profile identity must be revalidated immediately before import commit"));
     }
 
     private String source(String relative) throws IOException {
@@ -66,14 +78,12 @@ class TransferRegressionContractTest {
         assertTrue(source.contains(expected), label(feature + " must contain " + expected));
     }
 
-    private static int occurrences(String source, String needle) {
-        int count = 0;
-        int offset = 0;
-        while ((offset = source.indexOf(needle, offset)) >= 0) {
-            count++;
-            offset += needle.length();
-        }
-        return count;
+    private String section(String source, String startMarker, String endMarker) {
+        int start = source.indexOf(startMarker);
+        int end = start < 0 ? -1 : source.indexOf(endMarker, start + startMarker.length());
+        assertTrue(start >= 0 && end > start,
+                label("unable to locate source section between " + startMarker + " and " + endMarker));
+        return source.substring(start, end);
     }
 
     private String label(String message) {
