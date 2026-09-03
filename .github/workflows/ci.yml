@@ -1,0 +1,265 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  changes:
+    name: Select affected versions
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    outputs:
+      matrix: ${{ steps.plan.outputs.matrix }}
+      run_versions: ${{ steps.plan.outputs.run_versions }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Build affected-version matrix
+        id: plan
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PUSH_BEFORE_SHA: ${{ github.event.before }}
+          HEAD_SHA: ${{ github.sha }}
+        run: |
+          python3 - <<'PY'
+          import json
+          import os
+          import subprocess
+
+          entries = {
+              "forge1165": {
+                  "id": "forge1165",
+                  "name": "Forge 1.16.5",
+                  "java": "21",
+                  "working_directory": ".",
+                  "command": "./gradlew :forge-1.16.5:build --configure-on-demand --no-daemon --no-configuration-cache",
+                  "client_kind": "none"
+              },
+              "forge1201": {
+                  "id": "forge1201",
+                  "name": "Forge 1.20.1 + GameTest + client",
+                  "java": "21",
+                  "working_directory": ".",
+                  "command": "./gradlew :forge-1.20.1:build :forge-1.20.1:runGameTestServer --no-daemon --no-configuration-cache",
+                  "client_kind": "integrated",
+                  "integration_client_task": ":forge-1.20.1:runClientIntegrationTest",
+                  "gametest_run_dir": "forge-1.20.1/run",
+                  "client_game_dir": "forge-1.20.1/run-client-integration",
+                  "integration_result_dir": "forge-1.20.1/build/client-integration"
+              },
+              "neoforge1211": {
+                  "id": "neoforge1211",
+                  "name": "NeoForge 1.21.1 + GameTest",
+                  "java": "21",
+                  "working_directory": ".",
+                  "command": "./gradlew :neoforge-1.21.1:build :neoforge-1.21.1:runGameTestServer --configure-on-demand --no-daemon --no-configuration-cache",
+                  "client_kind": "none"
+              },
+              "neoforge2612": {
+                  "id": "neoforge2612",
+                  "name": "NeoForge 26.1.2 + GameTest + client",
+                  "java": "25",
+                  "working_directory": "neoforge-26.1.2",
+                  "command": "./gradlew build runGameTestServer --no-daemon --no-configuration-cache",
+                  "client_kind": "integrated",
+                  "integration_client_task": "runClientIntegrationTest",
+                  "gametest_run_dir": "run",
+                  "client_game_dir": "run-client-integration",
+                  "integration_result_dir": "build/client-integration"
+              }
+          }
+
+          event = os.environ.get("EVENT_NAME", "")
+          head = os.environ["HEAD_SHA"]
+          base = os.environ.get("PR_BASE_SHA") if event == "pull_request" else os.environ.get("PUSH_BEFORE_SHA")
+
+          select_all = False
+          changed = []
+          if not base or set(base) == {"0"}:
+              select_all = True
+          else:
+              try:
+                  changed = subprocess.check_output(
+                      ["git", "diff", "--name-only", base, head], text=True
+                  ).splitlines()
+              except subprocess.CalledProcessError:
+                  select_all = True
+
+          selected = set(entries) if select_all else set()
+          light_only = {
+              "README.md",
+              "CHANGELOG.md",
+              "CURSEFORGE.md",
+              "LICENSE",
+              ".github/workflows/release.yml",
+              ".github/workflows/client-e2e.yml"
+          }
+          global_files = {
+              "build.gradle",
+              "settings.gradle",
+              "gradle.properties",
+              "gradlew",
+              "gradlew.bat",
+              ".github/workflows/ci.yml"
+          }
+
+          for path in changed:
+              if path.startswith("common/") or path.startswith("gradle/") or path in global_files:
+                  selected.update(entries)
+              elif path.startswith("forge-1.16.5/"):
+                  selected.add("forge1165")
+              elif path.startswith("forge-1.20.1/"):
+                  selected.add("forge1201")
+              elif path.startswith("neoforge-1.21.1/"):
+                  selected.add("neoforge1211")
+              elif path.startswith("neoforge-26.1.2/"):
+                  selected.add("neoforge2612")
+              elif path in light_only or path.startswith("docs/"):
+                  pass
+              else:
+                  # Unknown repository-level changes are safer to verify everywhere.
+                  selected.update(entries)
+
+          order = ["forge1165", "forge1201", "neoforge1211", "neoforge2612"]
+          include = [entries[key] for key in order if key in selected]
+          if not include:
+              include = [{
+                  "id": "none",
+                  "name": "No version build required",
+                  "java": "21",
+                  "working_directory": ".",
+                  "command": "true",
+                  "client_kind": "none"
+              }]
+
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as handle:
+              handle.write("matrix=" + json.dumps({"include": include}, separators=(",", ":")) + "\n")
+              handle.write("run_versions=" + ("true" if selected else "false") + "\n")
+
+          print("Changed files:")
+          for path in changed:
+              print(" -", path)
+          print("Selected versions:", ", ".join(key for key in order if key in selected) or "none")
+          PY
+
+  shared:
+    name: Shared unit and contract tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Setup Java 21
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Run shared tests
+        run: |
+          chmod +x ./gradlew
+          ./gradlew -p common test --no-daemon --no-configuration-cache
+
+  versions:
+    name: Verify ${{ matrix.name }}
+    needs: changes
+    if: needs.changes.outputs.run_versions == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix: ${{ fromJSON(needs.changes.outputs.matrix) }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Setup Java ${{ matrix.java }}
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: ${{ matrix.java }}
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Verify version
+        working-directory: ${{ matrix.working_directory }}
+        run: |
+          chmod +x ./gradlew
+          ${{ matrix.command }}
+
+      - name: Install headless display support
+        if: matrix.client_kind == 'integrated'
+        shell: bash
+        run: |
+          if ! command -v xvfb-run >/dev/null 2>&1; then
+            sudo apt-get update -qq
+            sudo apt-get install -y xvfb libgl1-mesa-dri
+          fi
+
+      - name: Prepare GameTest world for integrated client
+        if: matrix.client_kind == 'integrated'
+        working-directory: ${{ matrix.working_directory }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          GAME_TEST_DIR='${{ matrix.gametest_run_dir }}'
+          CLIENT_DIR='${{ matrix.client_game_dir }}'
+          RESULT_DIR='${{ matrix.integration_result_dir }}'
+          WORLD_NAME='bge-client-integration'
+
+          rm -rf "$RESULT_DIR" "$CLIENT_DIR/saves/$WORLD_NAME"
+          mkdir -p "$RESULT_DIR" "$CLIENT_DIR/saves"
+
+          LEVEL_DAT="$(find "$GAME_TEST_DIR" -maxdepth 4 -type f -name level.dat -print -quit)"
+          if [[ -z "$LEVEL_DAT" ]]; then
+            echo "GameTest completed but no reusable level.dat was found under $GAME_TEST_DIR." >&2
+            find "$GAME_TEST_DIR" -maxdepth 3 -type f | sort || true
+            exit 1
+          fi
+
+          WORLD_DIR="$(dirname "$LEVEL_DAT")"
+          cp -a "$WORLD_DIR" "$CLIENT_DIR/saves/$WORLD_NAME"
+          rm -f "$CLIENT_DIR/saves/$WORLD_NAME/session.lock"
+          echo "Reusing GameTest world $WORLD_DIR as integrated client world $WORLD_NAME."
+
+      - name: Verify real client UI-server round trip on integrated server
+        if: matrix.client_kind == 'integrated'
+        working-directory: ${{ matrix.working_directory }}
+        shell: bash
+        env:
+          LIBGL_ALWAYS_SOFTWARE: '1'
+        run: |
+          set -euo pipefail
+          RESULT_DIR='${{ matrix.integration_result_dir }}'
+          chmod +x ./gradlew
+
+          xvfb-run -a ./gradlew '${{ matrix.integration_client_task }}' --no-daemon --no-configuration-cache
+
+          test -f "$RESULT_DIR/client-pass.txt"
+          test ! -f "$RESULT_DIR/client-fail.txt"
+          test -f "$RESULT_DIR/server-pass.txt"
+          test ! -f "$RESULT_DIR/server-fail.txt"
+          cat "$RESULT_DIR/client-pass.txt"
+          cat "$RESULT_DIR/server-pass.txt"

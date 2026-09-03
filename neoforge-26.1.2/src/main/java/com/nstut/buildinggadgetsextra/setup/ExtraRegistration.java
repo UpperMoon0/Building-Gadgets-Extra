@@ -1,12 +1,17 @@
 package com.nstut.buildinggadgetsextra.setup;
 
+import com.direwolf20.buildinggadgets2.setup.BG2DataComponents;
 import com.nstut.buildinggadgetsextra.BuildingGadgetsExtra;
 import com.nstut.buildinggadgetsextra.item.BuildersMultitool;
 import net.minecraft.world.item.Item;
 import net.neoforged.bus.api.IEventBus;
+import net.neoforged.neoforge.capabilities.Capabilities;
+import net.neoforged.neoforge.capabilities.RegisterCapabilitiesEvent;
 import net.neoforged.neoforge.event.BuildCreativeModeTabContentsEvent;
 import net.neoforged.neoforge.registries.DeferredRegister;
 import net.neoforged.neoforge.registries.DeferredItem;
+import net.neoforged.neoforge.transfer.access.ItemAccess;
+import net.neoforged.neoforge.transfer.energy.ItemAccessEnergyHandler;
 
 public final class ExtraRegistration {
     public static final DeferredRegister.Items ITEMS = DeferredRegister.createItems(BuildingGadgetsExtra.MODID);
@@ -19,7 +24,17 @@ public final class ExtraRegistration {
 
     public static void register(IEventBus bus) {
         ITEMS.register(bus);
+        bus.addListener(ExtraRegistration::registerCapabilities);
         bus.addListener(ExtraRegistration::addCreativeTabContents);
+    }
+
+    private static void registerCapabilities(RegisterCapabilitiesEvent event) {
+        event.registerItem(Capabilities.Energy.ITEM,
+                (stack, access) -> new ItemAccessEnergyHandler(
+                        access != null ? access : ItemAccess.forStack(stack),
+                        BG2DataComponents.FORGE_ENERGY.get(),
+                        ((BuildersMultitool) stack.getItem()).getEnergyMax()),
+                BUILDERS_MULTITOOL.get());
     }
 
     private static void addCreativeTabContents(BuildCreativeModeTabContentsEvent event) {
@@ -28,4 +43,3 @@ public final class ExtraRegistration {
         }
     }
 }
-

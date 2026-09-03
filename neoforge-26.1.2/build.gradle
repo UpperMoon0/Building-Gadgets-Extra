@@ -24,10 +24,27 @@ base {
     archivesName = "building-gadgets-extra-neoforge-${minecraft_version}"
 }
 
-sourceSets.main.java.srcDir file('../common/src/main/java')
-sourceSets.main.resources.srcDir file('../common/src/main/resources')
-sourceSets.test.java.srcDir file('../common/src/test/java')
-sourceSets.test.java.srcDir file('../common/src/versionTest/java')
+sourceSets {
+    main {
+        java.srcDir file('../common/src/main/java')
+        resources.srcDir file('../common/src/main/resources')
+    }
+    test {
+        java.srcDir file('../common/src/versionTest/java')
+    }
+    clientIntegrationTest {
+        java.srcDir file('../common/src/clientIntegrationTest/java')
+        java.srcDir file('../common/src/clientIntegrationModern/java')
+        java.srcDir file('src/clientIntegrationTest/java')
+        compileClasspath += sourceSets.main.output + sourceSets.main.compileClasspath
+        runtimeClasspath += output + compileClasspath + sourceSets.main.runtimeClasspath
+    }
+}
+
+configurations {
+    clientIntegrationTestImplementation.extendsFrom implementation
+    clientIntegrationTestRuntimeOnly.extendsFrom runtimeOnly
+}
 
 java.toolchain.languageVersion = JavaLanguageVersion.of(25)
 
@@ -40,11 +57,38 @@ neoForge {
             server()
             programArgument '--nogui'
         }
+        gameTestServer {
+            type = "gameTestServer"
+            systemProperty 'neoforge.enabledGameTestNamespaces', mod_id
+        }
+        clientIntegrationTest {
+            client()
+            gameDirectory = project.file('run-client-integration')
+            systemProperty 'bge.clientIntegrationTest', 'true'
+            systemProperty 'bge.clientIntegrationResultDir', project.file('build/client-integration').absolutePath
+            programArguments = ['--quickPlaySingleplayer', 'bge-client-integration']
+        }
+        dedicatedClientIntegrationTest {
+            client()
+            gameDirectory = project.file('run-client-integration-dedicated')
+            systemProperty 'bge.clientIntegrationTest', 'true'
+            systemProperty 'bge.clientIntegrationDedicated', 'true'
+            systemProperty 'bge.clientIntegrationResultDir', project.file('build/client-integration-dedicated').absolutePath
+            programArguments = ['--quickPlayMultiplayer', '127.0.0.1:25565']
+        }
+        clientIntegrationTestServer {
+            server()
+            gameDirectory = project.file('run-client-integration-server')
+            systemProperty 'bge.clientIntegrationTest', 'true'
+            systemProperty 'bge.clientIntegrationResultDir', project.file('build/client-integration-dedicated').absolutePath
+            programArgument '--nogui'
+        }
     }
 
     mods {
         "${mod_id}" {
             sourceSet(sourceSets.main)
+            sourceSet(sourceSets.clientIntegrationTest)
         }
     }
 }
@@ -62,6 +106,12 @@ tasks.named('test', Test).configure {
     systemProperty 'bge.minecraftVersion', minecraft_version
     systemProperty 'bge.loader', 'neoforge'
     systemProperty 'bge.legacyCut', 'false'
+    testLogging {
+        events 'failed'
+        exceptionFormat = 'full'
+        showCauses = true
+        showStackTraces = true
+    }
 }
 
 def generateModMetadata = tasks.register('generateModMetadata', ProcessResources) {

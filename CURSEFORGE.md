@@ -1,8 +1,8 @@
 # Building Gadgets Extra
 
-Building Gadgets Extra is a growing addon for **Building Gadgets** and **Building Gadgets 2** that gives builders more freedom and makes copied builds easier to reuse.
+Building Gadgets Extra is an addon for **Building Gadgets** and **Building Gadgets 2** that gives builders more freedom and makes copied builds easier to reuse.
 
-Everything fits into the familiar Building Gadgets radial menu, so you can keep building the way you already know. Whether you are adjusting a small decoration or moving an entire build between worlds, the extra controls are always close at hand.
+Everything fits into the familiar Building Gadgets workflow, so the extra controls stay close to the tools you already use.
 
 ## Current Features
 
@@ -17,19 +17,29 @@ Everything fits into the familiar Building Gadgets radial menu, so you can keep 
 ### Save and Reuse Your Builds
 
 - Save the build held by your gadget as a standard Minecraft structure file on your computer.
-- Load a saved build back into the **Copy Paste Gadget** whenever you are in Paste mode.
+- Load a saved build into the **Copy Paste Gadget** whenever you are in Paste mode.
 - Choose the file with your normal Windows, macOS, or Linux file picker—no commands or extra menus required.
-- Take your favorite builds from one singleplayer world or multiplayer server to another.
-- Keep saved builds organized in the default `.minecraft/building_gadgets_extra/structures` folder, or choose any folder you prefer.
-- Preserve directional blocks and block contents when saving and loading.
+- Take builds from one singleplayer world or multiplayer server to another.
+- Keep saved builds in the default `.minecraft/building_gadgets_extra/structures` folder, or choose another folder.
+- Preserve block geometry and orientation through the structure-file workflow.
 
 Saved builds use Minecraft's standard `.nbt` structure format, so they can also be used with vanilla Structure Blocks. Mobs and other entities are not included.
 
+For multiplayer safety, external structure files can only be imported into the Copy Paste Gadget while it remains in Paste mode. Uploads stay bound to the initiating gadget/profile and are revalidated through final commit, so switching gadget, multitool profile, or mode aborts the pending import. Imported block-entity NBT is deliberately stripped, so inventories and other arbitrary block-entity contents from a local file are **not** restored onto a server. Building Gadgets 2 ports also sanitize imported block states through upstream validation.
+
+Imports are limited to a 100,000-position bounding volume, an 8 MiB compressed transfer, and a 64 MiB decoded-NBT budget. The volume includes air inside the declared dimensions. Concurrent transfers are also capped per player.
+
+### Builder's Multitool
+
+The Builder's Multitool combines the supported gadget roles into one physical endgame tool. Each virtual profile keeps its own mode, range/settings, template identity and undo history, while the tool shares one FE battery. Bound inventory position and side are profile-local as well, and energy use follows the currently active gadget profile.
+
+Build and Exchange profiles can reach farther than the native tools: server owners can configure `multitoolMaxRange` from 1 to 64, with a default of 32. This does not raise the range limit of normal Building Gadgets tools. The radial range control, range key, server validation, and saved profile state all obey the configured multitool cap.
+
+Creative players can use the multitool with an empty FE battery. Survival players still require and consume the configured energy for the corresponding gadget profile.
+
 ## Multiplayer
 
-Building Gadgets Extra works in singleplayer and multiplayer. For multiplayer, install it on the server and on each player's client. Every player keeps their own saved-build collection on their computer.
-
-Mirroring and reusable builds are only the beginning. Future releases will add more tools, controls, and quality-of-life features for builders.
+Building Gadgets Extra works in singleplayer and multiplayer. For multiplayer, install it on the server and on each player's client. Every player keeps their own saved-build collection on their computer, while gadget/template changes remain server-authoritative.
 
 ## Supported Versions
 

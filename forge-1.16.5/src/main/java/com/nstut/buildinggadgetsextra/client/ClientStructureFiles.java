@@ -1,8 +1,172 @@
 package com.nstut.buildinggadgetsextra.client;
-import com.nstut.buildinggadgetsextra.common.*;import com.nstut.buildinggadgetsextra.network.*;import net.minecraft.client.Minecraft;import net.minecraft.util.text.TranslationTextComponent;import org.lwjgl.PointerBuffer;import org.lwjgl.system.MemoryStack;import org.lwjgl.util.tinyfd.TinyFileDialogs;import java.nio.file.*;import java.util.*;
-public final class ClientStructureFiles{private static final Map<UUID,ChunkAccumulator> DOWNLOADS=new HashMap<>();private static final Map<String,Deque<Path>> DESTINATIONS=new HashMap<>();private ClientStructureFiles(){}public static Path root(){return Minecraft.getInstance().gameDirectory.toPath().resolve("building_gadgets_extra").resolve("structures");}
- public static void chooseSave(){dialog(()->{try{Files.createDirectories(root());try(MemoryStack stack=MemoryStack.stackPush()){String result=TinyFileDialogs.tinyfd_saveFileDialog(new TranslationTextComponent(ExtraConstants.DIALOG_SAVE_STRUCTURE).getString(),root().resolve("structure.nbt").toString(),filters(stack),new TranslationTextComponent(ExtraConstants.DIALOG_NBT_FILES).getString());if(result==null)return;Path path=Paths.get(result);if(!path.getFileName().toString().toLowerCase(Locale.ROOT).endsWith(".nbt"))path=Paths.get(result+".nbt");String name=name(path);synchronized(DESTINATIONS){DESTINATIONS.computeIfAbsent(name,k->new ArrayDeque<>()).add(path);}Minecraft.getInstance().execute(()->ExtraNetwork.sendToServer(new StructureFilePacket(false,name)));}}catch(Exception e){message(ExtraConstants.STRUCTURE_SAVE_FAILED,"structure");}});}
- public static void chooseLoad(){dialog(()->{try{Files.createDirectories(root());try(MemoryStack stack=MemoryStack.stackPush()){String result=TinyFileDialogs.tinyfd_openFileDialog(new TranslationTextComponent(ExtraConstants.DIALOG_OPEN_STRUCTURE).getString(),root().resolve("structure.nbt").toString(),filters(stack),new TranslationTextComponent(ExtraConstants.DIALOG_NBT_FILES).getString(),false);if(result!=null)upload(Paths.get(result));}}catch(Exception e){message(ExtraConstants.STRUCTURE_LOAD_FAILED,"structure");}});}
- public static void receive(StructureDownloadPacket p){try{ChunkAccumulator t=DOWNLOADS.computeIfAbsent(p.id,k->new ChunkAccumulator(p.total));if(!t.accept(p.index,p.data)){DOWNLOADS.remove(p.id);return;}if(t.isComplete()){DOWNLOADS.remove(p.id);Path file;synchronized(DESTINATIONS){Deque<Path> q=DESTINATIONS.get(p.name);file=q==null?null:q.poll();if(q!=null&&q.isEmpty())DESTINATIONS.remove(p.name);}if(file==null)file=root().resolve(p.name+".nbt");Files.createDirectories(file.toAbsolutePath().getParent());Files.write(file,t.join());message(ExtraConstants.STRUCTURE_SAVED,file.getFileName().toString());}}catch(Exception e){DOWNLOADS.remove(p.id);message(ExtraConstants.STRUCTURE_SAVE_FAILED,p.name);}}
- private static void upload(Path file){String name=name(file);try{if(Files.size(file)>ExtraConstants.MAX_STRUCTURE_FILE_BYTES)throw new IllegalArgumentException();byte[] bytes=Files.readAllBytes(file);UUID id=UUID.randomUUID();int total=Math.max(1,(bytes.length+ExtraConstants.STRUCTURE_CHUNK_SIZE-1)/ExtraConstants.STRUCTURE_CHUNK_SIZE);Minecraft.getInstance().execute(()->{for(int i=0;i<total;i++){int start=i*ExtraConstants.STRUCTURE_CHUNK_SIZE,end=Math.min(bytes.length,start+ExtraConstants.STRUCTURE_CHUNK_SIZE);ExtraNetwork.sendToServer(new StructureUploadPacket(id,name,i,total,Arrays.copyOfRange(bytes,start,end)));}});}catch(Exception e){message(ExtraConstants.STRUCTURE_LOAD_FAILED,file.getFileName().toString());}}
- private static PointerBuffer filters(MemoryStack s){PointerBuffer f=s.mallocPointer(1);f.put(s.UTF8("*.nbt"));return f.flip();}private static String name(Path p){String n=p.getFileName().toString();if(n.toLowerCase(Locale.ROOT).endsWith(".nbt"))n=n.substring(0,n.length()-4);n=n.toLowerCase(Locale.ROOT).replaceAll("[^a-z0-9._-]","_");return n.isEmpty()?"structure":n;}private static void dialog(Runnable r){Thread t=new Thread(r,"Building Gadgets Extra File Dialog");t.setDaemon(true);t.start();}private static void message(String k,Object...a){Minecraft.getInstance().execute(()->{if(Minecraft.getInstance().player!=null)Minecraft.getInstance().player.displayClientMessage(new TranslationTextComponent(k,a),true);});}}
+
+import com.nstut.buildinggadgetsextra.common.ChunkAccumulator;
+import com.nstut.buildinggadgetsextra.common.ExtraConstants;
+import com.nstut.buildinggadgetsextra.common.PendingSaveTarget;
+import com.nstut.buildinggadgetsextra.network.ExtraNetwork;
+import com.nstut.buildinggadgetsextra.network.StructureDownloadPacket;
+import com.nstut.buildinggadgetsextra.network.StructureFilePacket;
+import com.nstut.buildinggadgetsextra.network.StructureUploadPacket;
+import net.minecraft.client.Minecraft;
+import net.minecraft.util.text.TranslationTextComponent;
+import org.lwjgl.PointerBuffer;
+import org.lwjgl.system.MemoryStack;
+import org.lwjgl.util.tinyfd.TinyFileDialogs;
+
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Locale;
+import java.util.Map;
+import java.util.UUID;
+
+public final class ClientStructureFiles {
+    // Packet receive always runs on the Minecraft client thread. Keep this map
+    // strictly client-thread-owned; the native file-dialog thread never touches it.
+    private static final Map<UUID, ChunkAccumulator> DOWNLOADS = new HashMap<>();
+    private static final Map<UUID, PendingSaveTarget> SAVE_DESTINATIONS = new HashMap<>();
+
+    private ClientStructureFiles() {}
+
+    public static Path root() {
+        return Minecraft.getInstance().gameDirectory.toPath()
+                .resolve("building_gadgets_extra").resolve("structures");
+    }
+
+    public static void chooseSave() {
+        dialog(() -> {
+            try {
+                Files.createDirectories(root());
+                try (MemoryStack stack = MemoryStack.stackPush()) {
+                    String result = TinyFileDialogs.tinyfd_saveFileDialog(
+                            new TranslationTextComponent(ExtraConstants.DIALOG_SAVE_STRUCTURE).getString(),
+                            root().resolve("structure.nbt").toString(), filters(stack),
+                            new TranslationTextComponent(ExtraConstants.DIALOG_NBT_FILES).getString());
+                    if (result == null) return;
+                    Path path = Paths.get(result);
+                    if (!path.getFileName().toString().toLowerCase(Locale.ROOT).endsWith(".nbt")) {
+                        path = Paths.get(result + ".nbt");
+                    }
+                    String name = name(path);
+                    UUID requestId = UUID.randomUUID();
+                    pruneSaveDestinations();
+                    synchronized (SAVE_DESTINATIONS) {
+                        SAVE_DESTINATIONS.put(requestId, new PendingSaveTarget(path));
+                    }
+                    Minecraft.getInstance().execute(() ->
+                            ExtraNetwork.sendToServer(new StructureFilePacket(false, name, requestId)));
+                }
+            } catch (Exception error) {
+                message(ExtraConstants.STRUCTURE_SAVE_FAILED, "structure");
+            }
+        });
+    }
+
+    public static void chooseLoad() {
+        dialog(() -> {
+            try {
+                Files.createDirectories(root());
+                try (MemoryStack stack = MemoryStack.stackPush()) {
+                    String result = TinyFileDialogs.tinyfd_openFileDialog(
+                            new TranslationTextComponent(ExtraConstants.DIALOG_OPEN_STRUCTURE).getString(),
+                            root().resolve("structure.nbt").toString(), filters(stack),
+                            new TranslationTextComponent(ExtraConstants.DIALOG_NBT_FILES).getString(), false);
+                    if (result != null) upload(Paths.get(result));
+                }
+            } catch (Exception error) {
+                message(ExtraConstants.STRUCTURE_LOAD_FAILED, "structure");
+            }
+        });
+    }
+
+    public static void receive(StructureDownloadPacket packet) {
+        pruneDownloads();
+        pruneSaveDestinations();
+        try {
+            ChunkAccumulator transfer = DOWNLOADS.computeIfAbsent(packet.id,
+                    key -> new ChunkAccumulator(packet.total));
+            if (!transfer.accept(packet.index, packet.data)) {
+                DOWNLOADS.remove(packet.id);
+                return;
+            }
+            if (!transfer.isComplete()) return;
+
+            DOWNLOADS.remove(packet.id);
+            Path file = removeDestination(packet.id);
+            if (file == null) file = root().resolve(packet.name + ".nbt");
+            Files.createDirectories(file.toAbsolutePath().getParent());
+            Files.write(file, transfer.join());
+            message(ExtraConstants.STRUCTURE_SAVED, file.getFileName().toString());
+        } catch (Exception error) {
+            DOWNLOADS.remove(packet.id);
+            message(ExtraConstants.STRUCTURE_SAVE_FAILED, packet.name);
+        }
+    }
+
+    private static void upload(Path file) {
+        String name = name(file);
+        try {
+            if (Files.size(file) > ExtraConstants.MAX_STRUCTURE_FILE_BYTES) throw new IllegalArgumentException();
+            byte[] bytes = Files.readAllBytes(file);
+            UUID id = UUID.randomUUID();
+            int total = Math.max(1, (bytes.length + ExtraConstants.STRUCTURE_CHUNK_SIZE - 1)
+                    / ExtraConstants.STRUCTURE_CHUNK_SIZE);
+            Minecraft.getInstance().execute(() -> {
+                for (int i = 0; i < total; i++) {
+                    int start = i * ExtraConstants.STRUCTURE_CHUNK_SIZE;
+                    int end = Math.min(bytes.length, start + ExtraConstants.STRUCTURE_CHUNK_SIZE);
+                    ExtraNetwork.sendToServer(new StructureUploadPacket(
+                            id, name, i, total, Arrays.copyOfRange(bytes, start, end)));
+                }
+            });
+        } catch (Exception error) {
+            message(ExtraConstants.STRUCTURE_LOAD_FAILED, file.getFileName().toString());
+        }
+    }
+
+    private static void pruneDownloads() {
+        DOWNLOADS.entrySet().removeIf(entry -> entry.getValue().isExpired());
+    }
+
+    private static void pruneSaveDestinations() {
+        synchronized (SAVE_DESTINATIONS) {
+            SAVE_DESTINATIONS.entrySet().removeIf(entry -> entry.getValue().isExpired());
+        }
+    }
+
+    private static Path removeDestination(UUID requestId) {
+        synchronized (SAVE_DESTINATIONS) {
+            PendingSaveTarget target = SAVE_DESTINATIONS.remove(requestId);
+            return target == null ? null : target.path();
+        }
+    }
+
+    private static PointerBuffer filters(MemoryStack stack) {
+        PointerBuffer filters = stack.mallocPointer(1);
+        filters.put(stack.UTF8("*.nbt"));
+        return filters.flip();
+    }
+
+    private static String name(Path path) {
+        String name = path.getFileName().toString();
+        if (name.toLowerCase(Locale.ROOT).endsWith(".nbt")) name = name.substring(0, name.length() - 4);
+        name = name.toLowerCase(Locale.ROOT).replaceAll("[^a-z0-9._-]", "_");
+        return name.isEmpty() ? "structure" : name;
+    }
+
+    private static void dialog(Runnable action) {
+        Thread thread = new Thread(action, "Building Gadgets Extra File Dialog");
+        thread.setDaemon(true);
+        thread.start();
+    }
+
+    private static void message(String key, Object... args) {
+        Minecraft.getInstance().execute(() -> {
+            if (Minecraft.getInstance().player != null) {
+                Minecraft.getInstance().player.displayClientMessage(new TranslationTextComponent(key, args), true);
+            }
+        });
+    }
+}

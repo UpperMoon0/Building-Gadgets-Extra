@@ -5,10 +5,19 @@
   "compatibilityLevel": "JAVA_21",
   "client": [
     "ModeRadialMenuMixin",
-    "RenderLevelLastMultitoolMixin"
+    "RenderLevelLastMultitoolMixin",
+    "MultitoolRadialScreenRangeMixin",
+    "MultitoolRadialScreenProfileSyncMixin",
+    "GuiIncrementerAccessor",
+    "CopyGUIMultitoolMixin"
   ],
   "mixins": [
     "GadgetNBTMultitoolMixin",
+    "GadgetNBTRangeMixin",
+    "BuildingUtilsMultitoolEnergyMixin",
+    "BuildersMultitoolDefaultsMixin",
+    "GadgetCutPasteEmptyCutMixin",
+    "PacketRangeChangeMultitoolMixin",
     "StructurePaletteInvoker",
     "StructureTemplateAccessor"
   ],

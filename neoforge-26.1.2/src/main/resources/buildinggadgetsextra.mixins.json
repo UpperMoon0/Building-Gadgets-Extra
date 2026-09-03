@@ -5,12 +5,21 @@
   "compatibilityLevel": "JAVA_25",
   "client": [
     "ModeRadialMenuMixin",
-    "RenderLevelLastMultitoolMixin"
+    "RenderLevelLastMultitoolMixin",
+    "MultitoolRadialScreenRangeMixin",
+    "MultitoolRadialScreenProfileSyncMixin",
+    "GuiIncrementerAccessor",
+    "CopyGUIMultitoolMixin"
   ],
   "mixins": [
     "StructurePaletteInvoker",
     "StructureTemplateAccessor",
-    "GadgetNBTMultitoolMixin"
+    "GadgetNBTMultitoolMixin",
+    "GadgetNBTRangeMixin",
+    "BuildingUtilsMultitoolEnergyMixin",
+    "BuildersMultitoolDefaultsMixin",
+    "GadgetCutPasteEmptyCutMixin",
+    "PacketRangeChangeMultitoolMixin"
   ],
   "injectors": {
     "defaultRequire": 1
