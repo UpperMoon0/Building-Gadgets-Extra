@@ -23,6 +23,7 @@
 
 - Added a server-configurable `multitoolMaxRange` for Builder's Multitool Build/Exchange profiles. It defaults to 32 and accepts 1-64; native Building Gadgets range limits are unchanged.
 - Multitool radial range controls, the range hotkey, server packet handling, and restored/stale item state now obey the same server-authoritative range cap.
+- Added opt-in `debugInstrumentation` diagnostics for multitool range packet/state synchronization. The instrumentation is disabled by default and uses a shared per-category token bucket with a burst of 4 and refill rate of 2 messages per second, including suppression counts when traffic is throttled.
 - Creative players can operate the Builder's Multitool with an empty FE battery; Survival still obeys the configured gadget energy costs.
 
 ### Security
@@ -38,5 +39,6 @@
 
 - Added PR/main CI without automatic publishing.
 - Added in-game GameTests for Forge 1.20.1, NeoForge 1.21.1, and NeoForge 26.1.2, including profile defaults, configured range clamping, creative zero-FE operation, and 26.1.2 FE/profile/Cut runtime coverage.
+- Added shared unit tests and cross-version contracts for the debug-instrumentation rate limiter/config gating.
 - Releases now require an explicit `v*` tag or manual workflow dispatch.
 - Release commits must be the current `main` commit and must already have a successful exact-commit CI run before publishing can proceed.
