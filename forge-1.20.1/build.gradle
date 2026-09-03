@@ -60,6 +60,17 @@ minecraft {
             workingDirectory project.file('run-client-integration')
             property 'bge.clientIntegrationTest', 'true'
             property 'bge.clientIntegrationResultDir', project.file('build/client-integration').absolutePath
+            args '--quickPlaySingleplayer', 'bge-client-integration'
+            mods {
+                "${mod_id}" { source sourceSets.clientIntegrationTest }
+            }
+        }
+        dedicatedClientIntegrationTest {
+            parent runs.client
+            client true
+            workingDirectory project.file('run-client-integration-dedicated')
+            property 'bge.clientIntegrationTest', 'true'
+            property 'bge.clientIntegrationResultDir', project.file('build/client-integration-dedicated').absolutePath
             args '--quickPlayMultiplayer', '127.0.0.1:25565'
             mods {
                 "${mod_id}" { source sourceSets.clientIntegrationTest }
@@ -70,7 +81,7 @@ minecraft {
             client false
             workingDirectory project.file('run-client-integration-server')
             property 'bge.clientIntegrationTest', 'true'
-            property 'bge.clientIntegrationResultDir', project.file('build/client-integration').absolutePath
+            property 'bge.clientIntegrationResultDir', project.file('build/client-integration-dedicated').absolutePath
             args '--nogui'
             mods {
                 "${mod_id}" { source sourceSets.clientIntegrationTest }
