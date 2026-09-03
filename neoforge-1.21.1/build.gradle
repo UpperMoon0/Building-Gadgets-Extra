@@ -28,8 +28,8 @@ sourceSets {
         java.srcDir rootProject.file('common/src/clientIntegrationTest/java')
         java.srcDir rootProject.file('common/src/clientIntegrationModern/java')
         java.srcDir project.file('src/clientIntegrationTest/java')
-        compileClasspath += sourceSets.main.output
-        runtimeClasspath += sourceSets.main.output
+        compileClasspath += sourceSets.main.output + sourceSets.main.compileClasspath
+        runtimeClasspath += output + compileClasspath + sourceSets.main.runtimeClasspath
     }
 }
 
