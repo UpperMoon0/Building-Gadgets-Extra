@@ -6,8 +6,8 @@ import com.nstut.buildinggadgetsextra.item.BuildersMultitool;
 import com.nstut.buildinggadgetsextra.setup.ExtraRegistration;
 import net.minecraft.entity.player.ServerPlayerEntity;
 import net.minecraft.item.ItemStack;
-import net.minecraft.server.MinecraftServer;
 import net.minecraft.util.Hand;
+import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.event.entity.player.PlayerEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
@@ -17,12 +17,13 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 @Mod.EventBusSubscriber(modid = ExtraConstants.MOD_ID)
 public final class Forge1165ServerRangeIntegrationTest {
+    private static ServerPlayerEntity watchedPlayer;
+    private static int ticks;
+    private static boolean finished;
+
     private Forge1165ServerRangeIntegrationTest() {}
 
     @SubscribeEvent
@@ -35,41 +36,30 @@ public final class Forge1165ServerRangeIntegrationTest {
         GadgetUtils.setToolRange(stack, ClientRangeRoundTripScenario.START_RANGE);
         player.setItemInHand(Hand.MAIN_HAND, stack);
         player.containerMenu.broadcastChanges();
-        watchAuthoritativeRange(player);
+        watchedPlayer = player;
+        ticks = 0;
+        finished = false;
     }
 
-    private static void watchAuthoritativeRange(ServerPlayerEntity player) {
-        MinecraftServer server = player.getServer();
-        if (server == null) return;
-        Thread watcher = new Thread(() -> {
-            try {
-                for (int i = 0; i < ClientRangeRoundTripScenario.TIMEOUT_TICKS; i++) {
-                    AtomicBoolean matched = new AtomicBoolean(false);
-                    CountDownLatch latch = new CountDownLatch(1);
-                    server.execute(() -> {
-                        try {
-                            ItemStack held = player.getItemInHand(Hand.MAIN_HAND);
-                            matched.set(held.getItem() instanceof BuildersMultitool
-                                    && GadgetUtils.getToolRange(held) == ClientRangeRoundTripScenario.TARGET_RANGE);
-                            if (matched.get()) {
-                                write("server-pass.txt", "authoritative server range=" + GadgetUtils.getToolRange(held));
-                            }
-                        } finally {
-                            latch.countDown();
-                        }
-                    });
-                    latch.await(2, TimeUnit.SECONDS);
-                    if (matched.get()) return;
-                    Thread.sleep(50L);
-                }
-                write("server-fail.txt", "server never observed authoritative range=" + ClientRangeRoundTripScenario.TARGET_RANGE);
-            } catch (Throwable error) {
-                error.printStackTrace();
-                write("server-fail.txt", error.toString());
-            }
-        }, "BGE client integration server observer");
-        watcher.setDaemon(true);
-        watcher.start();
+    @SubscribeEvent
+    public static void onServerTick(TickEvent.ServerTickEvent event) {
+        if (!Boolean.getBoolean(ClientRangeRoundTripScenario.ENABLE_PROPERTY)
+                || event.phase != TickEvent.Phase.END || finished || watchedPlayer == null) return;
+        ticks++;
+
+        ItemStack held = watchedPlayer.getItemInHand(Hand.MAIN_HAND);
+        if (held.getItem() instanceof BuildersMultitool
+                && GadgetUtils.getToolRange(held) == ClientRangeRoundTripScenario.TARGET_RANGE) {
+            finished = true;
+            write("server-pass.txt", "authoritative server range=" + GadgetUtils.getToolRange(held));
+            return;
+        }
+
+        if (ticks > ClientRangeRoundTripScenario.TIMEOUT_TICKS) {
+            finished = true;
+            write("server-fail.txt", "server never observed authoritative range="
+                    + ClientRangeRoundTripScenario.TARGET_RANGE + "; current=" + GadgetUtils.getToolRange(held));
+        }
     }
 
     private static void write(String file, String detail) {
