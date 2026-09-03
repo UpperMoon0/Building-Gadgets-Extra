@@ -91,7 +91,7 @@ public final class ModernServerRangeObserver {
 
         if (buildRangeObserved && exchangeRangeObserved && copySelectionObserved && destructionRangesObserved) {
             finished = true;
-            write("server-pass.txt", "authoritative server observed build/exchange profiles, copy selection, and destruction ranges");
+            write("server-pass.txt", "authoritative server range/profile observer saw build/exchange profiles, copy selection, and destruction ranges");
             return;
         }
 
