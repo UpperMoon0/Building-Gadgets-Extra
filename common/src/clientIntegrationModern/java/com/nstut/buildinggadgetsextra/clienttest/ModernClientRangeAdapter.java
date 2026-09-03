@@ -64,14 +64,8 @@ public final class ModernClientRangeAdapter implements ClientRangeRoundTripScena
 
     @Override
     public int visibleScreenRange() {
-        Screen screen = minecraft().screen;
-        if (!(screen instanceof MultitoolRadialScreen)) return -1;
-        for (GuiEventListener child : screen.children()) {
-            if (child instanceof IncrementalSliderWidget) {
-                return ((IncrementalSliderWidget) child).getValueInt();
-            }
-        }
-        return -1;
+        IncrementalSliderWidget slider = rangeSliderOrNull();
+        return slider == null ? -1 : slider.getValueInt();
     }
 
     @Override
@@ -83,8 +77,9 @@ public final class ModernClientRangeAdapter implements ClientRangeRoundTripScena
     @Override
     public void clickRangePlus() {
         Screen screen = radialScreen();
-        // Actual + component created by IncrementalSliderWidget.getComponents() for the range rail.
-        clicker.click(screen, screen.width / 2.0 + 206.0, screen.height / 2.0 - 37.0);
+        IncrementalSliderWidget slider = rangeSliderOrNull();
+        if (slider == null) throw new IllegalStateException("range slider missing");
+        clickSliderPlus(screen, slider);
     }
 
     @Override
@@ -176,12 +171,12 @@ public final class ModernClientRangeAdapter implements ClientRangeRoundTripScena
 
     @Override
     public void clickDestructionLeftPlus() {
-        clickSliderPlus(destructionSlider(-145, -7));
+        clickSliderPlus(destructionScreen(), destructionSlider(-145, -7));
     }
 
     @Override
     public void clickDestructionDepthPlus() {
-        clickSliderPlus(destructionSlider(-35, -7));
+        clickSliderPlus(destructionScreen(), destructionSlider(-35, -7));
     }
 
     @Override
@@ -227,6 +222,15 @@ public final class ModernClientRangeAdapter implements ClientRangeRoundTripScena
                 screen.height / 2.0 + Math.sin(angle) * 68.0);
     }
 
+    private IncrementalSliderWidget rangeSliderOrNull() {
+        Screen screen = minecraft().screen;
+        if (!(screen instanceof MultitoolRadialScreen)) return null;
+        for (GuiEventListener child : screen.children()) {
+            if (child instanceof IncrementalSliderWidget) return (IncrementalSliderWidget) child;
+        }
+        return null;
+    }
+
     private GuiIncrementer copyStartX() {
         Screen screen = copyScreen();
         GuiIncrementer result = null;
@@ -255,8 +259,7 @@ public final class ModernClientRangeAdapter implements ClientRangeRoundTripScena
         throw new IllegalStateException("destruction slider missing at " + expectedX + "," + expectedY);
     }
 
-    private void clickSliderPlus(IncrementalSliderWidget slider) {
-        Screen screen = destructionScreen();
+    private void clickSliderPlus(Screen screen, IncrementalSliderWidget slider) {
         clicker.click(screen,
                 slider.getX() + slider.getWidth() + 5.0 + slider.getHeight() / 2.0,
                 slider.getY() + slider.getHeight() / 2.0);
