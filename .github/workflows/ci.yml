@@ -47,36 +47,36 @@ jobs:
         include:
           - name: Forge 1.16.5
             java: '21'
-            working-directory: .
+            working_directory: .
             command: ./gradlew :forge-1.16.5:build --configure-on-demand --no-daemon --no-configuration-cache
-            integration-server-task: :forge-1.16.5:runClientIntegrationTestServer
-            integration-client-task: :forge-1.16.5:runClientIntegrationTest
-            integration-server-dir: forge-1.16.5/run-client-integration-server
-            integration-result-dir: forge-1.16.5/build/client-integration
+            integration_server_task: :forge-1.16.5:runClientIntegrationTestServer
+            integration_client_task: :forge-1.16.5:runClientIntegrationTest
+            integration_server_dir: forge-1.16.5/run-client-integration-server
+            integration_result_dir: forge-1.16.5/build/client-integration
           - name: Forge 1.20.1 + GameTest
             java: '21'
-            working-directory: .
+            working_directory: .
             command: ./gradlew :forge-1.20.1:build :forge-1.20.1:runGameTestServer --no-daemon --no-configuration-cache
-            integration-server-task: :forge-1.20.1:runClientIntegrationTestServer
-            integration-client-task: :forge-1.20.1:runClientIntegrationTest
-            integration-server-dir: forge-1.20.1/run-client-integration-server
-            integration-result-dir: forge-1.20.1/build/client-integration
+            integration_server_task: :forge-1.20.1:runClientIntegrationTestServer
+            integration_client_task: :forge-1.20.1:runClientIntegrationTest
+            integration_server_dir: forge-1.20.1/run-client-integration-server
+            integration_result_dir: forge-1.20.1/build/client-integration
           - name: NeoForge 1.21.1 + GameTest
             java: '21'
-            working-directory: .
+            working_directory: .
             command: ./gradlew :neoforge-1.21.1:build :neoforge-1.21.1:runGameTestServer --configure-on-demand --no-daemon --no-configuration-cache
-            integration-server-task: :neoforge-1.21.1:runClientIntegrationTestServer
-            integration-client-task: :neoforge-1.21.1:runClientIntegrationTest
-            integration-server-dir: neoforge-1.21.1/run-client-integration-server
-            integration-result-dir: neoforge-1.21.1/build/client-integration
+            integration_server_task: :neoforge-1.21.1:runClientIntegrationTestServer
+            integration_client_task: :neoforge-1.21.1:runClientIntegrationTest
+            integration_server_dir: neoforge-1.21.1/run-client-integration-server
+            integration_result_dir: neoforge-1.21.1/build/client-integration
           - name: NeoForge 26.1.2 + GameTest
             java: '25'
-            working-directory: neoforge-26.1.2
+            working_directory: neoforge-26.1.2
             command: ./gradlew build runGameTestServer --no-daemon --no-configuration-cache
-            integration-server-task: runClientIntegrationTestServer
-            integration-client-task: runClientIntegrationTest
-            integration-server-dir: run-client-integration-server
-            integration-result-dir: build/client-integration
+            integration_server_task: runClientIntegrationTestServer
+            integration_client_task: runClientIntegrationTest
+            integration_server_dir: run-client-integration-server
+            integration_result_dir: build/client-integration
 
     steps:
       - name: Checkout repository
@@ -92,18 +92,18 @@ jobs:
         uses: gradle/actions/setup-gradle@v4
 
       - name: Verify version
-        working-directory: ${{ matrix.working-directory }}
+        working-directory: ${{ matrix.working_directory }}
         run: |
           chmod +x ./gradlew
           ${{ matrix.command }}
 
       - name: Verify real client UI-server round trip
-        working-directory: ${{ matrix.working-directory }}
+        working-directory: ${{ matrix.working_directory }}
         shell: bash
         run: |
           set -euo pipefail
-          SERVER_DIR='${{ matrix.integration-server-dir }}'
-          RESULT_DIR='${{ matrix.integration-result-dir }}'
+          SERVER_DIR='${{ matrix.integration_server_dir }}'
+          RESULT_DIR='${{ matrix.integration_result_dir }}'
           SERVER_LOG="$RESULT_DIR/server.log"
 
           rm -rf "$RESULT_DIR"
@@ -126,7 +126,7 @@ jobs:
           fi
 
           chmod +x ./gradlew
-          setsid ./gradlew '${{ matrix.integration-server-task }}' --no-daemon --no-configuration-cache > "$SERVER_LOG" 2>&1 &
+          setsid ./gradlew '${{ matrix.integration_server_task }}' --no-daemon --no-configuration-cache > "$SERVER_LOG" 2>&1 &
           SERVER_PID=$!
           cleanup() {
             kill -- -"$SERVER_PID" >/dev/null 2>&1 || true
@@ -151,7 +151,7 @@ jobs:
             exit 1
           fi
 
-          xvfb-run -a ./gradlew '${{ matrix.integration-client-task }}' --no-daemon --no-configuration-cache
+          xvfb-run -a ./gradlew '${{ matrix.integration_client_task }}' --no-daemon --no-configuration-cache
 
           test -f "$RESULT_DIR/client-pass.txt"
           test -f "$RESULT_DIR/server-pass.txt"
