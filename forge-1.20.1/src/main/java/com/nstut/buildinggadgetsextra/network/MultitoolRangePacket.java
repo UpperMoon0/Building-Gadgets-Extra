@@ -95,8 +95,11 @@ public final class MultitoolRangePacket {
                 + " mode=" + mode.serializedName()
                 + " publishedRange=" + GadgetNBT.getToolRange(stack)
                 + " mechanism=container-broadcast");
-        player.displayClientMessage(Component.translatable(
-                "buildinggadgets2.messages.range_set", resolvedRange), true);
+        if (player.connection != null && player.connection.connection.channel() != null
+                && player.connection.connection.isConnected()) {
+            player.displayClientMessage(Component.translatable(
+                    "buildinggadgets2.messages.range_set", resolvedRange), true);
+        }
         return true;
     }
 

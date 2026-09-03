@@ -2,6 +2,7 @@ package com.nstut.buildinggadgetsextra.gametest;
 
 import com.direwolf20.buildinggadgets2.util.DimBlockPos;
 import com.direwolf20.buildinggadgets2.util.GadgetNBT;
+import com.mojang.authlib.GameProfile;
 import com.nstut.buildinggadgetsextra.common.ExtraConstants;
 import com.nstut.buildinggadgetsextra.common.MultitoolMode;
 import com.nstut.buildinggadgetsextra.item.BuildersMultitool;
@@ -21,6 +22,7 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraftforge.gametest.GameTestHolder;
 import net.minecraftforge.gametest.PrefixGameTestTemplate;
+import net.minecraftforge.common.util.FakePlayerFactory;
 
 import java.util.LinkedList;
 import java.util.UUID;
@@ -112,7 +114,8 @@ public final class MultitoolGameTests {
 
     @GameTest(template = "bge_empty", timeoutTicks = 20)
     public static void rangePacketPersistsAndSynchronizesHeldStack(GameTestHelper helper) {
-        ServerPlayer player = helper.makeMockServerPlayerInLevel();
+        ServerPlayer player = FakePlayerFactory.get(helper.getLevel(),
+                new GameProfile(UUID.randomUUID(), "bge-range-test"));
         ItemStack stack = new ItemStack(ExtraRegistration.BUILDERS_MULTITOOL.get());
         BuildersMultitool multitool = (BuildersMultitool) stack.getItem();
         player.setItemInHand(InteractionHand.MAIN_HAND, stack);

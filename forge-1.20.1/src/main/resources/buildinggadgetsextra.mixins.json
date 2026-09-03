@@ -14,7 +14,6 @@
     "GadgetNBTMultitoolMixin",
     "GadgetNBTRangeMixin",
     "BuildingUtilsMultitoolEnergyMixin",
-    "BuildersMultitoolDefaultsMixin",
     "PacketRangeChangeAccessor",
     "PacketRangeChangeMultitoolMixin"
   ],

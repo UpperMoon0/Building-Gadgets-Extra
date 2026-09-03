@@ -49,9 +49,15 @@ minecraft {
                 "${mod_id}" { source sourceSets.main }
             }
         }
-        client {}
-        server { args '--nogui' }
+        client {
+            arg "-mixin.config=${mod_id}.mixins.json"
+        }
+        server {
+            arg "-mixin.config=${mod_id}.mixins.json"
+            args '--nogui'
+        }
         gameTestServer {
+            arg "-mixin.config=${mod_id}.mixins.json"
             property 'forge.enabledGameTestNamespaces', mod_id
         }
         clientIntegrationTest {
