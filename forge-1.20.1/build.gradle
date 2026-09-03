@@ -13,9 +13,27 @@ base {
 
 java.toolchain.languageVersion = JavaLanguageVersion.of(17)
 
-sourceSets.main.java.srcDir rootProject.file('common/src/main/java')
-sourceSets.main.resources.srcDir rootProject.file('common/src/main/resources')
-sourceSets.test.java.srcDir rootProject.file('common/src/versionTest/java')
+sourceSets {
+    main {
+        java.srcDir rootProject.file('common/src/main/java')
+        resources.srcDir rootProject.file('common/src/main/resources')
+    }
+    test {
+        java.srcDir rootProject.file('common/src/versionTest/java')
+    }
+    clientIntegrationTest {
+        java.srcDir rootProject.file('common/src/clientIntegrationTest/java')
+        java.srcDir rootProject.file('common/src/clientIntegrationModern/java')
+        java.srcDir project.file('src/clientIntegrationTest/java')
+        compileClasspath += sourceSets.main.output
+        runtimeClasspath += sourceSets.main.output
+    }
+}
+
+configurations {
+    clientIntegrationTestImplementation.extendsFrom implementation
+    clientIntegrationTestRuntimeOnly.extendsFrom runtimeOnly
+}
 
 minecraft {
     mappings channel: 'official', version: minecraft_version
@@ -35,6 +53,24 @@ minecraft {
         server { args '--nogui' }
         gameTestServer {
             property 'forge.enabledGameTestNamespaces', mod_id
+        }
+        clientIntegrationTest {
+            workingDirectory project.file('run-client-integration')
+            property 'bge.clientIntegrationTest', 'true'
+            property 'bge.clientIntegrationResultDir', project.file('build/client-integration').absolutePath
+            args '--quickPlayMultiplayer', '127.0.0.1:25565'
+            mods {
+                "${mod_id}" { source sourceSets.clientIntegrationTest }
+            }
+        }
+        clientIntegrationTestServer {
+            workingDirectory project.file('run-client-integration-server')
+            property 'bge.clientIntegrationTest', 'true'
+            property 'bge.clientIntegrationResultDir', project.file('build/client-integration').absolutePath
+            args '--nogui'
+            mods {
+                "${mod_id}" { source sourceSets.clientIntegrationTest }
+            }
         }
     }
 }
