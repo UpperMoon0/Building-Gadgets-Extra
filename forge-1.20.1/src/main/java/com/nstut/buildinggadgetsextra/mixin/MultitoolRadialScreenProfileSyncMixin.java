@@ -37,7 +37,13 @@ public abstract class MultitoolRadialScreenProfileSyncMixin {
         }
     }
 
-    @Inject(method = "mouseClicked", at = @At("HEAD"), cancellable = true, remap = true)
+    /*
+     * These are overrides declared on our own screen class. ForgeGradle cannot derive an annotation-
+     * processor mapping for a mod-owned target method, while reobf still renames the override to the
+     * inherited SRG name. List both dev and production names explicitly instead of asking Mixin to
+     * remap a method on a class that has no mapping entry of its own.
+     */
+    @Inject(method = {"mouseClicked(DDI)Z", "m_6375_(DDI)Z"}, at = @At("HEAD"), cancellable = true, remap = false)
     private void buildingGadgetsExtra$blockStaleProfileClicks(double mouseX, double mouseY, int button,
                                                                CallbackInfoReturnable<Boolean> cir) {
         if (buildingGadgetsExtra$waitingForProfileSync) {
@@ -45,7 +51,10 @@ public abstract class MultitoolRadialScreenProfileSyncMixin {
         }
     }
 
-    @Inject(method = "render", at = @At("HEAD"), cancellable = true, remap = true)
+    @Inject(method = {
+            "render(Lnet/minecraft/client/gui/GuiGraphics;IIF)V",
+            "m_88315_(Lnet/minecraft/client/gui/GuiGraphics;IIF)V"
+    }, at = @At("HEAD"), cancellable = true, remap = false)
     private void buildingGadgetsExtra$reopenAfterProfileSync(GuiGraphics graphics, int mouseX, int mouseY,
                                                               float partialTick, CallbackInfo ci) {
         if (!buildingGadgetsExtra$waitingForProfileSync) return;
