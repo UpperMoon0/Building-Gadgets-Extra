@@ -47,6 +47,23 @@ class CorrectnessRegressionContractTest {
     }
 
     @Test
+    void allPortsShareMultitoolRangeDecisions() throws Exception {
+        if (legacyCut) {
+            String packet = source("network/LegacyMultitoolPacket.java");
+            contains(packet, "MultitoolRangePolicy.resolve", "shared legacy range validation and clamping");
+            return;
+        }
+
+        String client = source("client/MultitoolClientEvents.java");
+        contains(client, "MultitoolRangePolicy.next", "shared range-hotkey mode and wraparound policy");
+
+        String server = "forge".equals(loader)
+                ? source("network/MultitoolRangePacket.java")
+                : source("mixin/PacketRangeChangeMultitoolMixin.java");
+        contains(server, "MultitoolRangePolicy.resolve", "shared server range validation and clamping");
+    }
+
+    @Test
     void bg2MultitoolKeepsIdentityUndoGeneralStateAndEnergyProfileLocal() throws Exception {
         if (legacyCut) return;
 
@@ -101,7 +118,7 @@ class CorrectnessRegressionContractTest {
 
         String packet = source("network/MultitoolRangePacket.java");
         contains(packet, "BuildersMultitool", "multitool-specific range acceptance");
-        contains(packet, "MultitoolRangePolicy.clamp", "server-authoritative range validation");
+        contains(packet, "MultitoolRangePolicy.resolve", "shared server-authoritative range validation");
         contains(packet, "GadgetNBT.setToolRange", "server-authoritative range persistence");
         contains(packet, "containerMenu.broadcastChanges", "server-to-client held-stack publication");
 
