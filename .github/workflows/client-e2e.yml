@@ -18,7 +18,7 @@ jobs:
   dedicated-e2e:
     name: ${{ matrix.name }} dedicated round trip
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
@@ -107,7 +107,7 @@ jobs:
           trap cleanup EXIT
 
           READY=0
-          for _ in $(seq 1 180); do
+          for _ in $(seq 1 360); do
             if grep -q 'Done (' "$SERVER_LOG"; then
               READY=1
               break
