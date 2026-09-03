@@ -29,6 +29,13 @@ jobs:
             integration_client_task: :forge-1.20.1:runDedicatedClientIntegrationTest
             integration_server_dir: forge-1.20.1/run-client-integration-server
             integration_result_dir: forge-1.20.1/build/client-integration-dedicated
+          - name: NeoForge 1.21.1
+            java: '21'
+            working_directory: .
+            integration_server_task: :neoforge-1.21.1:runClientIntegrationTestServer
+            integration_client_task: :neoforge-1.21.1:runClientIntegrationTest
+            integration_server_dir: neoforge-1.21.1/run-client-integration-server
+            integration_result_dir: neoforge-1.21.1/build/client-integration
           - name: NeoForge 26.1.2
             java: '25'
             working_directory: neoforge-26.1.2
