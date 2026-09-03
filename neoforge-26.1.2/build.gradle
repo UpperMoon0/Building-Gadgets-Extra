@@ -72,6 +72,7 @@ neoForge {
             client()
             gameDirectory = project.file('run-client-integration-dedicated')
             systemProperty 'bge.clientIntegrationTest', 'true'
+            systemProperty 'bge.clientIntegrationDedicated', 'true'
             systemProperty 'bge.clientIntegrationResultDir', project.file('build/client-integration-dedicated').absolutePath
             programArguments = ['--quickPlayMultiplayer', '127.0.0.1:25565']
         }
