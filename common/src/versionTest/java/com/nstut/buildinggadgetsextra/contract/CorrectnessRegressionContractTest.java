@@ -64,6 +64,28 @@ class CorrectnessRegressionContractTest {
     }
 
     @Test
+    void allPortsGateRateLimitedRangeInstrumentationBehindDebugConfig() throws Exception {
+        String config = source("setup/ExtraConfig.java");
+        contains(config, "DEBUG_INSTRUMENTATION", "debug instrumentation config value");
+        contains(config, "debugInstrumentation", "debug instrumentation config accessor");
+        contains(config, "false", "debug instrumentation disabled-by-default value");
+
+        String server = legacyCut
+                ? source("network/LegacyMultitoolPacket.java")
+                : "forge".equals(loader)
+                    ? source("network/MultitoolRangePacket.java")
+                    : source("mixin/PacketRangeChangeMultitoolMixin.java");
+        contains(server, "DebugInstrumentation.log", "shared rate-limited instrumentation helper");
+        contains(server, "range-reject", "range rejection diagnostics");
+        contains(server, "range-apply", "range application diagnostics");
+        if (legacyCut || "forge".equals(loader)) {
+            contains(server, "range-sync", "explicit held-stack publication diagnostics");
+        } else {
+            contains(server, "range-state", "post-mutation authoritative state diagnostics");
+        }
+    }
+
+    @Test
     void bg2MultitoolKeepsIdentityUndoGeneralStateAndEnergyProfileLocal() throws Exception {
         if (legacyCut) return;
 
