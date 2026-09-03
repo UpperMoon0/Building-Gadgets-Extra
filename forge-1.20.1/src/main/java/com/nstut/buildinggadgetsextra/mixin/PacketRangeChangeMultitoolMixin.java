@@ -32,7 +32,7 @@ public abstract class PacketRangeChangeMultitoolMixin {
         if (!(held.getItem() instanceof BuildersMultitool)) return;
 
         int requested = ((PacketRangeChangeAccessor) (Object) message).buildingGadgetsExtra$getRange();
-        context.enqueueWork(() -> MultitoolRangePacket.apply(sender, requested));
+        context.enqueueWork(() -> MultitoolRangePacket.apply(sender, requested, "bg2-range-packet"));
         context.setPacketHandled(true);
         ci.cancel();
     }
