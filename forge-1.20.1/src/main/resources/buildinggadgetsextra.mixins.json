@@ -6,7 +6,9 @@
   "client": [
     "ModeRadialMenuMixin",
     "RenderLevelLastMultitoolMixin",
-    "MultitoolRadialScreenRangeMixin"
+    "MultitoolRadialScreenRangeMixin",
+    "MultitoolRadialScreenProfileSyncMixin",
+    "CopyGUIMultitoolMixin"
   ],
   "mixins": [
     "StructurePaletteInvoker",
@@ -15,7 +17,9 @@
     "GadgetNBTRangeMixin",
     "BuildingUtilsMultitoolEnergyMixin",
     "PacketRangeChangeAccessor",
-    "PacketRangeChangeMultitoolMixin"
+    "PacketRangeChangeMultitoolMixin",
+    "PacketDestructionRangesAccessor",
+    "PacketDestructionRangesMultitoolMixin"
   ],
   "injectors": {
     "defaultRequire": 1
