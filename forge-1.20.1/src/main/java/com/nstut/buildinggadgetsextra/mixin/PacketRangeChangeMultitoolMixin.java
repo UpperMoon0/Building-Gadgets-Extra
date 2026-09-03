@@ -2,13 +2,8 @@ package com.nstut.buildinggadgetsextra.mixin;
 
 import com.direwolf20.buildinggadgets2.common.items.BaseGadget;
 import com.direwolf20.buildinggadgets2.common.network.packets.PacketRangeChange;
-import com.direwolf20.buildinggadgets2.util.GadgetNBT;
-import com.nstut.buildinggadgetsextra.common.MultitoolMode;
-import com.nstut.buildinggadgetsextra.common.MultitoolRangePolicy;
 import com.nstut.buildinggadgetsextra.item.BuildersMultitool;
-import com.nstut.buildinggadgetsextra.item.MultitoolState;
-import com.nstut.buildinggadgetsextra.setup.ExtraConfig;
-import net.minecraft.network.chat.Component;
+import com.nstut.buildinggadgetsextra.network.MultitoolRangePacket;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
 import net.minecraftforge.network.NetworkEvent;
@@ -19,6 +14,11 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 import java.util.function.Supplier;
 
+/**
+ * BG2 1.0.8 rejects the Builder's Multitool because PacketRangeChange only accepts its
+ * concrete Building/Exchanging gadget classes. Redirect multitool packets into our
+ * server-authoritative range implementation instead.
+ */
 @Mixin(value = PacketRangeChange.class, remap = false)
 public abstract class PacketRangeChangeMultitoolMixin {
     @Inject(method = "handle", at = @At("HEAD"), cancellable = true)
@@ -31,16 +31,8 @@ public abstract class PacketRangeChangeMultitoolMixin {
         ItemStack held = BaseGadget.getGadget(sender);
         if (!(held.getItem() instanceof BuildersMultitool)) return;
 
-        context.enqueueWork(() -> {
-            ItemStack stack = BaseGadget.getGadget(sender);
-            if (!(stack.getItem() instanceof BuildersMultitool)) return;
-            MultitoolMode mode = MultitoolState.getActiveMode(stack);
-            if (mode != MultitoolMode.BUILD && mode != MultitoolMode.EXCHANGING) return;
-            int requested = ((PacketRangeChangeAccessor) (Object) message).buildingGadgetsExtra$getRange();
-            int range = MultitoolRangePolicy.clamp(requested, ExtraConfig.multitoolMaxRange());
-            GadgetNBT.setToolRange(stack, range);
-            sender.displayClientMessage(Component.translatable("buildinggadgets2.messages.range_set", range), true);
-        });
+        int requested = ((PacketRangeChangeAccessor) (Object) message).buildingGadgetsExtra$getRange();
+        context.enqueueWork(() -> MultitoolRangePacket.apply(sender, requested));
         context.setPacketHandled(true);
         ci.cancel();
     }
