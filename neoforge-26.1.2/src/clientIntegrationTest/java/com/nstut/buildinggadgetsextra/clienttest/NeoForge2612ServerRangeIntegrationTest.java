@@ -5,6 +5,7 @@ import net.minecraft.server.level.ServerPlayer;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.event.entity.player.PlayerEvent;
+import net.neoforged.neoforge.event.tick.ServerTickEvent;
 
 @EventBusSubscriber(modid = BuildingGadgetsExtra.MODID)
 public final class NeoForge2612ServerRangeIntegrationTest {
@@ -15,5 +16,11 @@ public final class NeoForge2612ServerRangeIntegrationTest {
         if (!Boolean.getBoolean(ClientRangeRoundTripScenario.ENABLE_PROPERTY)) return;
         if (!(event.getEntity() instanceof ServerPlayer)) return;
         ModernServerRangeObserver.setupAndWatch((ServerPlayer) event.getEntity());
+    }
+
+    @SubscribeEvent
+    public static void onServerTick(ServerTickEvent.Post event) {
+        if (!Boolean.getBoolean(ClientRangeRoundTripScenario.ENABLE_PROPERTY)) return;
+        ModernServerRangeObserver.tick();
     }
 }
