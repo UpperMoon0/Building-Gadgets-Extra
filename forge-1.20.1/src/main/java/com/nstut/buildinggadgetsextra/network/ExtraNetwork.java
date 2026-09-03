@@ -28,6 +28,8 @@ public final class ExtraNetwork {
                 MultitoolSelectionPacket::encode, MultitoolSelectionPacket::decode, MultitoolSelectionPacket::handle);
         CHANNEL.registerMessage(5, MultitoolCutPacket.class,
                 MultitoolCutPacket::encode, MultitoolCutPacket::decode, MultitoolCutPacket::handle);
+        CHANNEL.registerMessage(6, MultitoolRangePacket.class,
+                MultitoolRangePacket::encode, MultitoolRangePacket::decode, MultitoolRangePacket::handle);
     }
 
     public static void sendToServer(MirrorPacket packet) { CHANNEL.sendToServer(packet); }
@@ -35,6 +37,7 @@ public final class ExtraNetwork {
     public static void sendToServer(StructureUploadPacket packet) { CHANNEL.sendToServer(packet); }
     public static void sendToServer(MultitoolSelectionPacket packet) { CHANNEL.sendToServer(packet); }
     public static void sendToServer(MultitoolCutPacket packet) { CHANNEL.sendToServer(packet); }
+    public static void sendToServer(MultitoolRangePacket packet) { CHANNEL.sendToServer(packet); }
     public static void sendToPlayer(ServerPlayer player, StructureDownloadPacket packet) {
         CHANNEL.send(PacketDistributor.PLAYER.with(() -> player), packet);
     }
