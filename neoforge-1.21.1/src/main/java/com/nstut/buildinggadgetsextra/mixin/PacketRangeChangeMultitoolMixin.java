@@ -4,7 +4,6 @@ import com.direwolf20.buildinggadgets2.common.items.BaseGadget;
 import com.direwolf20.buildinggadgets2.common.network.data.RangeChangePayload;
 import com.direwolf20.buildinggadgets2.common.network.handler.PacketRangeChange;
 import com.direwolf20.buildinggadgets2.util.GadgetNBT;
-import com.nstut.buildinggadgetsextra.common.MultitoolMode;
 import com.nstut.buildinggadgetsextra.common.MultitoolRangePolicy;
 import com.nstut.buildinggadgetsextra.item.BuildersMultitool;
 import com.nstut.buildinggadgetsextra.item.MultitoolState;
@@ -17,6 +16,8 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
+import java.util.OptionalInt;
+
 @Mixin(value = PacketRangeChange.class, remap = false)
 public abstract class PacketRangeChangeMultitoolMixin {
     @Inject(method = "handle", at = @At("HEAD"), cancellable = true)
@@ -27,11 +28,12 @@ public abstract class PacketRangeChangeMultitoolMixin {
         context.enqueueWork(() -> {
             ItemStack stack = BaseGadget.getGadget(context.player());
             if (!(stack.getItem() instanceof BuildersMultitool)) return;
-            MultitoolMode mode = MultitoolState.getActiveMode(stack);
-            if (mode != MultitoolMode.BUILD && mode != MultitoolMode.EXCHANGING) return;
-            int range = MultitoolRangePolicy.clamp(payload.range(), ExtraConfig.multitoolMaxRange());
-            GadgetNBT.setToolRange(stack, range);
-            context.player().displayClientMessage(Component.translatable("buildinggadgets2.messages.range_set", range), true);
+            OptionalInt range = MultitoolRangePolicy.resolve(
+                    MultitoolState.getActiveMode(stack), payload.range(), ExtraConfig.multitoolMaxRange());
+            if (!range.isPresent()) return;
+            GadgetNBT.setToolRange(stack, range.getAsInt());
+            context.player().displayClientMessage(Component.translatable(
+                    "buildinggadgets2.messages.range_set", range.getAsInt()), true);
         });
         ci.cancel();
     }
