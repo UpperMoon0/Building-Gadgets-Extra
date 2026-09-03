@@ -8,6 +8,7 @@
     "RenderLevelLastMultitoolMixin",
     "MultitoolRadialScreenRangeMixin",
     "MultitoolRadialScreenProfileSyncMixin",
+    "GuiIncrementerAccessor",
     "CopyGUIMultitoolMixin"
   ],
   "mixins": [
