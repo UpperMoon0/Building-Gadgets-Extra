@@ -12,6 +12,7 @@ import com.nstut.buildinggadgetsextra.item.BuildersMultitool;
 import com.nstut.buildinggadgetsextra.item.MultitoolState;
 import com.nstut.buildinggadgetsextra.setup.ExtraConfig;
 import net.minecraft.network.chat.Component;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 import org.slf4j.Logger;
@@ -64,6 +65,9 @@ public abstract class PacketRangeChangeMultitoolMixin {
                     + " mode=" + mode.serializedName()
                     + " serverRange=" + GadgetNBT.getToolRange(stack)
                     + " mutation=complete");
+            if (context.player() instanceof ServerPlayer serverPlayer) {
+                serverPlayer.containerMenu.broadcastChanges();
+            }
             context.player().sendOverlayMessage(Component.translatable(
                     "buildinggadgets2.messages.range_set", resolvedRange));
         });
