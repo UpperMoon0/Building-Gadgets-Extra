@@ -39,7 +39,7 @@ jobs:
   versions:
     name: Verify ${{ matrix.name }}
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 25
     strategy:
       fail-fast: false
       max-parallel: 4
@@ -49,18 +49,34 @@ jobs:
             java: '21'
             working-directory: .
             command: ./gradlew :forge-1.16.5:build --configure-on-demand --no-daemon --no-configuration-cache
+            integration-server-task: :forge-1.16.5:runClientIntegrationTestServer
+            integration-client-task: :forge-1.16.5:runClientIntegrationTest
+            integration-server-dir: forge-1.16.5/run-client-integration-server
+            integration-result-dir: forge-1.16.5/build/client-integration
           - name: Forge 1.20.1 + GameTest
             java: '21'
             working-directory: .
             command: ./gradlew :forge-1.20.1:build :forge-1.20.1:runGameTestServer --no-daemon --no-configuration-cache
+            integration-server-task: :forge-1.20.1:runClientIntegrationTestServer
+            integration-client-task: :forge-1.20.1:runClientIntegrationTest
+            integration-server-dir: forge-1.20.1/run-client-integration-server
+            integration-result-dir: forge-1.20.1/build/client-integration
           - name: NeoForge 1.21.1 + GameTest
             java: '21'
             working-directory: .
             command: ./gradlew :neoforge-1.21.1:build :neoforge-1.21.1:runGameTestServer --configure-on-demand --no-daemon --no-configuration-cache
+            integration-server-task: :neoforge-1.21.1:runClientIntegrationTestServer
+            integration-client-task: :neoforge-1.21.1:runClientIntegrationTest
+            integration-server-dir: neoforge-1.21.1/run-client-integration-server
+            integration-result-dir: neoforge-1.21.1/build/client-integration
           - name: NeoForge 26.1.2 + GameTest
             java: '25'
             working-directory: neoforge-26.1.2
             command: ./gradlew build runGameTestServer --no-daemon --no-configuration-cache
+            integration-server-task: runClientIntegrationTestServer
+            integration-client-task: runClientIntegrationTest
+            integration-server-dir: run-client-integration-server
+            integration-result-dir: build/client-integration
 
     steps:
       - name: Checkout repository
@@ -80,3 +96,66 @@ jobs:
         run: |
           chmod +x ./gradlew
           ${{ matrix.command }}
+
+      - name: Verify real client UI-server round trip
+        working-directory: ${{ matrix.working-directory }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          SERVER_DIR='${{ matrix.integration-server-dir }}'
+          RESULT_DIR='${{ matrix.integration-result-dir }}'
+          SERVER_LOG="$RESULT_DIR/server.log"
+
+          rm -rf "$RESULT_DIR"
+          mkdir -p "$SERVER_DIR" "$RESULT_DIR"
+          printf 'eula=true\n' > "$SERVER_DIR/eula.txt"
+          cat > "$SERVER_DIR/server.properties" <<'EOF'
+          online-mode=false
+          server-port=25565
+          gamemode=creative
+          level-name=bge-client-integration
+          motd=BGE client integration test
+          spawn-protection=0
+          view-distance=2
+          simulation-distance=2
+          EOF
+
+          if ! command -v xvfb-run >/dev/null 2>&1; then
+            sudo apt-get update -qq
+            sudo apt-get install -y xvfb
+          fi
+
+          chmod +x ./gradlew
+          setsid ./gradlew '${{ matrix.integration-server-task }}' --no-daemon --no-configuration-cache > "$SERVER_LOG" 2>&1 &
+          SERVER_PID=$!
+          cleanup() {
+            kill -- -"$SERVER_PID" >/dev/null 2>&1 || true
+          }
+          trap cleanup EXIT
+
+          READY=0
+          for _ in $(seq 1 180); do
+            if grep -q 'Done (' "$SERVER_LOG"; then
+              READY=1
+              break
+            fi
+            if ! kill -0 "$SERVER_PID" >/dev/null 2>&1; then
+              cat "$SERVER_LOG"
+              exit 1
+            fi
+            sleep 1
+          done
+          if [ "$READY" -ne 1 ]; then
+            echo 'Dedicated integration server did not become ready.'
+            cat "$SERVER_LOG"
+            exit 1
+          fi
+
+          xvfb-run -a ./gradlew '${{ matrix.integration-client-task }}' --no-daemon --no-configuration-cache
+
+          test -f "$RESULT_DIR/client-pass.txt"
+          test -f "$RESULT_DIR/server-pass.txt"
+          test ! -f "$RESULT_DIR/client-fail.txt"
+          test ! -f "$RESULT_DIR/server-fail.txt"
+          cat "$RESULT_DIR/client-pass.txt"
+          cat "$RESULT_DIR/server-pass.txt"
