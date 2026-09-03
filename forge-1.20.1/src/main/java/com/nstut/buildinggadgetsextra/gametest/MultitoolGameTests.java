@@ -6,11 +6,17 @@ import com.nstut.buildinggadgetsextra.common.ExtraConstants;
 import com.nstut.buildinggadgetsextra.common.MultitoolMode;
 import com.nstut.buildinggadgetsextra.item.BuildersMultitool;
 import com.nstut.buildinggadgetsextra.item.MultitoolState;
+import com.nstut.buildinggadgetsextra.network.MultitoolRangePacket;
 import com.nstut.buildinggadgetsextra.setup.ExtraRegistration;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.core.NonNullList;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.inventory.AbstractContainerMenu;
+import net.minecraft.world.inventory.ContainerSynchronizer;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraftforge.gametest.GameTestHolder;
@@ -18,6 +24,7 @@ import net.minecraftforge.gametest.PrefixGameTestTemplate;
 
 import java.util.LinkedList;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicReference;
 
 @GameTestHolder(ExtraConstants.MOD_ID)
 @PrefixGameTestTemplate(false)
@@ -100,6 +107,50 @@ public final class MultitoolGameTests {
         multitool.selectTool(stack, MultitoolMode.CUT_PASTE);
         helper.assertTrue(GadgetNBT.getPasteReplace(stack),
                 "fresh cut profile must inherit native Paste Replace = true");
+        helper.succeed();
+    }
+
+    @GameTest(template = "bge_empty", timeoutTicks = 20)
+    public static void rangePacketPersistsAndSynchronizesHeldStack(GameTestHelper helper) {
+        ServerPlayer player = helper.makeMockServerPlayerInLevel();
+        ItemStack stack = new ItemStack(ExtraRegistration.BUILDERS_MULTITOOL.get());
+        BuildersMultitool multitool = (BuildersMultitool) stack.getItem();
+        player.setItemInHand(InteractionHand.MAIN_HAND, stack);
+        multitool.selectTool(stack, MultitoolMode.BUILD);
+
+        AtomicReference<ItemStack> clientSlotUpdate = new AtomicReference<>(ItemStack.EMPTY);
+        player.containerMenu.setSynchronizer(new ContainerSynchronizer() {
+            @Override
+            public void sendInitialData(AbstractContainerMenu menu, NonNullList<ItemStack> items,
+                                        ItemStack carried, int[] data) {
+            }
+
+            @Override
+            public void sendSlotChange(AbstractContainerMenu menu, int slot, ItemStack itemStack) {
+                if (itemStack.getItem() instanceof BuildersMultitool) {
+                    clientSlotUpdate.set(itemStack.copy());
+                }
+            }
+
+            @Override
+            public void sendCarriedChange(AbstractContainerMenu menu, ItemStack itemStack) {
+            }
+
+            @Override
+            public void sendDataChange(AbstractContainerMenu menu, int id, int value) {
+            }
+        });
+
+        helper.assertTrue(GadgetNBT.getToolRange(stack) == 1,
+                "range sync regression must start at the native range default");
+        helper.assertTrue(MultitoolRangePacket.apply(player, 7),
+                "server must accept a Build-profile multitool range update");
+        helper.assertTrue(GadgetNBT.getToolRange(stack) == 7,
+                "server-authoritative held stack must persist the requested range");
+        helper.assertTrue(!clientSlotUpdate.get().isEmpty(),
+                "range mutation must broadcast a changed inventory slot back toward the client");
+        helper.assertTrue(GadgetNBT.getToolRange(clientSlotUpdate.get()) == 7,
+                "client-bound inventory stack must contain the persisted range used when the UI reopens");
         helper.succeed();
     }
 }
