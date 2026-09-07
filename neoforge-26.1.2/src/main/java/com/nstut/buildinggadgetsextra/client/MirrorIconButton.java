@@ -10,23 +10,42 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 
 public final class MirrorIconButton extends GuiIconActionable {
+    private static final String BG2_MOD_ID = "buildinggadgets2";
     private final Identifier icon;
     private final int sourceSize;
 
     public MirrorIconButton(int x, int y, String iconName, Component tooltip, Runnable action) {
-        this(x, y, iconName, RadialIconLayout.SOURCE_TEXTURE_SIZE, tooltip, action);
+        this(x, y, addonSettingIcon(iconName), RadialIconLayout.SOURCE_TEXTURE_SIZE, tooltip, action);
     }
 
+    /** Explicit-size setting icons are upstream BG2 assets. Modern Cut uses this overload. */
     public MirrorIconButton(int x, int y, String iconName, int sourceSize, Component tooltip, Runnable action) {
-        super(x, y, "buildinggadgetsextra_placeholder", tooltip, false, send -> {
+        this(x, y, upstreamSettingIcon(iconName), sourceSize, tooltip, action);
+    }
+
+    public MirrorIconButton(int x, int y, Identifier icon, int sourceSize,
+                            Component tooltip, Runnable action) {
+        // Preserve BG2 click/beep behavior while this class owns texture resolution and extraction.
+        super(x, y, "cut", tooltip, false, send -> {
             if (send) action.run();
             return false;
         });
-        icon = Identifier.fromNamespaceAndPath(ExtraConstants.MOD_ID,
-                "textures/gui/setting/" + iconName + ".png");
+        this.icon = icon;
         this.sourceSize = sourceSize;
         setWidth(RadialIconLayout.BUTTON_SIZE);
         setHeight(RadialIconLayout.BUTTON_SIZE);
+    }
+
+    public static Identifier settingIcon(String namespace, String iconName) {
+        return Identifier.fromNamespaceAndPath(namespace, "textures/gui/setting/" + iconName + ".png");
+    }
+
+    public static Identifier addonSettingIcon(String iconName) {
+        return settingIcon(ExtraConstants.MOD_ID, iconName);
+    }
+
+    public static Identifier upstreamSettingIcon(String iconName) {
+        return settingIcon(BG2_MOD_ID, iconName);
     }
 
     @Override
