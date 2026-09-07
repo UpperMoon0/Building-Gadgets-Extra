@@ -34,15 +34,23 @@ class RadialTextureContractTest {
         String screen = source("client/MultitoolRadialScreen.java");
         String layout = read(root.resolve("common/src/main/java/com/nstut/buildinggadgetsextra/common/RadialIconLayout.java"));
 
-        contains(button, "addonSettingIcon(iconName)", "default addon-owned setting-icon resolution");
-        contains(button, "upstreamSettingIcon(iconName)", "explicit-size upstream setting-icon resolution");
+        if ("1.20.1".equals(minecraftVersion)) {
+            contains(screen, "MirrorIconButton.addonSettingIcon(load ? \"load\" : \"save\")",
+                    "Save/Load explicit addon resource ownership");
+            contains(screen, "MirrorIconButton.upstreamSettingIcon(\"cut\")",
+                    "Cut explicit upstream resource ownership");
+            assertFalse(button.contains("MirrorIconButton(int x, int y, String iconName, int sourceSize"),
+                    label("Forge 1.20.1 icon ownership must not be inferred from source size"));
+        } else {
+            contains(button, "addonSettingIcon(iconName)", "default addon-owned setting-icon resolution");
+            contains(button, "upstreamSettingIcon(iconName)", "explicit-size upstream setting-icon resolution");
+            contains(screen, "\"cut\", RadialIconLayout.MODERN_SETTING_ICON_SIZE",
+                    "multitool Cut explicit-size upstream icon path");
+        }
         contains(button, "\"buildinggadgets2\"", "BG2 texture namespace");
         contains(button, "\"textures/gui/setting/\" + iconName + \".png\"", "setting texture path");
         assertFalse(button.contains("buildinggadgetsextra_placeholder"),
                 label("modern icon button must not construct a guaranteed-missing upstream placeholder texture"));
-
-        contains(screen, "\"cut\", RadialIconLayout.MODERN_SETTING_ICON_SIZE",
-                "multitool Cut explicit-size upstream icon path");
         contains(layout, "MODERN_SETTING_ICON_SIZE = 15", "BG2 setting sprite source dimensions");
         contains(layout, "SOURCE_TEXTURE_SIZE = 44", "addon setting sprite source dimensions");
 

@@ -14,15 +14,6 @@ public final class MirrorIconButton extends GuiIconActionable {
     private final ResourceLocation icon;
     private final int sourceSize;
 
-    public MirrorIconButton(int x, int y, String iconName, Component tooltip, Runnable action) {
-        this(x, y, addonSettingIcon(iconName), RadialIconLayout.SOURCE_TEXTURE_SIZE, tooltip, action);
-    }
-
-    /** Explicit-size setting icons are upstream BG2 assets. Modern Cut uses this overload. */
-    public MirrorIconButton(int x, int y, String iconName, int sourceSize, Component tooltip, Runnable action) {
-        this(x, y, upstreamSettingIcon(iconName), sourceSize, tooltip, action);
-    }
-
     public MirrorIconButton(int x, int y, ResourceLocation icon, int sourceSize,
                             Component tooltip, Runnable action) {
         // Keep upstream click/beep behavior without relying on its hard-coded texture namespace.
