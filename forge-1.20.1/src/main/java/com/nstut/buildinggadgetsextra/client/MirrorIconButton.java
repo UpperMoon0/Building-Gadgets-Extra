@@ -10,27 +10,51 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 
 public final class MirrorIconButton extends GuiIconActionable {
+    private static final String BG2_MOD_ID = "buildinggadgets2";
     private final ResourceLocation icon;
     private final int sourceSize;
 
     public MirrorIconButton(int x, int y, String iconName, Component tooltip, Runnable action) {
-        this(x, y, iconName, RadialIconLayout.SOURCE_TEXTURE_SIZE, tooltip, action);
+        this(x, y, addonSettingIcon(iconName), RadialIconLayout.SOURCE_TEXTURE_SIZE, tooltip, action);
     }
 
+    /** Explicit-size setting icons are upstream BG2 assets. Modern Cut uses this overload. */
     public MirrorIconButton(int x, int y, String iconName, int sourceSize, Component tooltip, Runnable action) {
-        super(x, y, "buildinggadgetsextra_placeholder", tooltip, false, send -> {
+        this(x, y, upstreamSettingIcon(iconName), sourceSize, tooltip, action);
+    }
+
+    public MirrorIconButton(int x, int y, ResourceLocation icon, int sourceSize,
+                            Component tooltip, Runnable action) {
+        // Keep upstream click/beep behavior without relying on its hard-coded texture namespace.
+        // "cut" is real in BG2, so an accidental upstream fallback cannot create a missing texture.
+        super(x, y, "cut", tooltip, false, send -> {
             if (send) action.run();
             return false;
         });
-        this.icon = ResourceLocation.fromNamespaceAndPath(
-                ExtraConstants.MOD_ID, "textures/gui/setting/" + iconName + ".png");
+        this.icon = icon;
         this.sourceSize = sourceSize;
         this.setWidth(RadialIconLayout.BUTTON_SIZE);
         this.setHeight(RadialIconLayout.BUTTON_SIZE);
     }
 
+    public static ResourceLocation settingIcon(String namespace, String iconName) {
+        return ResourceLocation.fromNamespaceAndPath(namespace, "textures/gui/setting/" + iconName + ".png");
+    }
+
+    public static ResourceLocation addonSettingIcon(String iconName) {
+        return settingIcon(ExtraConstants.MOD_ID, iconName);
+    }
+
+    public static ResourceLocation upstreamSettingIcon(String iconName) {
+        return settingIcon(BG2_MOD_ID, iconName);
+    }
+
+    /**
+     * BG2 1.0.8 overrides GuiIconActionable#render directly, so renderWidget is never called here.
+     * Override the actual entry point or the parent paints its own hard-coded BG2 texture instead.
+     */
     @Override
-    public void renderWidget(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
+    public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
         if (!this.visible) return;
 
         Minecraft minecraft = Minecraft.getInstance();
@@ -44,7 +68,7 @@ public final class MirrorIconButton extends GuiIconActionable {
         RenderSystem.setShaderColor(1, 1, 1, 1);
         RenderSystem.disableBlend();
 
-        if (isHoveredOrFocused()) {
+        if (mouseX >= getX() && mouseY >= getY() && mouseX < getX() + width && mouseY < getY() + height) {
             String tooltip = getMessage().getString();
             int tooltipX = mouseX > minecraft.getWindow().getGuiScaledWidth() / 2
                     ? mouseX + 2 : mouseX - minecraft.font.width(tooltip);
