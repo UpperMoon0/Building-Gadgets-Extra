@@ -21,7 +21,7 @@
 
 ### Changed
 
-- Added a server-configurable `multitoolMaxRange` for Builder's Multitool Build/Exchange profiles. It defaults to 32 and accepts 1-64; native Building Gadgets range limits are unchanged.
+- Added `multitoolRangeMultiplier` (default 2.0, allowed 1.0-4.0) for all-profile targeting, Build To Me, Build/Exchange and destruction. `multitoolMaxRange` now defaults to 0 (automatic); existing positive overrides are preserved.
 - Multitool radial range controls, the range hotkey, server packet handling, and restored/stale item state now obey the same server-authoritative range cap.
 - Added opt-in `debugInstrumentation` diagnostics for multitool range packet/state synchronization. The instrumentation is disabled by default and uses a shared per-category token bucket with a burst of 4 and refill rate of 2 messages per second, including suppression counts when traffic is throttled.
 - Creative players can operate the Builder's Multitool with an empty FE battery; Survival still obeys the configured gadget energy costs.
@@ -42,3 +42,7 @@
 - Added shared unit tests and cross-version contracts for the debug-instrumentation rate limiter/config gating.
 - Releases now require an explicit `v*` tag or manual workflow dispatch.
 - Release commits must be the current `main` commit and must already have a successful exact-commit CI run before publishing can proceed.
+- Fixed native targeting and Build To Me limits remaining in effect for multitools on all four versions.
+- Fixed destruction controls retaining native bounds; server validation and restored values now follow the multitool multiplier.
+- Extended real-client tests beyond native caps: Build 30, Exchange 29, and destruction Left/Depth 20. Added runtime targeting/Build To Me regression checks and corrected a shared test to compile on Java 8.
+- Fixed the BG2 multitool range slider staying at 15: the old hook targeted an integer instead of the slider's double limit. All BG2 radial screens now read the config directly.

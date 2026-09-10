@@ -37,7 +37,7 @@ class MultitoolItemModelContractTest {
 
     private String read(Path path) throws IOException {
         assertTrue(Files.isRegularFile(path), label("missing file " + path));
-        return Files.readString(path, StandardCharsets.UTF_8);
+        return new String(Files.readAllBytes(path), StandardCharsets.UTF_8);
     }
 
     private String label(String message) {

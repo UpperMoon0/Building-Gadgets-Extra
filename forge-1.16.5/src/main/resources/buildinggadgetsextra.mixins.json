@@ -5,6 +5,10 @@
   "plugin": "com.nstut.buildinggadgetsextra.mixin.BGEMixinPlugin",
   "compatibilityLevel": "JAVA_8",
   "mixins": [
+    "PacketDestructionRangesAccessor",
+    "PacketDestructionRangesMultitoolMixin",
+    "VectorHelperMultitoolRangeMixin",
+    "BuildToMeMultitoolRangeMixin",
     "GadgetBuildingMixin",
     "GadgetDestructionMixin",
     "GadgetExchangerMixin",
@@ -14,6 +18,9 @@
     "VanillaTemplateAccessor"
   ],
   "client": [
+    "DestructionGUIAccessor",
+    "DestructionGUIMultitoolRangeMixin",
+    "DestructionSliderMultitoolRangeMixin",
     "ModeRadialMenuMixin",
     "PasteGUIInitMixin"
   ],

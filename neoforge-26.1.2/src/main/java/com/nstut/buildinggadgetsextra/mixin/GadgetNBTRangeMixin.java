@@ -13,6 +13,18 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 @Mixin(value = GadgetNBT.class, remap = false)
 public abstract class GadgetNBTRangeMixin {
+    @Inject(method = "getToolValue", at = @At("RETURN"), cancellable = true)
+    private static void buildingGadgetsExtra$destructionRange(ItemStack stack, String name, CallbackInfoReturnable<Integer> cir) {
+        if (!(stack.getItem() instanceof BuildersMultitool)) return;
+        if (!name.equals("left") && !name.equals("right") && !name.equals("up")
+                && !name.equals("down") && !name.equals("depth")) return;
+        int max = ExtraConfig.multitoolDestructionSide();
+        // Bound restored profiles too, including a server lowering its multiplier.
+        if (name.equals("right")) max = Math.min(max, ExtraConfig.multitoolDestructionSpan() - GadgetNBT.getToolValue(stack, "left"));
+        if (name.equals("down")) max = Math.min(max, ExtraConfig.multitoolDestructionSpan() - GadgetNBT.getToolValue(stack, "up"));
+        cir.setReturnValue(Math.max(0, Math.min(max, cir.getReturnValue())));
+    }
+
     @Inject(method = "getToolRange", at = @At("HEAD"), cancellable = true)
     private static void buildingGadgetsExtra$multitoolRange(ItemStack stack, CallbackInfoReturnable<Integer> cir) {
         if (!(stack.getItem() instanceof BuildersMultitool)) return;

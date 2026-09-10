@@ -14,7 +14,7 @@ Building Gadgets Extra is a Forge and NeoForge addon for [Building Gadgets](http
 - Transfer structures in bounded chunks with request-bound save responses and server-authoritative import validation.
 - Use Minecraft's native Structure Template and compressed NBT logic rather than a custom file format.
 - Provide the Builder's Multitool with independent virtual gadget profiles for mode, template, settings, UUID and undo state while sharing one physical FE battery.
-- Give the endgame Builder's Multitool its own server-configurable Build/Exchange range cap, defaulting to 32 without raising native gadget limits.
+- Give the Builder's Multitool configurable double range for targeting, Build/Exchange, Build To Me, and destruction without raising native gadget limits.
 
 ## Requirements
 
@@ -46,7 +46,13 @@ The mod must be installed on the server and on every connecting client.
 
 The Builder's Multitool keeps each virtual gadget profile independent while sharing a single physical FE battery. Fresh profiles start on the intended native Building Gadgets mode: Build To Me for Build, Surface for Exchange, Copy for Copy/Paste, and Cut for Cut/Paste.
 
-The server config option `multitoolMaxRange` controls the maximum range of the multitool's **Build** and **Exchange** profiles. The default is **32** and the allowed configuration range is **1-64**. Native Building Gadgets/Building Gadgets 2 tools keep their upstream range limits. The multitool radial slider, range hotkey, server packet validation, and restored item/profile state all use the same server-authoritative cap, so old item data cannot bypass a lower server setting.
+The server config option `multitoolRangeMultiplier` defaults to **2.0** (allowed: **1.0-4.0**). It scales targeting reach for **all five profiles**, Build To Me's distance cap, the Build/Exchange range cap, and destruction dimensions. With upstream defaults, targeting increases from **32 to 64** blocks and the Build/Exchange range setting increases from **15 to 30**. The range slider controls the size of Build/Exchange patterns; Build To Me instead uses targeting distance.
+
+`multitoolMaxRange` is an optional **Build/Exchange** override: **0** (the new default) follows the multiplier; **1-64** sets an explicit cap. Existing configurations such as `multitoolMaxRange=32` retain that override. Set it to **0** to follow the multiplier. Legacy 1.16.5 also follows Building Gadgets' configured native range and targeting distance.
+
+Destruction sliders/depth increase from **16 to 32** by default. Combined left+right and up+down limits increase from **16 to 32** on 1.16.5/1.20.1, and from **32 to 64** on 1.21.1/26.1.2, matching each upstream version's geometry. These spans exclude the center block. The GUI, server validation, and restored item values use the configured limits.
+
+Native gadgets keep their upstream limits. Copy/Paste and Cut/Paste receive the longer targeting reach; template dimensions, block-count limits, and structure-file transfer limits are separate and are not multiplied. See [the range audit](docs/multitool-range-audit.md) for the mode-by-mode comparison.
 
 For diagnosing multitool range/state synchronization, set the server config option `debugInstrumentation=true`. It is **disabled by default**. When enabled, the mod logs structured range-request outcomes such as packet source, active profile, current/requested/resolved range, configured cap, rejection reason, and authoritative publication/state. Logging uses a shared per-category token bucket with a burst of **4** and refill of **2 messages/second**; throttled entries are counted and the next emitted entry reports `suppressedSinceLastLog` so repeated slider/key input cannot flood the server log.
 

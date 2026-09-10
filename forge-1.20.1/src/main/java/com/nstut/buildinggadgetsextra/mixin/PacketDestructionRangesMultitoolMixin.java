@@ -4,6 +4,8 @@ import com.direwolf20.buildinggadgets2.common.items.BaseGadget;
 import com.direwolf20.buildinggadgets2.common.network.packets.PacketDestructionRanges;
 import com.direwolf20.buildinggadgets2.util.GadgetNBT;
 import com.nstut.buildinggadgetsextra.common.MultitoolMode;
+import com.nstut.buildinggadgetsextra.common.MultitoolRangePolicy;
+import com.nstut.buildinggadgetsextra.setup.ExtraConfig;
 import com.nstut.buildinggadgetsextra.item.BuildersMultitool;
 import com.nstut.buildinggadgetsextra.item.MultitoolState;
 import net.minecraft.server.level.ServerPlayer;
@@ -60,8 +62,7 @@ public abstract class PacketDestructionRangesMultitoolMixin {
     }
 
     private static boolean buildingGadgetsExtra$isValidRange(int left, int right, int up, int down, int depth) {
-        if (left < 0 || right < 0 || up < 0 || down < 0 || depth < 0) return false;
-        if (left > 16 || right > 16 || up > 16 || down > 16 || depth > 16) return false;
-        return left + right <= 16 && up + down <= 16;
+        return MultitoolRangePolicy.validDestruction(left, right, up, down, depth,
+                ExtraConfig.multitoolDestructionSide(), ExtraConfig.multitoolDestructionSpan());
     }
 }

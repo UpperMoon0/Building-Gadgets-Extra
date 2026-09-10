@@ -33,7 +33,7 @@ Imports are limited to a 100,000-position bounding volume, an 8 MiB compressed t
 
 The Builder's Multitool combines the supported gadget roles into one physical endgame tool. Each virtual profile keeps its own mode, range/settings, template identity and undo history, while the tool shares one FE battery. Bound inventory position and side are profile-local as well, and energy use follows the currently active gadget profile.
 
-Build and Exchange profiles can reach farther than the native tools: server owners can configure `multitoolMaxRange` from 1 to 64, with a default of 32. This does not raise the range limit of normal Building Gadgets tools. The radial range control, range key, server validation, and saved profile state all obey the configured multitool cap.
+The server setting `multitoolRangeMultiplier` defaults to 2.0 (allowed: 1.0-4.0), doubling targeting reach for every profile, Build To Me distance, Build/Exchange range, and destruction dimensions. With normal upstream settings, targeting becomes 64 blocks and the Build/Exchange range cap becomes 30. `multitoolMaxRange=0` follows the multiplier; values 1-64 override the Build/Exchange cap. Existing values such as 32 are preserved. Native gadgets, template-size limits, and structure-file transfer limits are unchanged.
 
 Creative players can use the multitool with an empty FE battery. Survival players still require and consume the configured energy for the corresponding gadget profile.
 

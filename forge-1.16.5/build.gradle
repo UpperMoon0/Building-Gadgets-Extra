@@ -40,6 +40,7 @@ minecraft {
     runs {
         configureEach {
             workingDirectory project.file('run')
+            args '--mixin', "${mod_id}.mixins.json"
             property 'forge.logging.console.level', 'info'
             mods { "${mod_id}" { source sourceSets.main } }
         }
@@ -63,6 +64,22 @@ minecraft {
             args '--nogui'
             mods { "${mod_id}" { source sourceSets.clientIntegrationTest } }
         }
+    }
+}
+
+// ForgeGradle's legacy userdev defaults are populated after custom run inheritance.
+// Resolve these two values after evaluation so the integration runs can launch.
+
+gradle.projectsEvaluated {
+    [clientIntegrationTest: 'client', clientIntegrationTestServer: 'server'].each { childName, parentName ->
+        def parentRun = minecraft.runs.getByName(parentName)
+        def childRun = minecraft.runs.getByName(childName)
+        childRun.main(parentRun.main)
+        parentRun.environment.each { key, value -> childRun.environment(key, value) }
+        childRun.environment('MOD_CLASSES',
+                ([sourceSets.main.output.resourcesDir] + sourceSets.main.output.classesDirs.files
+                        + sourceSets.clientIntegrationTest.output.classesDirs.files)
+                        .collect { "${mod_id}%%${it.absolutePath}" }.join(File.pathSeparator))
     }
 }
 

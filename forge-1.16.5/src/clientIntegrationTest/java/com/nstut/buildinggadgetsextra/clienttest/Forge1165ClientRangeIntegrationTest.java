@@ -1,6 +1,10 @@
 package com.nstut.buildinggadgetsextra.clienttest;
 
 import com.direwolf20.buildinggadgets.common.items.AbstractGadget;
+import com.direwolf20.buildinggadgets.common.items.OurItems;
+import com.direwolf20.buildinggadgets.client.screen.DestructionGUI;
+import com.direwolf20.buildinggadgets.client.screen.components.GuiSliderInt;
+import net.minecraft.client.gui.widget.button.Button;
 import com.direwolf20.buildinggadgets.common.util.GadgetUtils;
 import com.nstut.buildinggadgetsextra.client.LegacyMultitoolScreen;
 import com.nstut.buildinggadgetsextra.common.ExtraConstants;
@@ -96,7 +100,28 @@ public final class Forge1165ClientRangeIntegrationTest {
 
         @Override
         public void pass(String detail) {
-            finish("client-pass.txt", detail, null, 0);
+            try {
+                verifyDestructionSlider(held(), 17);
+                verifyDestructionSlider(new ItemStack(OurItems.DESTRUCTION_GADGET_ITEM.get()), 16);
+                finish("client-pass.txt", detail + "; destruction slider/plus exceeds 16 only for multitool", null, 0);
+            } catch (Throwable error) {
+                finish("client-fail.txt", "legacy destruction range regression", error, 1);
+            }
+        }
+
+        private void verifyDestructionSlider(ItemStack stack, int expected) throws ReflectiveOperationException {
+            DestructionGUI screen = new DestructionGUI(stack);
+            minecraft().setScreen(screen);
+            Field field = DestructionGUI.class.getDeclaredField("depth");
+            field.setAccessible(true);
+            GuiSliderInt depth = (GuiSliderInt) field.get(screen);
+            depth.setValue(16);
+            for (Button button : depth.getComponents()) {
+                if (button.getMessage().getString().equals("+")) button.onPress();
+            }
+            if (depth.getValueInt() != expected) {
+                throw new IllegalStateException("destruction depth expected " + expected + " got " + depth.getValueInt());
+            }
         }
 
         @Override

@@ -10,8 +10,23 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class MultitoolRangePolicyTest {
     @Test
+    void multiplierFollowsNativeConfigurationAndBoundsDestructionWithoutOverflow() {
+        assertEquals(30, MultitoolRangePolicy.scaledLimit(15, 2));
+        assertEquals(64, MultitoolRangePolicy.scaledReach(32, 2));
+        assertEquals(96, MultitoolRangePolicy.scaledReach(48, 2));
+        assertEquals(48, MultitoolRangePolicy.scaledLimit(16, 3));
+        assertTrue(MultitoolRangePolicy.validDestruction(20, 12, 16, 16, 32, 32, 32));
+        assertFalse(MultitoolRangePolicy.validDestruction(20, 13, 0, 0, 32, 32, 32));
+        assertTrue(MultitoolRangePolicy.validDestruction(32, 32, 32, 32, 32, 32, 64));
+        assertFalse(MultitoolRangePolicy.validDestruction(-1, 0, 0, 0, 0, 32, 64));
+        assertFalse(MultitoolRangePolicy.validDestruction(Integer.MAX_VALUE, Integer.MAX_VALUE,
+                0, 0, 0, Integer.MAX_VALUE, Integer.MAX_VALUE));
+    }
+
+    @Test
     void defaultsAndBoundsStayEndgameButFinite() {
-        assertEquals(32, MultitoolRangePolicy.DEFAULT_MAX_RANGE);
+        assertEquals(0, MultitoolRangePolicy.DEFAULT_MAX_RANGE);
+        assertEquals(2.0, MultitoolRangePolicy.DEFAULT_RANGE_MULTIPLIER);
         assertEquals(1, MultitoolRangePolicy.clamp(-100, 32));
         assertEquals(32, MultitoolRangePolicy.clamp(999, 32));
         assertEquals(64, MultitoolRangePolicy.clamp(999, 999));

@@ -11,6 +11,7 @@ import com.direwolf20.buildinggadgets2.common.network.packets.*;
 import com.direwolf20.buildinggadgets2.util.GadgetNBT;
 import com.direwolf20.buildinggadgets2.util.modes.BaseMode;
 import com.nstut.buildinggadgetsextra.common.ExtraConstants;
+import com.nstut.buildinggadgetsextra.setup.ExtraConfig;
 import com.nstut.buildinggadgetsextra.common.MultitoolMode;
 import com.nstut.buildinggadgetsextra.common.MultitoolMenuState;
 import com.nstut.buildinggadgetsextra.common.RadialButtonPolicy;
@@ -116,7 +117,7 @@ public final class MultitoolRadialScreen extends Screen {
 
         if (selectedTool() == MultitoolMode.BUILD || selectedTool() == MultitoolMode.EXCHANGING) {
             IncrementalSliderWidget range = new IncrementalSliderWidget(width / 2 + 112, next(rightY),
-                    82, 14, 1, 15, Component.translatable("buildinggadgets2.gui.range").append(": "),
+                    82, 14, 1, ExtraConfig.multitoolMaxRange(), Component.translatable("buildinggadgets2.gui.range").append(": "),
                     GadgetNBT.getToolRange(stack), slider ->
                     PacketHandler.sendToServer(new PacketRangeChange(slider.getValueInt())));
             range.getComponents().forEach(this::addRenderableWidget);

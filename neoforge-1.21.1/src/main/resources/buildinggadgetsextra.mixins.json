@@ -4,14 +4,17 @@
   "package": "com.nstut.buildinggadgetsextra.mixin",
   "compatibilityLevel": "JAVA_21",
   "client": [
+    "DestructionGUIMultitoolRangeMixin",
     "ModeRadialMenuMixin",
     "RenderLevelLastMultitoolMixin",
-    "MultitoolRadialScreenRangeMixin",
     "MultitoolRadialScreenProfileSyncMixin",
     "GuiIncrementerAccessor",
     "CopyGUIMultitoolMixin"
   ],
   "mixins": [
+    "PacketDestructionRangesMultitoolMixin",
+    "VectorHelperMultitoolRangeMixin",
+    "BuildToMeMultitoolRangeMixin",
     "GadgetNBTMultitoolMixin",
     "GadgetNBTRangeMixin",
     "BuildingUtilsMultitoolEnergyMixin",

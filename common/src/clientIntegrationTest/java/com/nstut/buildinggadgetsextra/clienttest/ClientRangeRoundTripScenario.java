@@ -7,12 +7,12 @@ package com.nstut.buildinggadgetsextra.clienttest;
 public final class ClientRangeRoundTripScenario {
     public static final String ENABLE_PROPERTY = "bge.clientIntegrationTest";
     public static final int START_RANGE = 1;
-    public static final int TARGET_RANGE = 7;
+    public static final int TARGET_RANGE = 30;
     public static final int EXCHANGE_INITIAL_RANGE = 2;
-    public static final int EXCHANGE_TARGET_RANGE = 4;
+    public static final int EXCHANGE_TARGET_RANGE = 29;
     public static final int COPY_START_X_TARGET = 1;
-    public static final int DESTRUCTION_LEFT_TARGET = 1;
-    public static final int DESTRUCTION_DEPTH_TARGET = 1;
+    public static final int DESTRUCTION_LEFT_TARGET = 20;
+    public static final int DESTRUCTION_DEPTH_TARGET = 20;
     public static final int TIMEOUT_TICKS = 1200;
 
     public interface Adapter {
@@ -91,6 +91,7 @@ public final class ClientRangeRoundTripScenario {
     private int ticks;
     private int clicks;
     private int exchangeClicks;
+    private int destructionClicks;
     private int phaseDelay;
 
     public ClientRangeRoundTripScenario(Adapter adapter) {
@@ -268,11 +269,16 @@ public final class ClientRangeRoundTripScenario {
                     break;
                 case EDIT_DESTRUCTION:
                     require(adapter.isDestructionScreenOpen(), "destruction configuration screen did not open");
-                    require(adapter.visibleDestructionLeft() == 0 && adapter.visibleDestructionDepth() == 0,
+                    require(destructionClicks > 0 || (adapter.visibleDestructionLeft() == 0 && adapter.visibleDestructionDepth() == 0),
                             "destruction test profile did not start at zero; left=" + adapter.visibleDestructionLeft()
                                     + " depth=" + adapter.visibleDestructionDepth());
-                    adapter.clickDestructionLeftPlus();
-                    adapter.clickDestructionDepthPlus();
+                    if (destructionClicks < DESTRUCTION_LEFT_TARGET) {
+                        adapter.clickDestructionLeftPlus();
+                        adapter.clickDestructionDepthPlus();
+                        destructionClicks++;
+                        phaseDelay = 1;
+                        return;
+                    }
                     advance(Phase.VERIFY_DESTRUCTION_EDIT, 1);
                     break;
                 case VERIFY_DESTRUCTION_EDIT:
