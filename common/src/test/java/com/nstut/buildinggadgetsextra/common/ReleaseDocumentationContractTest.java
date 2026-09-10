@@ -12,17 +12,19 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class ReleaseDocumentationContractTest {
     @Test
-    void releaseRequiresCurrentMainAndExactCommitCi() throws Exception {
+    void releaseRunsOnVersionBumpsAndPublishesEveryTarget() throws Exception {
         String workflow = read(repositoryRoot().resolve(".github/workflows/release.yml"));
-        contains(workflow, "actions: read");
-        contains(workflow, "git rev-parse HEAD");
-        contains(workflow, "origin/main");
-        contains(workflow, "actions/workflows/ci.yml/runs?head_sha=");
-        contains(workflow, ".conclusion == \"success\"");
-        contains(workflow, "GITHUB_REF_NAME");
+        contains(workflow, "branches: [main]");
+        contains(workflow, "- gradle.properties");
+        contains(workflow, "github.event.before");
+        contains(workflow, "needs.version-change.outputs.changed == 'true'");
         contains(workflow, "mod_version");
-        contains(workflow, "body_path: changelog/${{ steps.version.outputs.value }}.md");
         contains(workflow, "test -s \"changelog/$MOD_VERSION.md\"");
+        contains(workflow, "CURSEFORGE_API_TOKEN");
+        contains(workflow, "CURSEFORGE_PROJECT_ID: '1614988'");
+        contains(workflow, "building-gadgets");
+        contains(workflow, "body_path: changelog/${{ steps.version.outputs.value }}.md");
+        contains(workflow, "duplicate");
     }
 
     @Test
