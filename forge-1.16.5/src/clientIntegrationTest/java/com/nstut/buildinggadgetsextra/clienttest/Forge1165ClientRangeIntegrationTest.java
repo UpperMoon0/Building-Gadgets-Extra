@@ -88,11 +88,15 @@ public final class Forge1165ClientRangeIntegrationTest {
         public int visibleScreenRange() {
             if (!(minecraft().screen instanceof LegacyMultitoolScreen)) return -1;
             try {
+                Field rangeLabelY = LegacyMultitoolScreen.class.getDeclaredField("rangeLabelY");
+                rangeLabelY.setAccessible(true);
+                if (rangeLabelY.getInt(minecraft().screen) < 0) return -1;
+
                 Field stack = LegacyMultitoolScreen.class.getDeclaredField("stack");
                 stack.setAccessible(true);
                 return GadgetUtils.getToolRange((ItemStack) stack.get(minecraft().screen));
             } catch (ReflectiveOperationException error) {
-                throw new IllegalStateException("cannot read legacy screen stack", error);
+                throw new IllegalStateException("cannot read legacy range controls", error);
             }
         }
 
