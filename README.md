@@ -123,20 +123,18 @@ cd neoforge-26.1.2 && ./gradlew runClient
 
 ## Releases
 
-Verification and publishing are separate workflows. Pull requests and pushes to `main` run CI; they do **not** publish a release.
+Pull requests and ordinary pushes to `main` still run CI, but publishing is driven by the version number rather than by every code change.
 
-A release is started only by either:
-
-- pushing a `v<mod_version>` tag, for example `v0.0.4`; or
-- explicitly running the Release workflow from the **Actions** tab on `main`.
+A release starts automatically when a push to `main` changes `gradle.properties` and `mod_version` differs from the previous revision. Merely touching `gradle.properties` without changing `mod_version` does not publish anything. The Release workflow can also be dispatched manually from `main` as a recovery path.
 
 Before publishing:
 
 1. Update `mod_version` in `gradle.properties` and add or update `changelog/<mod_version>.md` (for example, [0.0.4](changelog/0.0.4.md)).
-2. Merge the changes to `main` and let CI pass on that exact commit.
-3. Create the matching `v<mod_version>` tag on the current `main` commit, or run the Release workflow manually from `main`.
+2. Merge the version bump to `main`.
+3. The Release workflow detects the version change, runs the dedicated client E2E gate, reruns unit/contract tests, rebuilds all four supported JARs, and verifies the expected artifacts.
+4. The workflow publishes all four builds to CurseForge, creates or reuses the matching `v<mod_version>` tag, and publishes the GitHub release using the version changelog.
 
-The release workflow rejects a tag or manual dispatch whose checked-out commit is not the current `origin/main`, rejects tags that do not exactly match `mod_version`, and requires at least one successful CI run for the exact release commit. It then reruns the unit/contract tests, rebuilds all four release JARs, verifies the expected artifacts exist, and only then publishes the GitHub release.
+No manual tag creation is required for a normal release. If a release job is retried, an existing tag for the same commit is reused and duplicate CurseForge uploads are treated as already published instead of creating another release file.
 
 ## License
 
