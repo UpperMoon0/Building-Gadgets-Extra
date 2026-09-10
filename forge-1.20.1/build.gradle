@@ -89,6 +89,12 @@ minecraft {
             workingDirectory project.file('run-client-integration-server')
             property 'bge.clientIntegrationTest', 'true'
             property 'bge.clientIntegrationResultDir', project.file('build/client-integration-dedicated').absolutePath
+            // Forge 47's bootstrap libraries need the same JDK module access granted by the
+            // stock launcher. Custom ForgeGradle server runs do not inherit these reliably.
+            jvmArgs '--add-modules=ALL-MODULE-PATH',
+                    '--add-opens=java.base/java.util.jar=ALL-UNNAMED',
+                    '--add-opens=java.base/java.lang.invoke=ALL-UNNAMED',
+                    '--add-exports=java.base/sun.security.util=ALL-UNNAMED'
             args '--nogui'
             mods {
                 "${mod_id}" { source sourceSets.clientIntegrationTest }
