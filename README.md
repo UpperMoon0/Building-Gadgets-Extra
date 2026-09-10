@@ -123,9 +123,9 @@ cd neoforge-26.1.2 && ./gradlew runClient
 
 ## Releases
 
-Pull requests and ordinary pushes to `main` still run CI, but publishing is driven by the version number rather than by every code change.
+Pull requests and ordinary pushes to `main` still run CI. The Release workflow also performs a cheap version gate on each `main` push, but the expensive build/publish path runs only when a release is actually needed.
 
-A release starts automatically when a push to `main` changes `gradle.properties` and `mod_version` differs from the previous revision. Merely touching `gradle.properties` without changing `mod_version` does not publish anything. The Release workflow can also be dispatched manually from `main` as a recovery path.
+A release is needed when `mod_version` differs from the previous `main` revision. If a version bump was merged but never published, a later `main` push also recovers it when the matching `v<mod_version>` tag is still missing. The Release workflow can be dispatched manually from `main` as a final recovery path.
 
 Before publishing:
 
@@ -134,7 +134,7 @@ Before publishing:
 3. The Release workflow detects the version change, runs the dedicated client E2E gate, reruns unit/contract tests, rebuilds all four supported JARs, and verifies the expected artifacts.
 4. The workflow publishes all four builds to CurseForge, creates or reuses the matching `v<mod_version>` tag, and publishes the GitHub release using the version changelog.
 
-No manual tag creation is required for a normal release. If a release job is retried, an existing tag for the same commit is reused and duplicate CurseForge uploads are treated as already published instead of creating another release file.
+No manual tag creation is required for a normal release. If a release job is retried, an existing tag for the same commit is reused and duplicate CurseForge uploads are treated as already published instead of creating another release file. An unchanged version with an existing tag exits at the cheap gate without rebuilding or publishing anything.
 
 ## License
 
