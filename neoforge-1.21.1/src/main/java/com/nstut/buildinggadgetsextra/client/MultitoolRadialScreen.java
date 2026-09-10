@@ -125,7 +125,6 @@ public final class MultitoolRadialScreen extends Screen {
         }
 
         if (selectedTool() == MultitoolMode.BUILD || selectedTool() == MultitoolMode.EXCHANGING) {
-            // Range is a build/exchange setting, so keep it in the right-hand settings rail.
             IncrementalSliderWidget range = new IncrementalSliderWidget(width / 2 + 112, next(rightY),
                     82, 14, 1, ExtraConfig.multitoolMaxRange(), Component.translatable("buildinggadgets2.gui.range").append(": "),
                     GadgetNBT.getToolRange(stack), slider ->
@@ -151,13 +150,17 @@ public final class MultitoolRadialScreen extends Screen {
             }
         }
 
-        if (RadialButtonPolicy.showMirrorButtons(effectiveMode)
-                && (selectedTool() == MultitoolMode.COPY_PASTE || selectedTool() == MultitoolMode.CUT_PASTE)) {
+        boolean liveMirrorTool = selectedTool() == MultitoolMode.BUILD || selectedTool() == MultitoolMode.EXCHANGING;
+        boolean templateMirrorTool = RadialButtonPolicy.showMirrorButtons(effectiveMode)
+                && (selectedTool() == MultitoolMode.COPY_PASTE || selectedTool() == MultitoolMode.CUT_PASTE);
+        if (liveMirrorTool || templateMirrorTool) {
             addRenderableWidget(new MirrorIconButton(width / 2 - 136, next(leftY), "mirror_horizontal",
-                    Component.translatable(ExtraConstants.MIRROR_HORIZONTAL),
+                    Component.translatable(liveMirrorTool
+                            ? ExtraConstants.LIVE_MIRROR_HORIZONTAL : ExtraConstants.MIRROR_HORIZONTAL),
                     () -> PacketDistributor.sendToServer(new MirrorPayload(false))));
             addRenderableWidget(new MirrorIconButton(width / 2 - 136, next(leftY), "mirror_vertical",
-                    Component.translatable(ExtraConstants.MIRROR_VERTICAL),
+                    Component.translatable(liveMirrorTool
+                            ? ExtraConstants.LIVE_MIRROR_VERTICAL : ExtraConstants.MIRROR_VERTICAL),
                     () -> PacketDistributor.sendToServer(new MirrorPayload(true))));
         }
 
@@ -288,7 +291,6 @@ public final class MultitoolRadialScreen extends Screen {
         drawOutline(graphics, x - half, y - half, x + half, y + half, hovered ? 0xFF3598FF : selected ? 0xFF00E640 : 0);
         ResourceLocation icon = ResourceLocation.fromNamespaceAndPath(actionIconNamespace(tool), actionIconPath(tool));
         int sourceSize = actionIconSourceSize(tool);
-        // Explicit source rectangle prevents the 15x15 action textures from tiling.
         graphics.blit(icon, x - iconSize / 2, y - iconSize / 2, iconSize, iconSize,
                 0, 0, sourceSize, sourceSize, sourceSize, sourceSize);
     }
@@ -438,5 +440,4 @@ public final class MultitoolRadialScreen extends Screen {
     public boolean isPauseScreen() {
         return false;
     }
-
 }
