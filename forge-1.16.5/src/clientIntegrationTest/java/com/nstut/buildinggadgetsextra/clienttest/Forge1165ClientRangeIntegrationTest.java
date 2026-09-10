@@ -10,6 +10,7 @@ import com.nstut.buildinggadgetsextra.client.LegacyMultitoolScreen;
 import com.nstut.buildinggadgetsextra.common.ExtraConstants;
 import com.nstut.buildinggadgetsextra.item.BuildersMultitool;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.screen.ConnectingScreen;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.item.ItemStack;
 import net.minecraftforge.api.distmarker.Dist;
@@ -26,16 +27,34 @@ import java.nio.file.Paths;
 
 @Mod.EventBusSubscriber(modid = ExtraConstants.MOD_ID, value = Dist.CLIENT)
 public final class Forge1165ClientRangeIntegrationTest {
+    private static final long BOOT_TIMEOUT_NANOS = 120_000_000_000L;
     private static final boolean ENABLED = Boolean.getBoolean(ClientRangeRoundTripScenario.ENABLE_PROPERTY);
     private static final ClientRangeRoundTripScenario SCENARIO = new ClientRangeRoundTripScenario(new Adapter());
+    private static final long BOOT_STARTED_NANOS = System.nanoTime();
+    private static boolean connectionRequested;
 
     private Forge1165ClientRangeIntegrationTest() {}
 
     @SubscribeEvent
     public static void onClientTick(TickEvent.ClientTickEvent event) {
         if (!ENABLED || event.phase != TickEvent.Phase.END) return;
+
+        Minecraft minecraft = Minecraft.getInstance();
+        if (minecraft.player == null) {
+            if (!connectionRequested && minecraft.screen != null) {
+                connectionRequested = true;
+                minecraft.setScreen(new ConnectingScreen(minecraft.screen, minecraft, "127.0.0.1", 25565));
+            }
+            if (System.nanoTime() - BOOT_STARTED_NANOS > BOOT_TIMEOUT_NANOS) {
+                SCENARIO_FAIL_ADAPTER.fail("timeout waiting for dedicated server connection", null);
+            }
+            return;
+        }
+
         SCENARIO.tick();
     }
+
+    private static final Adapter SCENARIO_FAIL_ADAPTER = new Adapter();
 
     private static final class Adapter implements ClientRangeRoundTripScenario.Adapter {
         private Minecraft minecraft() {
