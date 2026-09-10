@@ -95,9 +95,10 @@ minecraft {
     }
 }
 
-// ForgeGradle finalizes the userdev launcher metadata after these child runs are configured.
-// Keep their parent relation for normal inheritance and copy the resolved launcher entrypoint and
-// environment late so Gradle-run CI tasks cannot end up with an empty main class.
+// ForgeGradle finalizes userdev launcher metadata after these child runs are configured. Their normal
+// parent merge can therefore happen before main/environment/JVM arguments have been populated. Copy
+// those resolved values after project evaluation; JVM args are de-duplicated so this remains safe if
+// ForgeGradle already inherited an early subset, while preserving any child-specific JVM arguments.
 gradle.projectsEvaluated {
     [
             clientIntegrationTest: 'client',
@@ -108,6 +109,11 @@ gradle.projectsEvaluated {
         def childRun = minecraft.runs.getByName(childName)
         childRun.main(parentRun.main)
         parentRun.environment.each { key, value -> childRun.environment(key, value) }
+
+        def resolvedJvmArgs = (parentRun.getJvmArgs() + childRun.getJvmArgs()).unique()
+        childRun.getJvmArgs().clear()
+        childRun.jvmArgs(resolvedJvmArgs)
+        childRun.inheritJvmArgs(false)
     }
 }
 
