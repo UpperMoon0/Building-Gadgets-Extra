@@ -84,17 +84,13 @@ minecraft {
             }
         }
         clientIntegrationTestServer {
-            parent runs.server
+            // ForgeGradle's merge copies the complete stock server launch definition, including
+            // launch target, module path/tokens, JVM arguments, and environment.
+            merge 'server', true
             client false
             workingDirectory project.file('run-client-integration-server')
             property 'bge.clientIntegrationTest', 'true'
             property 'bge.clientIntegrationResultDir', project.file('build/client-integration-dedicated').absolutePath
-            // Forge 47's bootstrap libraries need the same JDK module access granted by the
-            // stock launcher. Custom ForgeGradle server runs do not inherit these reliably.
-            jvmArgs '--add-modules=ALL-MODULE-PATH',
-                    '--add-opens=java.base/java.util.jar=ALL-UNNAMED',
-                    '--add-opens=java.base/java.lang.invoke=ALL-UNNAMED',
-                    '--add-exports=java.base/sun.security.util=ALL-UNNAMED'
             args '--nogui'
             mods {
                 "${mod_id}" { source sourceSets.clientIntegrationTest }
@@ -103,11 +99,10 @@ minecraft {
     }
 }
 
-// ForgeGradle does not reliably resolve the executable main for custom inherited runs.
-// Resolve it after evaluation so the integration server/client tasks always launch the same
-// userdev entrypoints as their stock parent runs.
+// Client-derived custom runs already receive ForgeGradle's client launch data; keep the explicit
+// entrypoint fallback for CI where inherited run defaults are finalized late.
 gradle.projectsEvaluated {
-    [clientIntegrationTest: 'client', dedicatedClientIntegrationTest: 'client', clientIntegrationTestServer: 'server'].each { childName, parentName ->
+    [clientIntegrationTest: 'client', dedicatedClientIntegrationTest: 'client'].each { childName, parentName ->
         def parentRun = minecraft.runs.getByName(parentName)
         def childRun = minecraft.runs.getByName(childName)
         childRun.main(parentRun.main)
