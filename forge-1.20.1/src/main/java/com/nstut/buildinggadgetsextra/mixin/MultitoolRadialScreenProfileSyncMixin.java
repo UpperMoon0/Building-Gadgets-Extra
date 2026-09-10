@@ -46,9 +46,19 @@ public abstract class MultitoolRadialScreenProfileSyncMixin {
     @Inject(method = {"mouseClicked(DDI)Z", "m_6375_(DDI)Z"}, at = @At("HEAD"), cancellable = true, remap = false)
     private void buildingGadgetsExtra$blockStaleProfileClicks(double mouseX, double mouseY, int button,
                                                                CallbackInfoReturnable<Boolean> cir) {
-        if (buildingGadgetsExtra$waitingForProfileSync) {
+        if (!buildingGadgetsExtra$waitingForProfileSync) return;
+
+        MultitoolRadialScreen refreshed = buildingGadgetsExtra$refreshAfterProfileSync();
+        if (refreshed == null) {
+            // The server has not published the selected profile yet. There are intentionally no valid
+            // context controls to interact with while the client still holds the previous profile.
             cir.setReturnValue(true);
+            return;
         }
+
+        // The authoritative stack is already here. Forward this very click to the rebuilt screen instead
+        // of consuming it and waiting for an unrelated render pass to clear the synchronization gate.
+        cir.setReturnValue(refreshed.mouseClicked(mouseX, mouseY, button));
     }
 
     @Inject(method = {
@@ -58,15 +68,20 @@ public abstract class MultitoolRadialScreenProfileSyncMixin {
     private void buildingGadgetsExtra$reopenAfterProfileSync(GuiGraphics graphics, int mouseX, int mouseY,
                                                               float partialTick, CallbackInfo ci) {
         if (!buildingGadgetsExtra$waitingForProfileSync) return;
+        if (buildingGadgetsExtra$refreshAfterProfileSync() != null) ci.cancel();
+    }
 
+    @Unique
+    private MultitoolRadialScreen buildingGadgetsExtra$refreshAfterProfileSync() {
         Minecraft minecraft = Minecraft.getInstance();
-        if (minecraft.player == null) return;
+        if (minecraft.player == null) return null;
         ItemStack held = BaseGadget.getGadget(minecraft.player);
-        if (held.isEmpty() || MultitoolState.getActiveMode(held) != navigation.selectedTool()) return;
+        if (held.isEmpty() || MultitoolState.getActiveMode(held) != navigation.selectedTool()) return null;
 
         buildingGadgetsExtra$waitingForProfileSync = false;
-        minecraft.setScreen(new MultitoolRadialScreen(held));
-        ci.cancel();
+        MultitoolRadialScreen refreshed = new MultitoolRadialScreen(held);
+        minecraft.setScreen(refreshed);
+        return refreshed;
     }
 
     @Unique
