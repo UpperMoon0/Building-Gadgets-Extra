@@ -8,13 +8,11 @@ import com.direwolf20.buildinggadgets.common.items.modes.BuildingModes;
 import com.direwolf20.buildinggadgets.common.items.modes.ExchangingModes;
 import com.nstut.buildinggadgetsextra.common.MultitoolMode;
 import net.minecraft.item.ItemStack;
+import net.minecraft.nbt.CompoundNBT;
 
 public final class MultitoolState {
     private static final String ACTIVE = "BGEActiveTool";
     private static final String PROFILE = "BGEProfile_";
-    private static final String LIVE_MIRROR_HORIZONTAL = "BGELiveMirrorHorizontal";
-    private static final String LIVE_MIRROR_VERTICAL = "BGELiveMirrorVertical";
-
     private MultitoolState() {}
 
     public static MultitoolMode getActiveMode(ItemStack stack) {
@@ -23,19 +21,6 @@ public final class MultitoolState {
 
     public static void setActiveMode(ItemStack stack, MultitoolMode mode) {
         stack.getOrCreateTag().putString(ACTIVE, mode.serializedName());
-    }
-
-    public static boolean isLiveMirrorHorizontal(ItemStack stack) {
-        return stack.getOrCreateTag().getBoolean(LIVE_MIRROR_HORIZONTAL);
-    }
-
-    public static boolean isLiveMirrorVertical(ItemStack stack) {
-        return stack.getOrCreateTag().getBoolean(LIVE_MIRROR_VERTICAL);
-    }
-
-    public static void toggleLiveMirror(ItemStack stack, boolean vertical) {
-        String key = vertical ? LIVE_MIRROR_VERTICAL : LIVE_MIRROR_HORIZONTAL;
-        stack.getOrCreateTag().putBoolean(key, !stack.getOrCreateTag().getBoolean(key));
     }
 
     public static int getProfile(ItemStack stack, MultitoolMode mode) {
