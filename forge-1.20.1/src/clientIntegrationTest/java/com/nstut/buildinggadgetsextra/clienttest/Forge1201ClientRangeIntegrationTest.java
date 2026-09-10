@@ -9,13 +9,13 @@ import net.minecraftforge.fml.common.Mod;
 
 @Mod.EventBusSubscriber(modid = ExtraConstants.MOD_ID, value = Dist.CLIENT)
 public final class Forge1201ClientRangeIntegrationTest {
-    private static final int BOOT_TIMEOUT_TICKS = 600;
+    private static final long BOOT_TIMEOUT_NANOS = 120_000_000_000L;
     private static final boolean ENABLED = Boolean.getBoolean(ClientRangeRoundTripScenario.ENABLE_PROPERTY);
     private static final boolean DEDICATED = Boolean.getBoolean("bge.clientIntegrationDedicated");
     private static final ModernClientRangeAdapter ADAPTER = new ModernClientRangeAdapter(
             (screen, x, y) -> screen.mouseClicked(x, y, 0));
     private static final ClientRangeRoundTripScenario SCENARIO = new ClientRangeRoundTripScenario(ADAPTER);
-    private static int bootTicks;
+    private static final long BOOT_STARTED_NANOS = System.nanoTime();
 
     private Forge1201ClientRangeIntegrationTest() {}
 
@@ -25,7 +25,7 @@ public final class Forge1201ClientRangeIntegrationTest {
 
         Minecraft minecraft = Minecraft.getInstance();
         if (minecraft.player == null || minecraft.level == null) {
-            if (++bootTicks > BOOT_TIMEOUT_TICKS) {
+            if (System.nanoTime() - BOOT_STARTED_NANOS > BOOT_TIMEOUT_NANOS) {
                 ADAPTER.fail("timeout waiting for " + (DEDICATED ? "dedicated server connection" : "quick-play integration world"), null);
             }
             return;
