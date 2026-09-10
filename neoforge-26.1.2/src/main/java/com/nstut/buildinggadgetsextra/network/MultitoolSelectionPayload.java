@@ -12,7 +12,7 @@ public record MultitoolSelectionPayload(int toolOrdinal, String gadgetMode) impl
             Identifier.fromNamespaceAndPath(BuildingGadgetsExtra.MODID, "multitool_selection"));
     public static final StreamCodec<ByteBuf, MultitoolSelectionPayload> STREAM_CODEC = StreamCodec.composite(
             ByteBufCodecs.VAR_INT, MultitoolSelectionPayload::toolOrdinal,
-            ByteBufCodecs.STRING_UTF8, MultitoolSelectionPayload::gadgetMode,
+            ByteBufCodecs.stringUtf8(128), MultitoolSelectionPayload::gadgetMode,
             MultitoolSelectionPayload::new);
 
     @Override

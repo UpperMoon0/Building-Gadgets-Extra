@@ -28,6 +28,7 @@ allprojects {
 tasks.register('build') {
     group = 'build'
     description = 'Builds every supported Building Gadgets Extra module.'
+    dependsOn ':common:check'
     dependsOn ':neoforge-1.21.1:build'
     dependsOn 'neoforge2612Build'
     dependsOn ':forge-1.20.1:build'
@@ -68,7 +69,7 @@ tasks.register('neoforge2612Test', Exec) {
 }
 
 tasks.register('neoforge2612Clean', Exec) {
-    group = 'neoforge-26.1.2'
+    group = 'build'
     description = 'Cleans the Java 25 / Gradle 9 NeoForge 26.1.2 module.'
     workingDir rootProject.file('neoforge-26.1.2')
     commandLine nestedGradle('neoforge-26.1.2', 'clean')

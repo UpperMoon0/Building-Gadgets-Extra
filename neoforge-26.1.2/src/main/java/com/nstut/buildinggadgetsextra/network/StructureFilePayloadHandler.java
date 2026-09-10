@@ -8,8 +8,6 @@ import net.minecraft.server.level.ServerPlayer;
 import net.neoforged.neoforge.network.PacketDistributor;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 
-import java.util.UUID;
-
 public final class StructureFilePayloadHandler {
     private StructureFilePayloadHandler() {}
 
@@ -25,7 +23,6 @@ public final class StructureFilePayloadHandler {
             byte[] bytes = NativeStructureBridge.exportStructure(player, name);
             if (bytes == null) return;
 
-            UUID transferId = UUID.randomUUID();
             int total = Math.max(1, (bytes.length + ExtraConstants.STRUCTURE_CHUNK_SIZE - 1)
                     / ExtraConstants.STRUCTURE_CHUNK_SIZE);
             for (int index = 0; index < total; index++) {
@@ -34,7 +31,7 @@ public final class StructureFilePayloadHandler {
                 byte[] chunk = new byte[end - start];
                 System.arraycopy(bytes, start, chunk, 0, chunk.length);
                 PacketDistributor.sendToPlayer(player,
-                        new StructureDownloadPayload(transferId, name, index, total, chunk));
+                        new StructureDownloadPayload(payload.requestId(), name, index, total, chunk));
             }
         });
     }

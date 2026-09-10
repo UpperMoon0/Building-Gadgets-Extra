@@ -2,6 +2,7 @@ package com.nstut.buildinggadgetsextra.client;
 
 import com.nstut.buildinggadgetsextra.common.ChunkAccumulator;
 import com.nstut.buildinggadgetsextra.common.ExtraConstants;
+import com.nstut.buildinggadgetsextra.common.PendingSaveTarget;
 import com.nstut.buildinggadgetsextra.network.StructureDownloadPayload;
 import com.nstut.buildinggadgetsextra.network.StructureFilePayload;
 import com.nstut.buildinggadgetsextra.network.StructureUploadPayload;
@@ -14,17 +15,17 @@ import org.lwjgl.util.tinyfd.TinyFileDialogs;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayDeque;
 import java.util.Arrays;
-import java.util.Deque;
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 
 public final class ClientStructureFiles {
+    // Packet receive always runs on the Minecraft client thread. Keep this map
+    // strictly client-thread-owned; the native file-dialog thread never touches it.
     private static final Map<UUID, ChunkAccumulator> DOWNLOADS = new HashMap<>();
-    private static final Map<String, Deque<Path>> SAVE_DESTINATIONS = new HashMap<>();
+    private static final Map<UUID, PendingSaveTarget> SAVE_DESTINATIONS = new HashMap<>();
 
     private ClientStructureFiles() {}
 
@@ -48,11 +49,17 @@ public final class ClientStructureFiles {
                         path = Path.of(result + ".nbt");
                     }
                     String name = transferName(path);
+                    UUID requestId = UUID.randomUUID();
+                    pruneSaveDestinations();
                     synchronized (SAVE_DESTINATIONS) {
-                        SAVE_DESTINATIONS.computeIfAbsent(name, ignored -> new ArrayDeque<>()).add(path);
+                        if (SAVE_DESTINATIONS.size() >= ExtraConstants.MAX_STRUCTURE_TRANSFERS_PER_PLAYER) {
+                            message(ExtraConstants.BUSY);
+                            return;
+                        }
+                        SAVE_DESTINATIONS.put(requestId, new PendingSaveTarget(path));
                     }
                     Minecraft.getInstance().execute(() ->
-                            ClientPacketDistributor.sendToServer(new StructureFilePayload(false, name)));
+                            ClientPacketDistributor.sendToServer(new StructureFilePayload(false, name, requestId)));
                 }
             } catch (Exception error) {
                 message(ExtraConstants.STRUCTURE_SAVE_FAILED, "structure");
@@ -78,28 +85,31 @@ public final class ClientStructureFiles {
     }
 
     public static void receive(StructureDownloadPayload payload) {
+        pruneDownloads();
+        pruneSaveDestinations();
+        if (!hasDestination(payload.transferId())) {
+            DOWNLOADS.remove(payload.transferId());
+            return;
+        }
         try {
             ChunkAccumulator transfer = DOWNLOADS.computeIfAbsent(payload.transferId(),
                     ignored -> new ChunkAccumulator(payload.total()));
             if (!transfer.accept(payload.index(), payload.data())) {
                 DOWNLOADS.remove(payload.transferId());
+                removeDestination(payload.transferId());
                 return;
             }
             if (!transfer.isComplete()) return;
             DOWNLOADS.remove(payload.transferId());
 
-            Path file;
-            synchronized (SAVE_DESTINATIONS) {
-                Deque<Path> paths = SAVE_DESTINATIONS.get(payload.name());
-                file = paths == null ? null : paths.poll();
-                if (paths != null && paths.isEmpty()) SAVE_DESTINATIONS.remove(payload.name());
-            }
-            if (file == null) file = root().resolve(payload.name() + ".nbt");
+            Path file = removeDestination(payload.transferId());
+            if (file == null) return;
             Files.createDirectories(file.toAbsolutePath().getParent());
             Files.write(file, transfer.join());
             message(ExtraConstants.STRUCTURE_SAVED, file.getFileName().toString());
         } catch (Exception error) {
             DOWNLOADS.remove(payload.transferId());
+            removeDestination(payload.transferId());
             message(ExtraConstants.STRUCTURE_SAVE_FAILED, payload.name());
         }
     }
@@ -122,6 +132,29 @@ public final class ClientStructureFiles {
             });
         } catch (Exception error) {
             message(ExtraConstants.STRUCTURE_LOAD_FAILED, file.getFileName().toString());
+        }
+    }
+
+    private static void pruneDownloads() {
+        DOWNLOADS.entrySet().removeIf(entry -> entry.getValue().isExpired());
+    }
+
+    private static void pruneSaveDestinations() {
+        synchronized (SAVE_DESTINATIONS) {
+            SAVE_DESTINATIONS.entrySet().removeIf(entry -> entry.getValue().isExpired());
+        }
+    }
+
+    private static boolean hasDestination(UUID requestId) {
+        synchronized (SAVE_DESTINATIONS) {
+            return SAVE_DESTINATIONS.containsKey(requestId);
+        }
+    }
+
+    private static Path removeDestination(UUID requestId) {
+        synchronized (SAVE_DESTINATIONS) {
+            PendingSaveTarget target = SAVE_DESTINATIONS.remove(requestId);
+            return target == null ? null : target.path();
         }
     }
 

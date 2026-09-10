@@ -5,10 +5,12 @@ import com.direwolf20.buildinggadgets2.common.events.ServerTickHandler;
 import com.direwolf20.buildinggadgets2.common.items.BaseGadget;
 import com.direwolf20.buildinggadgets2.common.items.GadgetCutPaste;
 import com.direwolf20.buildinggadgets2.common.worlddata.BG2Data;
+import com.direwolf20.buildinggadgets2.setup.Registration;
 import com.direwolf20.buildinggadgets2.util.BuildingUtils;
 import com.direwolf20.buildinggadgets2.util.GadgetNBT;
 import com.direwolf20.buildinggadgets2.util.VecHelpers;
 import com.direwolf20.buildinggadgets2.util.datatypes.StatePos;
+import com.nstut.buildinggadgetsextra.common.ExtraConstants;
 import com.nstut.buildinggadgetsextra.common.MultitoolMode;
 import com.nstut.buildinggadgetsextra.item.BuildersMultitool;
 import com.nstut.buildinggadgetsextra.item.MultitoolState;
@@ -42,7 +44,7 @@ public final class MultitoolCutHandler {
 
     private static void cut(Player player) {
         ItemStack stack = BaseGadget.getGadget(player);
-        if (!(stack.getItem() instanceof BuildersMultitool multitool)
+        if (!(stack.getItem() instanceof BuildersMultitool)
                 || MultitoolState.getActiveMode(stack) != MultitoolMode.CUT_PASTE
                 || !GadgetNBT.getMode(stack).getId().getPath().equals("cut")
                 || ServerTickHandler.gadgetWorking(GadgetNBT.getUUID(stack))) return;
@@ -53,30 +55,42 @@ public final class MultitoolCutHandler {
 
         AABB area = VecHelpers.aabbFromBlockPos(start, end);
         if (!validSize(player, area)) return;
-        long size = BlockPos.betweenClosedStream(area).count();
-        if (size > MAX_BLOCKS) {
-            player.displayClientMessage(Component.translatable("buildinggadgets2.messages.areatoolarge", MAX_BLOCKS, size), false);
+        long selected = BlockPos.betweenClosedStream(area).count();
+        if (selected > MAX_BLOCKS) {
+            player.displayClientMessage(Component.translatable("buildinggadgets2.messages.areatoolarge", MAX_BLOCKS, selected), false);
             return;
         }
 
-        int totalCost = multitool.getEnergyCost() * (int) size;
+        Level level = player.level();
+        ArrayList<BlockPos> accepted = new ArrayList<>();
+        BlockPos.betweenClosedStream(area).map(BlockPos::immutable)
+                .sorted(Comparator.comparingInt(Vec3i::getY).reversed()).forEach(pos -> {
+                    if (!GadgetCutPaste.customCutValidation(level.getBlockState(pos), level, player, pos)) return;
+                    BlockEvent.BreakEvent event = new BlockEvent.BreakEvent(level, pos, level.getBlockState(pos), player);
+                    if (NeoForge.EVENT_BUS.post(event).isCanceled()) return;
+                    accepted.add(pos);
+                });
+        if (accepted.isEmpty()) {
+            player.displayClientMessage(Component.translatable(ExtraConstants.CUT_NO_VALID_BLOCKS), true);
+            return;
+        }
+
+        int cutCost = Registration.CutPaste_Gadget.get().getEnergyCost();
+        long totalCostLong = (long) cutCost * accepted.size();
+        if (totalCostLong > Integer.MAX_VALUE) return;
+        int totalCost = (int) totalCostLong;
         if (!player.isCreative() && !BuildingUtils.hasEnoughEnergy(stack, totalCost)) {
             player.displayClientMessage(Component.translatable("buildinggadgets2.messages.notenoughenergy",
                     totalCost, BuildingUtils.getEnergyStored(stack)), false);
             return;
         }
 
-        Level level = player.level();
         UUID buildUUID = UUID.randomUUID();
-        BlockPos.betweenClosedStream(area).map(BlockPos::immutable)
-                .sorted(Comparator.comparingInt(Vec3i::getY).reversed()).forEach(pos -> {
-                    if (!GadgetCutPaste.customCutValidation(level.getBlockState(pos), level, player, pos)) return;
-                    BlockEvent.BreakEvent event = new BlockEvent.BreakEvent(level, pos, level.getBlockState(pos), player);
-                    if (NeoForge.EVENT_BUS.post(event).isCanceled()) return;
-                    ServerTickHandler.addToMap(buildUUID, new StatePos(Blocks.AIR.defaultBlockState(), pos), level,
-                            GadgetNBT.getRenderTypeByte(stack), player, false, false, stack,
-                            ServerBuildList.BuildType.CUT, false, BlockPos.ZERO);
-                });
+        for (BlockPos pos : accepted) {
+            ServerTickHandler.addToMap(buildUUID, new StatePos(Blocks.AIR.defaultBlockState(), pos), level,
+                    GadgetNBT.getRenderTypeByte(stack), player, false, false, stack,
+                    ServerBuildList.BuildType.CUT, false, BlockPos.ZERO);
+        }
 
         ServerTickHandler.setCutStart(buildUUID, start);
         GadgetNBT.setCopyStartPos(stack, GadgetNBT.nullPos);
@@ -85,7 +99,7 @@ public final class MultitoolCutHandler {
         BG2Data data = BG2Data.get(Objects.requireNonNull(level.getServer()).overworld());
         data.addToCopyPaste(GadgetNBT.getUUID(stack), new ArrayList<>());
         data.addToTEMap(GadgetNBT.getUUID(stack), new ArrayList<>());
-        player.displayClientMessage(Component.translatable("buildinggadgets2.messages.cutblocks", size), true);
+        player.displayClientMessage(Component.translatable("buildinggadgets2.messages.cutblocks", accepted.size()), true);
     }
 
     private static boolean validSize(Player player, AABB area) {

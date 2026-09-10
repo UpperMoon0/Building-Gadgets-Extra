@@ -2,14 +2,22 @@ package com.nstut.buildinggadgetsextra.common;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.util.function.LongSupplier;
 
 public final class ChunkAccumulator {
-    private final long createdAt = System.currentTimeMillis();
+    private final LongSupplier clock;
+    private final long createdAt;
     private final byte[][] chunks;
     private int receivedChunks;
     private int receivedBytes;
 
     public ChunkAccumulator(int totalChunks) {
+        this(totalChunks, () -> System.nanoTime() / 1_000_000L);
+    }
+
+    ChunkAccumulator(int totalChunks, LongSupplier clock) {
+        this.clock = clock;
+        this.createdAt = clock.getAsLong();
         int maximumChunks = (ExtraConstants.MAX_STRUCTURE_FILE_BYTES
                 + ExtraConstants.STRUCTURE_CHUNK_SIZE - 1) / ExtraConstants.STRUCTURE_CHUNK_SIZE;
         if (totalChunks < 1 || totalChunks > maximumChunks) {
@@ -46,6 +54,8 @@ public final class ChunkAccumulator {
     }
 
     public boolean isExpired() {
-        return System.currentTimeMillis() - createdAt > 30_000L;
+        return clock.getAsLong() - createdAt > 30_000L;
     }
+
+    public int receivedBytes() { return receivedBytes; }
 }

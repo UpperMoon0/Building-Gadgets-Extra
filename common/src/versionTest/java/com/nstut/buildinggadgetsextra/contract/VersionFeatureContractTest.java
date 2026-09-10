@@ -67,7 +67,7 @@ class VersionFeatureContractTest {
         contains(bridge, "exportStructure", "server export bridge");
         contains(bridge, "importStructure", "server import bridge");
         contains(bridge, "MAX_STRUCTURE_FILE_BYTES", "server encoded-size guard");
-        contains(bridge, "MAX_STRUCTURE_BLOCKS", "server decoded-volume guard");
+        contains(bridge, "StructureLimits.checkedVolume", "overflow-safe server decoded-volume guard");
         contains(bridge, legacyCut ? "Template" : "StructureTemplate", "vanilla structure implementation");
         contains(bridge, "ServerPlayer", "server-owned structure conversion");
 

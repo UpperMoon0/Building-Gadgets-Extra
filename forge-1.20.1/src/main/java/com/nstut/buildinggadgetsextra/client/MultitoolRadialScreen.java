@@ -11,6 +11,7 @@ import com.direwolf20.buildinggadgets2.common.network.packets.*;
 import com.direwolf20.buildinggadgets2.util.GadgetNBT;
 import com.direwolf20.buildinggadgets2.util.modes.BaseMode;
 import com.nstut.buildinggadgetsextra.common.ExtraConstants;
+import com.nstut.buildinggadgetsextra.setup.ExtraConfig;
 import com.nstut.buildinggadgetsextra.common.MultitoolMode;
 import com.nstut.buildinggadgetsextra.common.MultitoolMenuState;
 import com.nstut.buildinggadgetsextra.common.RadialButtonPolicy;
@@ -116,7 +117,7 @@ public final class MultitoolRadialScreen extends Screen {
 
         if (selectedTool() == MultitoolMode.BUILD || selectedTool() == MultitoolMode.EXCHANGING) {
             IncrementalSliderWidget range = new IncrementalSliderWidget(width / 2 + 112, next(rightY),
-                    82, 14, 1, 15, Component.translatable("buildinggadgets2.gui.range").append(": "),
+                    82, 14, 1, ExtraConfig.multitoolMaxRange(), Component.translatable("buildinggadgets2.gui.range").append(": "),
                     GadgetNBT.getToolRange(stack), slider ->
                     PacketHandler.sendToServer(new PacketRangeChange(slider.getValueInt())));
             range.getComponents().forEach(this::addRenderableWidget);
@@ -142,10 +143,12 @@ public final class MultitoolRadialScreen extends Screen {
 
         if (RadialButtonPolicy.showMirrorButtons(effectiveMode)
                 && (selectedTool() == MultitoolMode.COPY_PASTE || selectedTool() == MultitoolMode.CUT_PASTE)) {
-            addRenderableWidget(new MirrorIconButton(width / 2 - 136, next(leftY), "mirror_horizontal",
+            addRenderableWidget(new MirrorIconButton(width / 2 - 136, next(leftY),
+                    MirrorIconButton.addonSettingIcon("mirror_horizontal"), RadialIconLayout.SOURCE_TEXTURE_SIZE,
                     Component.translatable(ExtraConstants.MIRROR_HORIZONTAL),
                     () -> ExtraNetwork.sendToServer(new MirrorPacket(false))));
-            addRenderableWidget(new MirrorIconButton(width / 2 - 136, next(leftY), "mirror_vertical",
+            addRenderableWidget(new MirrorIconButton(width / 2 - 136, next(leftY),
+                    MirrorIconButton.addonSettingIcon("mirror_vertical"), RadialIconLayout.SOURCE_TEXTURE_SIZE,
                     Component.translatable(ExtraConstants.MIRROR_VERTICAL),
                     () -> ExtraNetwork.sendToServer(new MirrorPacket(true))));
         }
@@ -153,14 +156,16 @@ public final class MultitoolRadialScreen extends Screen {
         RadialButtonPolicy.FileAction fileAction = RadialButtonPolicy.fileAction(cutTool, effectiveMode);
         if (fileAction != RadialButtonPolicy.FileAction.NONE) {
             boolean load = fileAction == RadialButtonPolicy.FileAction.LOAD;
-            addRenderableWidget(new MirrorIconButton(width / 2 + 112, next(rightY), load ? "load" : "save",
+            ResourceLocation fileIcon = MirrorIconButton.addonSettingIcon(load ? "load" : "save");
+            addRenderableWidget(new MirrorIconButton(width / 2 + 112, next(rightY), fileIcon,
+                    RadialIconLayout.SOURCE_TEXTURE_SIZE,
                     Component.translatable(load ? ExtraConstants.LOAD_STRUCTURE : ExtraConstants.SAVE_STRUCTURE),
                     load ? ClientStructureFiles::chooseLoad : ClientStructureFiles::chooseSave));
         }
 
         if (cutTool && !hasCutBuffer) {
             addRenderableWidget(new MirrorIconButton(width / 2 + 112, next(rightY),
-                    "cut", RadialIconLayout.MODERN_SETTING_ICON_SIZE,
+                    MirrorIconButton.upstreamSettingIcon("cut"), RadialIconLayout.MODERN_SETTING_ICON_SIZE,
                     Component.translatable("buildinggadgets2.radialmenu.cut"),
                     () -> ExtraNetwork.sendToServer(new MultitoolCutPacket())));
         }

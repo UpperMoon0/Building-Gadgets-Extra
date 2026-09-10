@@ -13,10 +13,26 @@ base {
 
 java.toolchain.languageVersion = JavaLanguageVersion.of(8)
 
-sourceSets.main.java.srcDir rootProject.file('common/src/main/java')
-sourceSets.main.resources.srcDir rootProject.file('common/src/main/resources')
-sourceSets.test.java.srcDir rootProject.file('common/src/test/java')
-sourceSets.test.java.srcDir rootProject.file('common/src/versionTest/java')
+sourceSets {
+    main {
+        java.srcDir rootProject.file('common/src/main/java')
+        resources.srcDir rootProject.file('common/src/main/resources')
+    }
+    test {
+        java.srcDir rootProject.file('common/src/versionTest/java')
+    }
+    clientIntegrationTest {
+        java.srcDir rootProject.file('common/src/clientIntegrationTest/java')
+        java.srcDir project.file('src/clientIntegrationTest/java')
+        compileClasspath += sourceSets.main.output + sourceSets.main.compileClasspath
+        runtimeClasspath += output + compileClasspath + sourceSets.main.runtimeClasspath
+    }
+}
+
+configurations {
+    clientIntegrationTestImplementation.extendsFrom implementation
+    clientIntegrationTestRuntimeOnly.extendsFrom runtimeOnly
+}
 
 minecraft {
     mappings channel: 'official', version: minecraft_version
@@ -24,11 +40,46 @@ minecraft {
     runs {
         configureEach {
             workingDirectory project.file('run')
+            args '--mixin', "${mod_id}.mixins.json"
             property 'forge.logging.console.level', 'info'
             mods { "${mod_id}" { source sourceSets.main } }
         }
         client {}
         server { args '--nogui' }
+        clientIntegrationTest {
+            parent runs.client
+            client true
+            workingDirectory project.file('run-client-integration')
+            property 'bge.clientIntegrationTest', 'true'
+            property 'bge.clientIntegrationDedicated', 'true'
+            property 'bge.clientIntegrationResultDir', project.file('build/client-integration').absolutePath
+            mods { "${mod_id}" { source sourceSets.clientIntegrationTest } }
+        }
+        clientIntegrationTestServer {
+            parent runs.server
+            client false
+            workingDirectory project.file('run-client-integration-server')
+            property 'bge.clientIntegrationTest', 'true'
+            property 'bge.clientIntegrationResultDir', project.file('build/client-integration').absolutePath
+            args '--nogui'
+            mods { "${mod_id}" { source sourceSets.clientIntegrationTest } }
+        }
+    }
+}
+
+// ForgeGradle's legacy userdev defaults are populated after custom run inheritance.
+// Resolve these two values after evaluation so the integration runs can launch.
+
+gradle.projectsEvaluated {
+    [clientIntegrationTest: 'client', clientIntegrationTestServer: 'server'].each { childName, parentName ->
+        def parentRun = minecraft.runs.getByName(parentName)
+        def childRun = minecraft.runs.getByName(childName)
+        childRun.main(parentRun.main)
+        parentRun.environment.each { key, value -> childRun.environment(key, value) }
+        childRun.environment('MOD_CLASSES',
+                ([sourceSets.main.output.resourcesDir] + sourceSets.main.output.classesDirs.files
+                        + sourceSets.clientIntegrationTest.output.classesDirs.files)
+                        .collect { "${mod_id}%%${it.absolutePath}" }.join(File.pathSeparator))
     }
 }
 
@@ -53,6 +104,12 @@ tasks.named('test', Test).configure {
     systemProperty 'bge.minecraftVersion', minecraft_version
     systemProperty 'bge.loader', 'forge'
     systemProperty 'bge.legacyCut', 'true'
+    testLogging {
+        events 'failed'
+        exceptionFormat = 'full'
+        showCauses = true
+        showStackTraces = true
+    }
 }
 
 tasks.named('processResources', ProcessResources).configure {

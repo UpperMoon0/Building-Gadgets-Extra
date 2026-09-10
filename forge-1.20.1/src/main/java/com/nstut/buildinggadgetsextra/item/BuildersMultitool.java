@@ -61,8 +61,13 @@ public final class BuildersMultitool extends GadgetCopyPaste {
         ResourceLocation saved = MultitoolState.getProfileMode(stack, selected);
         BaseMode next = GadgetModes.INSTANCE.getModesForGadget(target(selected)).stream()
                 .filter(mode -> saved != null && mode.getId().equals(saved)).findFirst()
-                .orElseGet(() -> GadgetModes.INSTANCE.getModesForGadget(target(selected)).stream().min(Comparator.naturalOrder()).orElseThrow());
+                .orElseGet(() -> GadgetModes.INSTANCE.getModesForGadget(target(selected)).stream()
+                        .filter(mode -> mode.getId().getPath().equals(defaultMode(selected)))
+                        .findFirst()
+                        .orElseGet(() -> GadgetModes.INSTANCE.getModesForGadget(target(selected)).stream()
+                                .min(Comparator.naturalOrder()).orElseThrow()));
         GadgetNBT.setMode(stack, next);
+        MultitoolState.setProfileMode(stack, selected, next.getId());
     }
 
     public void selectGadgetMode(ItemStack stack, ResourceLocation requested) {
@@ -103,5 +108,15 @@ public final class BuildersMultitool extends GadgetCopyPaste {
     @Override public void appendHoverText(ItemStack stack, @Nullable Level level, List<Component> tooltip, TooltipFlag flag) {
         super.appendHoverText(stack, level, tooltip, flag);
         tooltip.add(Component.translatable("buildinggadgetsextra.multitool.active", Component.translatable(MultitoolState.getActiveMode(stack).translationKey())).withStyle(ChatFormatting.AQUA));
+    }
+
+    private static String defaultMode(MultitoolMode mode) {
+        return switch (mode) {
+            case BUILD -> "build_to_me";
+            case EXCHANGING -> "surface";
+            case COPY_PASTE -> "copy";
+            case CUT_PASTE -> "cut";
+            case DESTRUCTION -> "copy";
+        };
     }
 }

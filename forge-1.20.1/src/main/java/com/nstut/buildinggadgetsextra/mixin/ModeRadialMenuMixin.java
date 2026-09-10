@@ -16,6 +16,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
@@ -51,11 +52,13 @@ public abstract class ModeRadialMenuMixin extends Screen {
         String mode = GadgetNBT.getMode(gadget).getId().getPath();
         int fileY = y;
         if (RadialButtonPolicy.showMirrorButtons(mode)) {
-            this.addRenderableWidget(new MirrorIconButton(x, y, "mirror_horizontal",
+            this.addRenderableWidget(new MirrorIconButton(x, y,
+                    MirrorIconButton.addonSettingIcon("mirror_horizontal"), RadialIconLayout.SOURCE_TEXTURE_SIZE,
                     Component.translatable(ExtraConstants.MIRROR_HORIZONTAL),
                     () -> ExtraNetwork.sendToServer(new MirrorPacket(false))));
             this.addRenderableWidget(new MirrorIconButton(
-                    x, y + RadialIconLayout.BUTTON_SPACING, "mirror_vertical",
+                    x, y + RadialIconLayout.BUTTON_SPACING,
+                    MirrorIconButton.addonSettingIcon("mirror_vertical"), RadialIconLayout.SOURCE_TEXTURE_SIZE,
                     Component.translatable(ExtraConstants.MIRROR_VERTICAL),
                     () -> ExtraNetwork.sendToServer(new MirrorPacket(true))));
             fileY += RadialIconLayout.BUTTON_SPACING * 2;
@@ -65,8 +68,9 @@ public abstract class ModeRadialMenuMixin extends Screen {
                 gadget.getItem() instanceof GadgetCutPaste, mode);
         if (fileAction != RadialButtonPolicy.FileAction.NONE) {
             boolean load = fileAction == RadialButtonPolicy.FileAction.LOAD;
-            this.addRenderableWidget(new MirrorIconButton(x, fileY,
-                    load ? "load" : "save",
+            ResourceLocation fileIcon = MirrorIconButton.addonSettingIcon(load ? "load" : "save");
+            this.addRenderableWidget(new MirrorIconButton(x, fileY, fileIcon,
+                    RadialIconLayout.SOURCE_TEXTURE_SIZE,
                     Component.translatable(load
                             ? ExtraConstants.LOAD_STRUCTURE : ExtraConstants.SAVE_STRUCTURE),
                     load ? ClientStructureFiles::chooseLoad : ClientStructureFiles::chooseSave));

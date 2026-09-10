@@ -1,20 +1,26 @@
 package com.nstut.buildinggadgetsextra.network;
 
-import com.direwolf20.buildinggadgets.common.config.Config;
 import com.direwolf20.buildinggadgets.common.items.*;
 import com.direwolf20.buildinggadgets.common.util.GadgetUtils;
+import com.nstut.buildinggadgetsextra.common.DebugInstrumentation;
 import com.nstut.buildinggadgetsextra.common.MultitoolMode;
+import com.nstut.buildinggadgetsextra.common.MultitoolRangePolicy;
 import com.nstut.buildinggadgetsextra.item.BuildersMultitool;
 import com.nstut.buildinggadgetsextra.item.MultitoolState;
+import com.nstut.buildinggadgetsextra.setup.ExtraConfig;
 import net.minecraft.entity.player.ServerPlayerEntity;
 import net.minecraft.item.ItemStack;
 import net.minecraft.network.PacketBuffer;
-import net.minecraft.util.math.MathHelper;
 import net.minecraftforge.fml.network.NetworkEvent;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
+import java.util.OptionalInt;
 import java.util.function.Supplier;
 
 public final class LegacyMultitoolPacket {
+    private static final Logger LOGGER = LogManager.getLogger();
+
     public static final int SELECT_TOOL = 0, SELECT_ACTION = 1, RANGE = 2, ROTATE = 3, MIRROR = 4,
             UNDO = 5, ANCHOR = 6, FUZZY = 7, CONNECTED = 8, RAYTRACE = 9,
             PLACE_ATOP = 10, DESTROY_OVERLAY = 11, FLUID_ONLY = 12;
@@ -27,9 +33,19 @@ public final class LegacyMultitoolPacket {
         NetworkEvent.Context context = supplier.get();
         context.enqueueWork(() -> {
             ServerPlayerEntity player = context.getSender();
-            if (player == null) return;
+            if (player == null) {
+                if (packet.operation == RANGE) {
+                    trace("range-reject", () -> "source=legacy-range-packet reason=no-sender delta=" + packet.value);
+                }
+                return;
+            }
             ItemStack stack = AbstractGadget.getGadget(player);
-            if (!(stack.getItem() instanceof BuildersMultitool)) return;
+            if (!(stack.getItem() instanceof BuildersMultitool)) {
+                if (packet.operation == RANGE) {
+                    trace("range-reject", () -> "source=legacy-range-packet reason=not-multitool delta=" + packet.value);
+                }
+                return;
+            }
             BuildersMultitool multitool = (BuildersMultitool) stack.getItem();
             MultitoolMode active = MultitoolState.getActiveMode(stack);
             if (packet.operation == SELECT_TOOL) {
@@ -41,7 +57,31 @@ public final class LegacyMultitoolPacket {
             if (packet.operation == SELECT_ACTION) { MultitoolState.applyProfile(stack, active, packet.value); player.containerMenu.broadcastChanges(); return; }
             AbstractGadget delegate = delegate(active);
             switch (packet.operation) {
-                case RANGE: GadgetUtils.setToolRange(stack, MathHelper.clamp(GadgetUtils.getToolRange(stack) + packet.value, 1, Config.GADGETS.maxRange.get())); break;
+                case RANGE: {
+                    int currentRange = GadgetUtils.getToolRange(stack);
+                    int requestedRange = currentRange + packet.value;
+                    int configuredMax = ExtraConfig.multitoolMaxRange();
+                    OptionalInt range = MultitoolRangePolicy.resolve(active, requestedRange, configuredMax);
+                    if (range.isPresent()) {
+                        int resolvedRange = range.getAsInt();
+                        trace("range-apply", () -> "source=legacy-range-packet"
+                                + " mode=" + active.serializedName()
+                                + " current=" + currentRange
+                                + " delta=" + packet.value
+                                + " requested=" + requestedRange
+                                + " resolved=" + resolvedRange
+                                + " configuredMax=" + configuredMax);
+                        GadgetUtils.setToolRange(stack, resolvedRange);
+                    } else {
+                        trace("range-reject", () -> "source=legacy-range-packet"
+                                + " reason=unsupported-mode mode=" + active.serializedName()
+                                + " current=" + currentRange
+                                + " delta=" + packet.value
+                                + " requested=" + requestedRange
+                                + " configuredMax=" + configuredMax);
+                    }
+                    break;
+                }
                 case ROTATE: delegate.onRotate(stack, player); break;
                 case MIRROR: delegate.onMirror(stack, player); break;
                 case UNDO: multitool.undo(player.level, player, stack); break;
@@ -55,9 +95,20 @@ public final class LegacyMultitoolPacket {
                 default: break;
             }
             player.containerMenu.broadcastChanges();
+            if (packet.operation == RANGE) {
+                trace("range-sync", () -> "source=legacy-range-packet"
+                        + " mode=" + active.serializedName()
+                        + " publishedRange=" + GadgetUtils.getToolRange(stack)
+                        + " mechanism=container-broadcast");
+            }
         });
         context.setPacketHandled(true);
     }
+
+    private static void trace(String category, Supplier<String> message) {
+        DebugInstrumentation.log(ExtraConfig.debugInstrumentation(), category, message, LOGGER::info);
+    }
+
     private static AbstractGadget delegate(MultitoolMode mode) {
         switch (mode) {
             case BUILD: return (AbstractGadget) OurItems.BUILDING_GADGET_ITEM.get();

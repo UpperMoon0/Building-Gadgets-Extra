@@ -13,10 +13,27 @@ base {
 
 java.toolchain.languageVersion = JavaLanguageVersion.of(17)
 
-sourceSets.main.java.srcDir rootProject.file('common/src/main/java')
-sourceSets.main.resources.srcDir rootProject.file('common/src/main/resources')
-sourceSets.test.java.srcDir rootProject.file('common/src/test/java')
-sourceSets.test.java.srcDir rootProject.file('common/src/versionTest/java')
+sourceSets {
+    main {
+        java.srcDir rootProject.file('common/src/main/java')
+        resources.srcDir rootProject.file('common/src/main/resources')
+    }
+    test {
+        java.srcDir rootProject.file('common/src/versionTest/java')
+    }
+    clientIntegrationTest {
+        java.srcDir rootProject.file('common/src/clientIntegrationTest/java')
+        java.srcDir rootProject.file('common/src/clientIntegrationModern/java')
+        java.srcDir project.file('src/clientIntegrationTest/java')
+        compileClasspath += sourceSets.main.output + sourceSets.main.compileClasspath
+        runtimeClasspath += output + compileClasspath + sourceSets.main.runtimeClasspath
+    }
+}
+
+configurations {
+    clientIntegrationTestImplementation.extendsFrom implementation
+    clientIntegrationTestRuntimeOnly.extendsFrom runtimeOnly
+}
 
 minecraft {
     mappings channel: 'official', version: minecraft_version
@@ -32,8 +49,52 @@ minecraft {
                 "${mod_id}" { source sourceSets.main }
             }
         }
-        client {}
-        server { args '--nogui' }
+        client {
+            arg "-mixin.config=${mod_id}.mixins.json"
+        }
+        server {
+            arg "-mixin.config=${mod_id}.mixins.json"
+            args '--nogui'
+        }
+        gameTestServer {
+            arg "-mixin.config=${mod_id}.mixins.json"
+            property 'forge.enabledGameTestNamespaces', mod_id
+        }
+        clientIntegrationTest {
+            parent runs.client
+            client true
+            workingDirectory project.file('run-client-integration')
+            property 'bge.clientIntegrationTest', 'true'
+            property 'bge.clientIntegrationResultDir', project.file('build/client-integration').absolutePath
+            args '--quickPlaySingleplayer', 'bge-client-integration'
+            mods {
+                "${mod_id}" { source sourceSets.clientIntegrationTest }
+            }
+        }
+        dedicatedClientIntegrationTest {
+            parent runs.client
+            client true
+            workingDirectory project.file('run-client-integration-dedicated')
+            property 'bge.clientIntegrationTest', 'true'
+            property 'bge.clientIntegrationDedicated', 'true'
+            property 'bge.clientIntegrationResultDir', project.file('build/client-integration-dedicated').absolutePath
+            mods {
+                "${mod_id}" { source sourceSets.clientIntegrationTest }
+            }
+        }
+        // ForgeGradle merges parents in name order, without recursively resolving them.
+        // Sort after server so its Forge launcher is resolved before we inherit it.
+        serverClientIntegrationTest {
+            taskName 'runClientIntegrationTestServer'
+            parent runs.server
+            client false
+            workingDirectory project.file('run-client-integration-server')
+            property 'bge.clientIntegrationTest', 'true'
+            property 'bge.clientIntegrationResultDir', project.file('build/client-integration-dedicated').absolutePath
+            mods {
+                "${mod_id}" { source sourceSets.clientIntegrationTest }
+            }
+        }
     }
 }
 
@@ -42,6 +103,32 @@ repositories {
     maven { url = 'https://www.cursemaven.com' }
     maven { url = 'https://repo.spongepowered.org/repository/maven-public/' }
 }
+
+// Check resolved metadata, so an unresolved parent or duplicated JVM options fail
+// during build instead of only when CI starts a real client or dedicated server.
+tasks.register('verifyIntegrationLaunchers') {
+    group = 'verification'
+    doLast {
+        [clientIntegrationTest: 'client', dedicatedClientIntegrationTest: 'client',
+         serverClientIntegrationTest: 'server'].each { childName, parentName ->
+            def child = minecraft.runs.getByName(childName)
+            def parent = minecraft.runs.getByName(parentName)
+            if (!parent.main || child.main != parent.main) {
+                throw new GradleException("${childName} must inherit the resolved ${parentName} main class")
+            }
+            if (!parent.jvmArgs || child.jvmArgs != parent.jvmArgs) {
+                throw new GradleException("${childName} must inherit exactly one copy of the ${parentName} JVM arguments")
+            }
+            def targetIndex = child.args.indexOf('--launchTarget')
+            if (targetIndex < 0 || child.args.count('--launchTarget') != 1
+                    || child.args[targetIndex + 1] != parent.args[parent.args.indexOf('--launchTarget') + 1]) {
+                throw new GradleException("${childName} must inherit the ${parentName} launch target exactly once")
+            }
+        }
+    }
+}
+
+tasks.named('check').configure { dependsOn 'verifyIntegrationLaunchers' }
 
 dependencies {
     minecraft "net.minecraftforge:forge:${minecraft_version}-${forge_version}"
@@ -58,6 +145,12 @@ tasks.named('test', Test).configure {
     systemProperty 'bge.minecraftVersion', minecraft_version
     systemProperty 'bge.loader', 'forge'
     systemProperty 'bge.legacyCut', 'false'
+    testLogging {
+        events 'failed'
+        exceptionFormat = 'full'
+        showCauses = true
+        showStackTraces = true
+    }
 }
 
 tasks.named('processResources', ProcessResources).configure {
@@ -80,6 +173,8 @@ tasks.named('processResources', ProcessResources).configure {
 }
 
 tasks.named('jar', Jar).configure {
+    exclude 'com/nstut/buildinggadgetsextra/gametest/**'
+    exclude 'data/buildinggadgetsextra/structures/bge_empty.nbt'
     manifest {
         attributes(
                 'MixinConfigs': 'buildinggadgetsextra.mixins.json',

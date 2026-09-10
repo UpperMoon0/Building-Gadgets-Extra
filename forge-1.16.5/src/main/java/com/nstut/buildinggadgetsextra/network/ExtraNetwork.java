@@ -1,41 +1,41 @@
 package com.nstut.buildinggadgetsextra.network;
 
 import com.nstut.buildinggadgetsextra.common.ExtraConstants;
+import net.minecraft.entity.player.ServerPlayerEntity;
 import net.minecraft.util.ResourceLocation;
 import net.minecraftforge.fml.network.NetworkRegistry;
-import net.minecraftforge.fml.network.simple.SimpleChannel;
 import net.minecraftforge.fml.network.PacketDistributor;
-import net.minecraft.entity.player.ServerPlayerEntity;
+import net.minecraftforge.fml.network.simple.SimpleChannel;
 
 public final class ExtraNetwork {
-    private static final String VERSION = "3";
+    private static final String VERSION = "4";
     private static final SimpleChannel CHANNEL = NetworkRegistry.newSimpleChannel(
             new ResourceLocation(ExtraConstants.MOD_ID, "main"),
             () -> VERSION, VERSION::equals, VERSION::equals);
 
-    private ExtraNetwork() {
-    }
+    private ExtraNetwork() {}
 
     public static void register() {
         CHANNEL.registerMessage(0, MirrorPacket.class,
                 MirrorPacket::encode, MirrorPacket::decode, MirrorPacket::handle);
         CHANNEL.registerMessage(1, StructureFilePacket.class,
                 StructureFilePacket::encode, StructureFilePacket::decode, StructureFilePacket::handle);
-        CHANNEL.registerMessage(2,StructureUploadPacket.class,StructureUploadPacket::encode,StructureUploadPacket::decode,StructureUploadPacket::handle);
-        CHANNEL.registerMessage(3,StructureDownloadPacket.class,StructureDownloadPacket::encode,StructureDownloadPacket::decode,StructureDownloadPacket::handle);
+        CHANNEL.registerMessage(2, StructureUploadPacket.class,
+                StructureUploadPacket::encode, StructureUploadPacket::decode, StructureUploadPacket::handle);
+        CHANNEL.registerMessage(3, StructureDownloadPacket.class,
+                StructureDownloadPacket::encode, StructureDownloadPacket::decode, StructureDownloadPacket::handle);
         CHANNEL.registerMessage(4, CutSelectionPacket.class,
                 CutSelectionPacket::encode, CutSelectionPacket::decode, CutSelectionPacket::handle);
         CHANNEL.registerMessage(5, LegacyMultitoolPacket.class,
                 LegacyMultitoolPacket::encode, LegacyMultitoolPacket::decode, LegacyMultitoolPacket::handle);
     }
 
-    public static void sendToServer(MirrorPacket packet) {
-        CHANNEL.sendToServer(packet);
-    }
-
+    public static void sendToServer(MirrorPacket packet) { CHANNEL.sendToServer(packet); }
     public static void sendToServer(StructureFilePacket packet) { CHANNEL.sendToServer(packet); }
-    public static void sendToServer(StructureUploadPacket packet){CHANNEL.sendToServer(packet);}
+    public static void sendToServer(StructureUploadPacket packet) { CHANNEL.sendToServer(packet); }
     public static void sendToServer(CutSelectionPacket packet) { CHANNEL.sendToServer(packet); }
     public static void sendToServer(LegacyMultitoolPacket packet) { CHANNEL.sendToServer(packet); }
-    public static void sendToPlayer(ServerPlayerEntity player,StructureDownloadPacket packet){CHANNEL.send(PacketDistributor.PLAYER.with(()->player),packet);}
+    public static void sendToPlayer(ServerPlayerEntity player, StructureDownloadPacket packet) {
+        CHANNEL.send(PacketDistributor.PLAYER.with(() -> player), packet);
+    }
 }
