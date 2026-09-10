@@ -35,6 +35,10 @@ public final class ExtraConstants {
     public static final int MAX_STRUCTURE_UPLOADS = 64;
     public static final long MAX_STRUCTURE_UPLOAD_BYTES = 64L * 1024L * 1024L;
 
+    // Live modifiers are intentionally below the structure-file envelope because these plans are
+    // regenerated interactively by both the client preview and the authoritative server operation.
+    public static final int MAX_LIVE_PLAN_POSITIONS = 65_536;
+
     public static final String DIALOG_SAVE_STRUCTURE = MOD_ID + ".dialog.save_structure";
     public static final String DIALOG_OPEN_STRUCTURE = MOD_ID + ".dialog.open_structure";
     public static final String DIALOG_NBT_FILES = MOD_ID + ".dialog.nbt_files";
