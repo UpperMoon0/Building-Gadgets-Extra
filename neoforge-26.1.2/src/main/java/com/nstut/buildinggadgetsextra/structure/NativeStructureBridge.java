@@ -131,23 +131,33 @@ public final class NativeStructureBridge {
             message(player, ExtraConstants.STRUCTURE_LOAD_FAILED, name);
             return;
         }
-        long volume = StructureLimits.checkedVolume(
-                template.getSize().getX(), template.getSize().getY(), template.getSize().getZ());
+        int sizeX = template.getSize().getX();
+        int sizeY = template.getSize().getY();
+        int sizeZ = template.getSize().getZ();
+        long volume = StructureLimits.checkedVolume(sizeX, sizeY, sizeZ);
         if (volume < 0) {
             message(player, ExtraConstants.STRUCTURE_TOO_LARGE, name);
             return;
         }
 
+        List<StructureTemplate.StructureBlockInfo> paletteBlocks = accessor.buildingGadgetsExtra$getPalettes().getFirst().blocks();
+        if (!StructureLimits.validPaletteEntryCount(paletteBlocks.size(), volume)) {
+            message(player, ExtraConstants.STRUCTURE_TOO_LARGE, name);
+            return;
+        }
         Map<BlockPos, StructureTemplate.StructureBlockInfo> nativeBlocks = new HashMap<>();
-        for (StructureTemplate.StructureBlockInfo info
-                : accessor.buildingGadgetsExtra$getPalettes().getFirst().blocks()) {
-            nativeBlocks.put(info.pos(), info);
+        for (StructureTemplate.StructureBlockInfo info : paletteBlocks) {
+            BlockPos pos = info.pos();
+            if (!StructureLimits.isWithinBounds(pos.getX(), pos.getY(), pos.getZ(), sizeX, sizeY, sizeZ)) {
+                message(player, ExtraConstants.STRUCTURE_LOAD_FAILED, name);
+                return;
+            }
+            nativeBlocks.put(pos, info);
         }
 
         ArrayList<StatePos> blocks = new ArrayList<>((int) volume);
         boolean strippedBlockEntityData = false;
-        BlockPos max = new BlockPos(template.getSize().getX() - 1,
-                template.getSize().getY() - 1, template.getSize().getZ() - 1);
+        BlockPos max = new BlockPos(sizeX - 1, sizeY - 1, sizeZ - 1);
         for (BlockPos mutable : BlockPos.betweenClosed(BlockPos.ZERO, max)) {
             BlockPos pos = mutable.immutable();
             StructureTemplate.StructureBlockInfo info = nativeBlocks.get(pos);

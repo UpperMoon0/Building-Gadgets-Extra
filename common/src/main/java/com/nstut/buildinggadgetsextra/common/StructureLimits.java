@@ -18,4 +18,17 @@ public final class StructureLimits {
             return -1L;
         }
     }
+
+    /** Prevent a crafted palette from allocating more entries than its declared structure can contain. */
+    public static boolean validPaletteEntryCount(int entries, long volume) {
+        return entries >= 0 && volume >= 0
+                && entries <= volume && entries <= ExtraConstants.MAX_STRUCTURE_BLOCKS;
+    }
+
+    /** Validate a palette position before retaining it in an import-side lookup table. */
+    public static boolean isWithinBounds(int x, int y, int z, int sizeX, int sizeY, int sizeZ) {
+        return sizeX > 0 && sizeY > 0 && sizeZ > 0
+                && x >= 0 && y >= 0 && z >= 0
+                && x < sizeX && y < sizeY && z < sizeZ;
+    }
 }

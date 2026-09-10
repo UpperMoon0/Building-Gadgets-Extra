@@ -41,9 +41,9 @@ jobs:
             java: '21'
             working_directory: .
             integration_server_task: :neoforge-1.21.1:runClientIntegrationTestServer
-            integration_client_task: :neoforge-1.21.1:runClientIntegrationTest
+            integration_client_task: :neoforge-1.21.1:runDedicatedClientIntegrationTest
             integration_server_dir: neoforge-1.21.1/run-client-integration-server
-            integration_result_dir: neoforge-1.21.1/build/client-integration
+            integration_result_dir: neoforge-1.21.1/build/client-integration-dedicated
           - name: NeoForge 26.1.2
             java: '25'
             working_directory: neoforge-26.1.2
@@ -83,6 +83,7 @@ jobs:
           SERVER_DIR='${{ matrix.integration_server_dir }}'
           RESULT_DIR='${{ matrix.integration_result_dir }}'
           SERVER_LOG="$RESULT_DIR/server.log"
+          CLIENT_LOG="$RESULT_DIR/client.log"
 
           rm -rf "$RESULT_DIR" "$SERVER_DIR/bge-client-integration"
           mkdir -p "$SERVER_DIR" "$RESULT_DIR"
@@ -124,15 +125,29 @@ jobs:
             exit 1
           fi
 
-          xvfb-run -a ./gradlew '${{ matrix.integration_client_task }}' --no-daemon --no-configuration-cache
+          set +e
+          xvfb-run -a ./gradlew '${{ matrix.integration_client_task }}' --no-daemon --no-configuration-cache > "$CLIENT_LOG" 2>&1
+          CLIENT_STATUS=$?
+          set -e
+          cat "$CLIENT_LOG"
+          if [[ "$CLIENT_STATUS" -ne 0 ]]; then
+            echo "Dedicated integration client exited with status $CLIENT_STATUS." >&2
+            cat "$SERVER_LOG"
+            exit "$CLIENT_STATUS"
+          fi
 
-          test -f "$RESULT_DIR/client-pass.txt"
-          test ! -f "$RESULT_DIR/client-fail.txt"
+          if [[ ! -f "$RESULT_DIR/client-pass.txt" || -f "$RESULT_DIR/client-fail.txt" ]]; then
+            echo 'Dedicated integration client did not produce a clean pass marker.' >&2
+            [[ -f "$RESULT_DIR/client-fail.txt" ]] && cat "$RESULT_DIR/client-fail.txt"
+            cat "$SERVER_LOG"
+            exit 1
+          fi
 
           SERVER_RESULT=0
           for _ in $(seq 1 40); do
             if [[ -f "$RESULT_DIR/server-fail.txt" ]]; then
               cat "$RESULT_DIR/server-fail.txt"
+              cat "$SERVER_LOG"
               exit 1
             fi
             if [[ -f "$RESULT_DIR/server-pass.txt" ]]; then
@@ -149,3 +164,14 @@ jobs:
 
           cat "$RESULT_DIR/client-pass.txt"
           cat "$RESULT_DIR/server-pass.txt"
+
+      - name: Upload dedicated E2E diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dedicated-e2e-${{ matrix.name }}
+          path: |
+            ${{ matrix.working_directory }}/${{ matrix.integration_result_dir }}/*.log
+            ${{ matrix.working_directory }}/${{ matrix.integration_result_dir }}/*-pass.txt
+            ${{ matrix.working_directory }}/${{ matrix.integration_result_dir }}/*-fail.txt
+          if-no-files-found: ignore

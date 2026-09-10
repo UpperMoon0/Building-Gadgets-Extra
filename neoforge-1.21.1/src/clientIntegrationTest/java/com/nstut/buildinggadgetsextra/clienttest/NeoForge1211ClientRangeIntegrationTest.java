@@ -9,11 +9,12 @@ import net.neoforged.neoforge.client.event.ClientTickEvent;
 
 @EventBusSubscriber(modid = BuildingGadgetsExtra.MODID, value = Dist.CLIENT)
 public final class NeoForge1211ClientRangeIntegrationTest {
+    private static final int BOOT_TIMEOUT_TICKS = 600;
     private static final boolean ENABLED = Boolean.getBoolean(ClientRangeRoundTripScenario.ENABLE_PROPERTY);
+    private static final boolean DEDICATED = Boolean.getBoolean("bge.clientIntegrationDedicated");
     private static final ModernClientRangeAdapter ADAPTER =
             new ModernClientRangeAdapter((screen, x, y) -> screen.mouseClicked(x, y, 0));
     private static final ClientRangeRoundTripScenario SCENARIO = new ClientRangeRoundTripScenario(ADAPTER);
-    private static boolean worldOpenRequested;
     private static int bootTicks;
 
     private NeoForge1211ClientRangeIntegrationTest() {}
@@ -23,14 +24,8 @@ public final class NeoForge1211ClientRangeIntegrationTest {
         if (!ENABLED) return;
         Minecraft minecraft = Minecraft.getInstance();
         if (minecraft.player == null || minecraft.level == null) {
-            if (++bootTicks > 600) {
-                ADAPTER.fail("timeout waiting for integration world/server", null);
-                return;
-            }
-            if (!Boolean.getBoolean("bge.clientIntegrationDedicated") && !worldOpenRequested && minecraft.screen != null) {
-                worldOpenRequested = true;
-                minecraft.createWorldOpenFlows().openWorld("bge-client-integration",
-                        () -> ADAPTER.fail("opening integration world was cancelled", null));
+            if (++bootTicks > BOOT_TIMEOUT_TICKS) {
+                ADAPTER.fail("timeout waiting for " + (DEDICATED ? "dedicated server connection" : "quick-play integration world"), null);
             }
             return;
         }

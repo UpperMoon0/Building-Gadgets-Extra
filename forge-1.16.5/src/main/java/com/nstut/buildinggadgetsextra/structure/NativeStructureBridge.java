@@ -109,22 +109,32 @@ public final class NativeStructureBridge {
             message(player, ExtraConstants.STRUCTURE_LOAD_FAILED, name);
             return;
         }
-        long volume = StructureLimits.checkedVolume(
-                template.getSize().getX(), template.getSize().getY(), template.getSize().getZ());
+        int sizeX = template.getSize().getX();
+        int sizeY = template.getSize().getY();
+        int sizeZ = template.getSize().getZ();
+        long volume = StructureLimits.checkedVolume(sizeX, sizeY, sizeZ);
         if (volume < 0) {
             message(player, ExtraConstants.STRUCTURE_TOO_LARGE, name);
             return;
         }
 
+        List<Template.BlockInfo> paletteBlocks = a.buildingGadgetsExtra$getPalettes().get(0).blocks();
+        if (!StructureLimits.validPaletteEntryCount(paletteBlocks.size(), volume)) {
+            message(player, ExtraConstants.STRUCTURE_TOO_LARGE, name);
+            return;
+        }
         Map<BlockPos, Template.BlockInfo> nativeBlocks = new HashMap<>();
-        for (Template.BlockInfo info : a.buildingGadgetsExtra$getPalettes().get(0).blocks()) {
+        for (Template.BlockInfo info : paletteBlocks) {
+            if (!StructureLimits.isWithinBounds(info.pos.getX(), info.pos.getY(), info.pos.getZ(), sizeX, sizeY, sizeZ)) {
+                message(player, ExtraConstants.STRUCTURE_LOAD_FAILED, name);
+                return;
+            }
             nativeBlocks.put(info.pos, info);
         }
 
         boolean strippedBlockEntityData = false;
         ImmutableMap.Builder<BlockPos, BlockData> builder = ImmutableMap.builder();
-        BlockPos max = new BlockPos(template.getSize().getX() - 1,
-                template.getSize().getY() - 1, template.getSize().getZ() - 1);
+        BlockPos max = new BlockPos(sizeX - 1, sizeY - 1, sizeZ - 1);
         for (BlockPos p : BlockPos.betweenClosed(BlockPos.ZERO, max)) {
             Template.BlockInfo info = nativeBlocks.get(p);
             if (info == null || info.state.is(Blocks.STRUCTURE_VOID)) {
