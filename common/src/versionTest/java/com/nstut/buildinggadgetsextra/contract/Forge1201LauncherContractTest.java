@@ -10,25 +10,30 @@ import java.nio.file.Paths;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-/** Locks the Forge 1.20.1 integration runs to the finalized parent JVM launcher arguments. */
+/** Locks Forge 1.20.1 integration runs to ForgeGradle's native parent inheritance. */
 class Forge1201LauncherContractTest {
     @Test
-    void integrationRunsRefreshJvmArgsFromFinalizedParentWithoutMergingDuplicates() throws Exception {
+    void integrationRunsUseNativeParentInheritanceWithoutManualJvmMutation() throws Exception {
         if (!"1.20.1".equals(System.getProperty("bge.minecraftVersion"))
                 || !"forge".equals(System.getProperty("bge.loader"))) return;
 
         Path module = Paths.get(requiredProperty("bge.moduleDir"));
         String build = new String(Files.readAllBytes(module.resolve("build.gradle")), StandardCharsets.UTF_8);
 
-        contains(build, "childRun.getJvmArgs().clear()", "stale child JVM argument removal");
-        contains(build, "childRun.jvmArgs(parentRun.getJvmArgs())", "exact finalized-parent JVM argument refresh");
-        contains(build, "childRun.inheritJvmArgs(false)", "no second ForgeGradle JVM inheritance pass");
-        assertFalse(build.contains("parentRun.getJvmArgs() + childRun.getJvmArgs()"),
-                "Appending parent and child launcher lists duplicates Forge module-path entries");
+        contains(build, "parent runs.client", "ForgeGradle client parent inheritance");
+        contains(build, "parent runs.server", "ForgeGradle server parent inheritance");
+        assertFalse(build.contains("gradle.projectsEvaluated"),
+                "ForgeGradle already merges run parents before creating run tasks; manual late launcher mutation duplicates inherited JVM state");
+        assertFalse(build.contains("childRun.getJvmArgs()"),
+                "Integration runs must not manually copy already inherited Forge JVM arguments");
+        assertFalse(build.contains("childRun.jvmArgs("),
+                "Integration runs must not append or replace ForgeGradle's inherited JVM argument list");
+        assertFalse(build.contains("inheritJvmArgs(false)"),
+                "Native ForgeGradle parent inheritance must remain enabled");
         assertFalse(build.contains(".unique()"),
                 "Raw token de-duplication corrupts repeated option/value pairs such as --add-opens");
         assertFalse(build.contains("mergeJvmArgsByUnit"),
-                "Integration children have no custom JVM args, so unit merging is unnecessary and risks path duplication");
+                "Custom JVM argument merging is unnecessary when ForgeGradle owns parent inheritance");
     }
 
     private static void contains(String source, String expected, String feature) {

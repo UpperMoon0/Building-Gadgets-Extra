@@ -95,28 +95,6 @@ minecraft {
     }
 }
 
-// ForgeGradle finalizes userdev launcher metadata after these child runs are configured. Their normal
-// parent merge can therefore happen before main/environment/JVM arguments have been populated.
-// These integration children do not define JVM arguments of their own, so refresh them from the
-// finalized parent list exactly. Appending child and parent lists duplicates module-path entries;
-// token de-duplication is also invalid because repeated options such as --add-opens use paired values.
-gradle.projectsEvaluated {
-    [
-            clientIntegrationTest: 'client',
-            dedicatedClientIntegrationTest: 'client',
-            clientIntegrationTestServer: 'server'
-    ].each { childName, parentName ->
-        def parentRun = minecraft.runs.getByName(parentName)
-        def childRun = minecraft.runs.getByName(childName)
-        childRun.main(parentRun.main)
-        parentRun.environment.each { key, value -> childRun.environment(key, value) }
-
-        childRun.getJvmArgs().clear()
-        childRun.jvmArgs(parentRun.getJvmArgs())
-        childRun.inheritJvmArgs(false)
-    }
-}
-
 repositories {
     mavenCentral()
     maven { url = 'https://www.cursemaven.com' }
