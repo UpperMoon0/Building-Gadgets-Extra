@@ -157,7 +157,7 @@ public final class MultitoolState {
         }
         ArrayList<BlockPos> anchors = new ArrayList<>();
         if (initialized) {
-            for (long packed : profile.getLongArrayOr("AnchorList", new long[0])) {
+            for (long packed : profile.getLongArray("AnchorList").orElseGet(() -> new long[0])) {
                 anchors.add(BlockPos.of(packed));
             }
         }
