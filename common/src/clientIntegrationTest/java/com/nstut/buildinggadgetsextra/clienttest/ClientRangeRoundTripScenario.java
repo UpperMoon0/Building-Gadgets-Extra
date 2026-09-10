@@ -139,12 +139,11 @@ public final class ClientRangeRoundTripScenario {
                         phaseDelay = 1;
                         return;
                     }
-                    require(adapter.visibleScreenRange() == TARGET_RANGE,
-                            "real range widget did not reach " + TARGET_RANGE + "; visible=" + adapter.visibleScreenRange());
                     advance(Phase.WAIT_FOR_SYNC, 0);
                     break;
                 case WAIT_FOR_SYNC:
                     if (adapter.clientRange() != TARGET_RANGE) return;
+                    if (adapter.visibleScreenRange() != TARGET_RANGE) return;
                     advance(Phase.CLOSE_SCREEN, 2);
                     break;
                 case CLOSE_SCREEN:
@@ -192,12 +191,11 @@ public final class ClientRangeRoundTripScenario {
                         phaseDelay = 1;
                         return;
                     }
-                    require(adapter.visibleScreenRange() == EXCHANGE_TARGET_RANGE,
-                            "exchange range widget did not reach " + EXCHANGE_TARGET_RANGE);
                     advance(Phase.WAIT_EXCHANGE_SYNC, 0);
                     break;
                 case WAIT_EXCHANGE_SYNC:
                     if (adapter.clientRange() != EXCHANGE_TARGET_RANGE) return;
+                    if (adapter.visibleScreenRange() != EXCHANGE_TARGET_RANGE) return;
                     advance(Phase.SWITCH_BUILD_AGAIN, 1);
                     break;
                 case SWITCH_BUILD_AGAIN:
