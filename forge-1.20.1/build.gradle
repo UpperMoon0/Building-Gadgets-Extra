@@ -84,9 +84,9 @@ minecraft {
             }
         }
         clientIntegrationTestServer {
-            // ForgeGradle's merge copies the complete stock server launch definition, including
-            // launch target, module path/tokens, JVM arguments, and environment.
-            merge 'server', true
+            // FG6's RunConfig.merge accepts a RunConfig object (not the old string DSL shown in
+            // historical docs). Copy the complete stock server launch definition as one unit.
+            merge runs.server, true
             client false
             workingDirectory project.file('run-client-integration-server')
             property 'bge.clientIntegrationTest', 'true'
