@@ -31,7 +31,7 @@ jobs:
             integration_server_dir: forge-1.16.5/run-client-integration-server
             integration_result_dir: forge-1.16.5/build/client-integration
           - name: Forge 1.20.1
-            java: '21'
+            java: '17'
             working_directory: .
             integration_server_task: :forge-1.20.1:runClientIntegrationTestServer
             integration_client_task: :forge-1.20.1:runDedicatedClientIntegrationTest
