@@ -1,5 +1,6 @@
 package com.nstut.buildinggadgetsextra.structure;
 
+import com.direwolf20.buildinggadgets.common.blocks.OurBlocks;
 import com.direwolf20.buildinggadgets.common.capability.CapabilityTemplate;
 import com.direwolf20.buildinggadgets.common.items.AbstractGadget;
 import com.direwolf20.buildinggadgets.common.items.GadgetCopyPaste;
@@ -11,6 +12,7 @@ import com.direwolf20.buildinggadgets.common.tainted.template.ITemplateKey;
 import com.direwolf20.buildinggadgets.common.tainted.template.ITemplateProvider;
 import com.direwolf20.buildinggadgets.common.tainted.template.TemplateHeader;
 import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.ImmutableSet;
 import com.nstut.buildinggadgetsextra.common.ExtraConstants;
 import com.nstut.buildinggadgetsextra.common.MultitoolMode;
 import com.nstut.buildinggadgetsextra.common.StructureLimits;
@@ -19,12 +21,20 @@ import com.nstut.buildinggadgetsextra.item.MultitoolState;
 import com.nstut.buildinggadgetsextra.mixin.TemplateAccessor;
 import com.nstut.buildinggadgetsextra.mixin.VanillaPaletteAccessor;
 import com.nstut.buildinggadgetsextra.mixin.VanillaTemplateAccessor;
+import net.minecraft.block.BlockState;
 import net.minecraft.block.Blocks;
+import net.minecraft.block.CropsBlock;
+import net.minecraft.block.DoorBlock;
+import net.minecraft.block.DoublePlantBlock;
+import net.minecraft.block.FlowingFluidBlock;
 import net.minecraft.entity.player.ServerPlayerEntity;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.CompoundNBT;
 import net.minecraft.nbt.CompressedStreamTools;
 import net.minecraft.nbt.NBTSizeTracker;
+import net.minecraft.state.Property;
+import net.minecraft.state.properties.BlockStateProperties;
+import net.minecraft.state.properties.DoubleBlockHalf;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.text.TranslationTextComponent;
 import net.minecraft.world.gen.feature.template.Template;
@@ -37,9 +47,18 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.zip.GZIPInputStream;
 
 public final class NativeStructureBridge {
+    // Mirrors InventoryHelper's Copy/Paste state cleanup. External NBT must not bypass the
+    // same state restrictions that native world-copy applies before a template is created.
+    private static final Set<Property<?>> UNSAFE_IMPORTED_PROPERTIES = ImmutableSet.<Property<?>>builder()
+            .add(CropsBlock.AGE)
+            .add(DoublePlantBlock.HALF)
+            .add(BlockStateProperties.WATERLOGGED)
+            .build();
+
     private NativeStructureBridge() {}
 
     public static byte[] exportStructure(ServerPlayerEntity player, String name) {
@@ -137,12 +156,16 @@ public final class NativeStructureBridge {
         BlockPos max = new BlockPos(sizeX - 1, sizeY - 1, sizeZ - 1);
         for (BlockPos p : BlockPos.betweenClosed(BlockPos.ZERO, max)) {
             Template.BlockInfo info = nativeBlocks.get(p);
-            if (info == null || info.state.is(Blocks.STRUCTURE_VOID)) {
+            if (info == null) {
                 builder.put(p.immutable(), BlockData.AIR);
-            } else {
-                strippedBlockEntityData |= info.nbt != null;
-                builder.put(p.immutable(), new BlockData(info.state, TileSupport.dummyTileEntityData()));
+                continue;
             }
+
+            strippedBlockEntityData |= info.nbt != null;
+            BlockState imported = cleanImportedState(c.gadget, info.state);
+            builder.put(p.immutable(), imported.isAir()
+                    ? BlockData.AIR
+                    : new BlockData(imported, TileSupport.dummyTileEntityData()));
         }
 
         Region bounds = new Region(BlockPos.ZERO, max);
@@ -156,6 +179,29 @@ public final class NativeStructureBridge {
                 : ExtraConstants.STRUCTURE_LOADED, name);
     }
 
+    private static BlockState cleanImportedState(ItemStack gadget, BlockState source) {
+        if (source.is(Blocks.STRUCTURE_VOID)
+                || source.getBlock() == OurBlocks.CONSTRUCTION_BLOCK.get()
+                || source.getBlock() instanceof FlowingFluidBlock
+                || !((GadgetCopyPaste) gadget.getItem()).isAllowedBlock(source.getBlock())
+                || source.getBlock() instanceof DoorBlock
+                    && source.getValue(BlockStateProperties.DOUBLE_BLOCK_HALF) == DoubleBlockHalf.UPPER) {
+            return Blocks.AIR.defaultBlockState();
+        }
+
+        BlockState placeState = source.getBlock().defaultBlockState();
+        for (Property<?> property : placeState.getProperties()) {
+            if (!UNSAFE_IMPORTED_PROPERTIES.contains(property)) {
+                placeState = applyProperty(placeState, source, property);
+            }
+        }
+        return placeState;
+    }
+
+    private static <T extends Comparable<T>> BlockState applyProperty(BlockState target, BlockState source, Property<T> property) {
+        return target.setValue(property, source.getValue(property));
+    }
+
     private static Context context(ServerPlayerEntity player, boolean importing) {
         ItemStack gadget = AbstractGadget.getGadget(player);
         if (!(gadget.getItem() instanceof GadgetCopyPaste)) return null;
@@ -166,7 +212,7 @@ public final class NativeStructureBridge {
         }
         ITemplateProvider provider = player.level.getCapability(CapabilityTemplate.TEMPLATE_PROVIDER_CAPABILITY).orElse(null);
         ITemplateKey key = gadget.getCapability(CapabilityTemplate.TEMPLATE_KEY_CAPABILITY).orElse(null);
-        return provider == null || key == null ? null : new Context(provider, key);
+        return provider == null || key == null ? null : new Context(provider, key, gadget);
     }
 
     private static void message(ServerPlayerEntity player, String key, Object... args) {
@@ -176,9 +222,12 @@ public final class NativeStructureBridge {
     private static final class Context {
         final ITemplateProvider provider;
         final ITemplateKey key;
-        Context(ITemplateProvider provider, ITemplateKey key) {
+        final ItemStack gadget;
+
+        Context(ITemplateProvider provider, ITemplateKey key, ItemStack gadget) {
             this.provider = provider;
             this.key = key;
+            this.gadget = gadget;
         }
     }
 }

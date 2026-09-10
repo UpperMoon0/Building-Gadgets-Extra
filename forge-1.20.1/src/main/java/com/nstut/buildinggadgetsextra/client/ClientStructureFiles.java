@@ -52,6 +52,10 @@ public final class ClientStructureFiles {
                     UUID requestId = UUID.randomUUID();
                     pruneSaveDestinations();
                     synchronized (SAVE_DESTINATIONS) {
+                        if (SAVE_DESTINATIONS.size() >= ExtraConstants.MAX_STRUCTURE_TRANSFERS_PER_PLAYER) {
+                            message(ExtraConstants.BUSY);
+                            return;
+                        }
                         SAVE_DESTINATIONS.put(requestId, new PendingSaveTarget(path));
                     }
                     Minecraft.getInstance().execute(() ->
@@ -83,23 +87,29 @@ public final class ClientStructureFiles {
     public static void receive(StructureDownloadPacket packet) {
         pruneDownloads();
         pruneSaveDestinations();
+        if (!hasDestination(packet.id())) {
+            DOWNLOADS.remove(packet.id());
+            return;
+        }
         try {
             ChunkAccumulator transfer = DOWNLOADS.computeIfAbsent(packet.id(),
                     key -> new ChunkAccumulator(packet.total()));
             if (!transfer.accept(packet.index(), packet.data())) {
                 DOWNLOADS.remove(packet.id());
+                removeDestination(packet.id());
                 return;
             }
             if (!transfer.isComplete()) return;
 
             DOWNLOADS.remove(packet.id());
             Path file = removeDestination(packet.id());
-            if (file == null) file = root().resolve(packet.name() + ".nbt");
+            if (file == null) return;
             Files.createDirectories(file.toAbsolutePath().getParent());
             Files.write(file, transfer.join());
             message(ExtraConstants.STRUCTURE_SAVED, file.getFileName().toString());
         } catch (Exception error) {
             DOWNLOADS.remove(packet.id());
+            removeDestination(packet.id());
             message(ExtraConstants.STRUCTURE_SAVE_FAILED, packet.name());
         }
     }
@@ -132,6 +142,12 @@ public final class ClientStructureFiles {
     private static void pruneSaveDestinations() {
         synchronized (SAVE_DESTINATIONS) {
             SAVE_DESTINATIONS.entrySet().removeIf(entry -> entry.getValue().isExpired());
+        }
+    }
+
+    private static boolean hasDestination(UUID requestId) {
+        synchronized (SAVE_DESTINATIONS) {
+            return SAVE_DESTINATIONS.containsKey(requestId);
         }
     }
 

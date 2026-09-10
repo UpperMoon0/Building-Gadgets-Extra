@@ -97,8 +97,8 @@ minecraft {
 
 // ForgeGradle finalizes userdev launcher metadata after these child runs are configured. Their normal
 // parent merge can therefore happen before main/environment/JVM arguments have been populated. Copy
-// those resolved values after project evaluation; JVM args are de-duplicated so this remains safe if
-// ForgeGradle already inherited an early subset, while preserving any child-specific JVM arguments.
+// those resolved values after project evaluation. Preserve the ordered JVM-argument list verbatim:
+// repeated flags such as --add-opens are positional pairs and must never be token-de-duplicated.
 gradle.projectsEvaluated {
     [
             clientIntegrationTest: 'client',
@@ -110,7 +110,7 @@ gradle.projectsEvaluated {
         childRun.main(parentRun.main)
         parentRun.environment.each { key, value -> childRun.environment(key, value) }
 
-        def resolvedJvmArgs = (parentRun.getJvmArgs() + childRun.getJvmArgs()).unique()
+        def resolvedJvmArgs = parentRun.getJvmArgs() + childRun.getJvmArgs()
         childRun.getJvmArgs().clear()
         childRun.jvmArgs(resolvedJvmArgs)
         childRun.inheritJvmArgs(false)

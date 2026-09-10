@@ -25,9 +25,23 @@ class TransferRegressionContractTest {
         contains(client, "removeDestination", "response lookup by request id");
         contains(client, "pruneDownloads", "client-thread download cleanup");
         contains(client, "pruneSaveDestinations", "separately synchronized save-target cleanup");
+        contains(client, "MAX_STRUCTURE_TRANSFERS_PER_PLAYER", "bounded outstanding client save responses");
+        contains(client, "if (!hasDestination(", "unsolicited download rejection");
         assertFalse(client.contains("Deque<PendingSaveTarget>"), label("save targets must not be filename/FIFO correlated"));
         assertFalse(client.contains("private static void pruneTransfers"),
                 label("dialog thread must not share a cleanup method that mutates DOWNLOADS"));
+        assertFalse(client.contains("file = root().resolve("),
+                label("server-provided download names must never select a client filesystem path"));
+
+        int requestGuard = client.indexOf("if (!hasDestination(");
+        int accumulator = client.indexOf("DOWNLOADS.computeIfAbsent");
+        assertTrue(requestGuard >= 0 && accumulator > requestGuard,
+                label("request-id authorization must happen before allocating download state"));
+
+        int pendingCap = client.indexOf("SAVE_DESTINATIONS.size() >= ExtraConstants.MAX_STRUCTURE_TRANSFERS_PER_PLAYER");
+        int pendingPut = client.indexOf("SAVE_DESTINATIONS.put");
+        assertTrue(pendingCap >= 0 && pendingPut > pendingCap,
+                label("client pending-save cap must be enforced before retaining a destination"));
 
         String request = source("network/" + ("forge".equals(loader)
                 ? "StructureFilePacket.java" : "StructureFilePayload.java"));

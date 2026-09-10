@@ -52,6 +52,10 @@ public final class ClientStructureFiles {
                     UUID requestId = UUID.randomUUID();
                     pruneSaveDestinations();
                     synchronized (SAVE_DESTINATIONS) {
+                        if (SAVE_DESTINATIONS.size() >= ExtraConstants.MAX_STRUCTURE_TRANSFERS_PER_PLAYER) {
+                            message(ExtraConstants.BUSY);
+                            return;
+                        }
                         SAVE_DESTINATIONS.put(requestId, new PendingSaveTarget(path));
                     }
                     Minecraft.getInstance().execute(() ->
@@ -83,23 +87,29 @@ public final class ClientStructureFiles {
     public static void receive(StructureDownloadPayload payload) {
         pruneDownloads();
         pruneSaveDestinations();
+        if (!hasDestination(payload.transferId())) {
+            DOWNLOADS.remove(payload.transferId());
+            return;
+        }
         try {
             ChunkAccumulator transfer = DOWNLOADS.computeIfAbsent(payload.transferId(),
                     ignored -> new ChunkAccumulator(payload.total()));
             if (!transfer.accept(payload.index(), payload.data())) {
                 DOWNLOADS.remove(payload.transferId());
+                removeDestination(payload.transferId());
                 return;
             }
             if (!transfer.isComplete()) return;
             DOWNLOADS.remove(payload.transferId());
 
             Path file = removeDestination(payload.transferId());
-            if (file == null) file = root().resolve(payload.name() + ".nbt");
+            if (file == null) return;
             Files.createDirectories(file.toAbsolutePath().getParent());
             Files.write(file, transfer.join());
             message(ExtraConstants.STRUCTURE_SAVED, file.getFileName().toString());
         } catch (Exception error) {
             DOWNLOADS.remove(payload.transferId());
+            removeDestination(payload.transferId());
             message(ExtraConstants.STRUCTURE_SAVE_FAILED, payload.name());
         }
     }
@@ -132,6 +142,12 @@ public final class ClientStructureFiles {
     private static void pruneSaveDestinations() {
         synchronized (SAVE_DESTINATIONS) {
             SAVE_DESTINATIONS.entrySet().removeIf(entry -> entry.getValue().isExpired());
+        }
+    }
+
+    private static boolean hasDestination(UUID requestId) {
+        synchronized (SAVE_DESTINATIONS) {
+            return SAVE_DESTINATIONS.containsKey(requestId);
         }
     }
 

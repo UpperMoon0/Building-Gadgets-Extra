@@ -28,6 +28,11 @@ class CorrectnessRegressionContractTest {
             contains(bridge, "TileSupport.dummyTileEntityData()", "BG1 safe imported tile-data path");
             contains(bridge, "NBTSizeTracker", "BG1 bounded decompressed NBT budget");
             contains(bridge, "MAX_STRUCTURE_NBT_BYTES", "BG1 configured decompressed NBT limit");
+            contains(bridge, "cleanImportedState", "BG1 imported-state sanitization path");
+            contains(bridge, "isAllowedBlock(source.getBlock())", "BG1 native Copy/Paste allow-deny policy");
+            contains(bridge, "UNSAFE_IMPORTED_PROPERTIES", "BG1 native Copy/Paste unsafe-property cleanup");
+            contains(bridge, "OurBlocks.CONSTRUCTION_BLOCK", "BG1 construction placeholder rejection");
+            contains(bridge, "FlowingFluidBlock", "BG1 flowing-fluid rejection");
             assertFalse(bridge.contains("new NBTTileEntityData(info.nbt.copy())"),
                     label("BG1 must not replay arbitrary imported tile NBT"));
         } else {
@@ -93,6 +98,13 @@ class CorrectnessRegressionContractTest {
         contains(build, "run-client-integration", "isolated real-client run directory");
         contains(build, "bge.clientIntegrationTest", "real-client test enablement property");
         contains(build, "clientIntegrationTestServer", "dedicated integration server run");
+
+        if ("1.20.1".equals(minecraftVersion) && "forge".equals(loader)) {
+            contains(build, "parentRun.getJvmArgs() + childRun.getJvmArgs()",
+                    "Forge 1.20.1 late child-run JVM argument inheritance");
+            assertFalse(build.contains(".unique()"),
+                    label("Forge 1.20.1 launcher JVM tokens must not be de-duplicated because repeated --add-opens flags are positional"));
+        }
 
         String scenario = read(root.resolve("common/src/clientIntegrationTest/java/com/nstut/buildinggadgetsextra/clienttest/ClientRangeRoundTripScenario.java"));
         contains(scenario, "clickRangePlus", "real UI interaction phase");
