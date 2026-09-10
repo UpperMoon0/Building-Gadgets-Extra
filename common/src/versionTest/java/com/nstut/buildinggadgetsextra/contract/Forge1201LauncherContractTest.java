@@ -10,25 +10,25 @@ import java.nio.file.Paths;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-/** Locks the Forge 1.20.1 child-run JVM merge to option/value units instead of raw tokens. */
+/** Locks the Forge 1.20.1 integration runs to the finalized parent JVM launcher arguments. */
 class Forge1201LauncherContractTest {
     @Test
-    void repeatedJvmOptionsKeepTheirValuesWithoutDuplicatingInheritedModulePaths() throws Exception {
+    void integrationRunsRefreshJvmArgsFromFinalizedParentWithoutMergingDuplicates() throws Exception {
         if (!"1.20.1".equals(System.getProperty("bge.minecraftVersion"))
                 || !"forge".equals(System.getProperty("bge.loader"))) return;
 
         Path module = Paths.get(requiredProperty("bge.moduleDir"));
         String build = new String(Files.readAllBytes(module.resolve("build.gradle")), StandardCharsets.UTF_8);
 
-        contains(build, "mergeJvmArgsByUnit", "unit-aware JVM argument merge");
-        contains(build, "'--add-opens'", "paired --add-opens handling");
-        contains(build, "'-p'", "paired module-path handling");
-        contains(build, "def unit = [arg, value]", "option/value pair identity");
-        contains(build, "seenUnits.add(unit)", "duplicate unit suppression");
-        contains(build, "mergeJvmArgsByUnit(parentRun.getJvmArgs() + childRun.getJvmArgs())",
-                "late parent/child JVM argument merge");
+        contains(build, "childRun.getJvmArgs().clear()", "stale child JVM argument removal");
+        contains(build, "childRun.jvmArgs(parentRun.getJvmArgs())", "exact finalized-parent JVM argument refresh");
+        contains(build, "childRun.inheritJvmArgs(false)", "no second ForgeGradle JVM inheritance pass");
+        assertFalse(build.contains("parentRun.getJvmArgs() + childRun.getJvmArgs()"),
+                "Appending parent and child launcher lists duplicates Forge module-path entries");
         assertFalse(build.contains(".unique()"),
                 "Raw token de-duplication corrupts repeated option/value pairs such as --add-opens");
+        assertFalse(build.contains("mergeJvmArgsByUnit"),
+                "Integration children have no custom JVM args, so unit merging is unnecessary and risks path duplication");
     }
 
     private static void contains(String source, String expected, String feature) {
