@@ -20,8 +20,12 @@ import java.nio.file.Paths;
 
 @Mod.EventBusSubscriber(modid = ExtraConstants.MOD_ID)
 public final class Forge1165ServerRangeIntegrationTest {
+    private static final int PROVISION_DELAY_TICKS = 20;
+
     private static ServerPlayerEntity watchedPlayer;
-    private static int ticks;
+    private static int loginTicks;
+    private static int observationTicks;
+    private static boolean provisioned;
     private static boolean finished;
 
     private Forge1165ServerRangeIntegrationTest() {}
@@ -31,13 +35,10 @@ public final class Forge1165ServerRangeIntegrationTest {
         if (!Boolean.getBoolean(ClientRangeRoundTripScenario.ENABLE_PROPERTY)) return;
         if (!(event.getPlayer() instanceof ServerPlayerEntity)) return;
 
-        ServerPlayerEntity player = (ServerPlayerEntity) event.getPlayer();
-        ItemStack stack = new ItemStack(ExtraRegistration.BUILDERS_MULTITOOL.get());
-        GadgetUtils.setToolRange(stack, ClientRangeRoundTripScenario.START_RANGE);
-        player.setItemInHand(Hand.MAIN_HAND, stack);
-        player.containerMenu.broadcastChanges();
-        watchedPlayer = player;
-        ticks = 0;
+        watchedPlayer = (ServerPlayerEntity) event.getPlayer();
+        loginTicks = 0;
+        observationTicks = 0;
+        provisioned = false;
         finished = false;
     }
 
@@ -45,8 +46,16 @@ public final class Forge1165ServerRangeIntegrationTest {
     public static void onServerTick(TickEvent.ServerTickEvent event) {
         if (!Boolean.getBoolean(ClientRangeRoundTripScenario.ENABLE_PROPERTY)
                 || event.phase != TickEvent.Phase.END || finished || watchedPlayer == null) return;
-        ticks++;
 
+        if (!provisioned) {
+            loginTicks++;
+            if (loginTicks < PROVISION_DELAY_TICKS) return;
+            provision(watchedPlayer);
+            provisioned = true;
+            return;
+        }
+
+        observationTicks++;
         ItemStack held = watchedPlayer.getItemInHand(Hand.MAIN_HAND);
         if (held.getItem() instanceof BuildersMultitool
                 && GadgetUtils.getToolRange(held) == ClientRangeRoundTripScenario.TARGET_RANGE) {
@@ -55,10 +64,20 @@ public final class Forge1165ServerRangeIntegrationTest {
             return;
         }
 
-        if (ticks > ClientRangeRoundTripScenario.TIMEOUT_TICKS) {
+        if (observationTicks > ClientRangeRoundTripScenario.TIMEOUT_TICKS) {
             finished = true;
             write("server-fail.txt", "server never observed authoritative range="
                     + ClientRangeRoundTripScenario.TARGET_RANGE + "; current=" + GadgetUtils.getToolRange(held));
+        }
+    }
+
+    private static void provision(ServerPlayerEntity player) {
+        ItemStack stack = new ItemStack(ExtraRegistration.BUILDERS_MULTITOOL.get());
+        GadgetUtils.setToolRange(stack, ClientRangeRoundTripScenario.START_RANGE);
+        player.setItemInHand(Hand.MAIN_HAND, stack);
+        player.inventoryMenu.broadcastChanges();
+        if (player.containerMenu != player.inventoryMenu) {
+            player.containerMenu.broadcastChanges();
         }
     }
 
