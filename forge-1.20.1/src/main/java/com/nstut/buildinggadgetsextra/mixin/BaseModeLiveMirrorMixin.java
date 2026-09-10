@@ -1,7 +1,6 @@
 package com.nstut.buildinggadgetsextra.mixin;
 
 import com.direwolf20.buildinggadgets2.common.items.BaseGadget;
-import com.direwolf20.buildinggadgets2.util.GadgetNBT;
 import com.direwolf20.buildinggadgets2.util.datatypes.StatePos;
 import com.direwolf20.buildinggadgets2.util.modes.BaseMode;
 import com.nstut.buildinggadgetsextra.common.ExtraConstants;
@@ -45,11 +44,10 @@ public abstract class BaseModeLiveMirrorMixin {
         ArrayList<StatePos> source = cir.getReturnValue();
         if (source == null || source.isEmpty()) return;
 
-        BlockPos anchor = GadgetNBT.getAnchorPos(gadget);
-        if (anchor == null || GadgetNBT.nullPos.equals(anchor)) anchor = start;
+        // BG2 mode collections are local offsets from `start`; BuildingUtils applies `start`
+        // when rendering/placing. Mirror around the local operation origin, never a world coordinate.
         MirrorAxis horizontalAxis = player.getDirection().getAxis() == Direction.Axis.X
                 ? MirrorAxis.Z : MirrorAxis.X;
-
         ArrayList<PlanPos> positions = new ArrayList<>(source.size());
         for (StatePos entry : source) {
             positions.add(new PlanPos(entry.pos.getX(), entry.pos.getY(), entry.pos.getZ()));
@@ -58,16 +56,13 @@ public abstract class BaseModeLiveMirrorMixin {
         final List<PlannedPosition> planned;
         try {
             planned = OperationPlanner.mirrorCopies(
-                    positions,
-                    new PlanPos(anchor.getX(), anchor.getY(), anchor.getZ()),
-                    horizontalAxis,
-                    horizontal,
-                    vertical,
+                    positions, PlanPos.ZERO, horizontalAxis, horizontal, vertical,
                     ExtraConstants.MAX_LIVE_PLAN_POSITIONS);
         } catch (IllegalArgumentException rejectedPlan) {
             return;
         }
 
+        BaseMode mode = (BaseMode) (Object) this;
         ArrayList<StatePos> resolved = new ArrayList<>(planned.size());
         for (PlannedPosition plannedPosition : planned) {
             StatePos original = source.get(plannedPosition.sourceIndex());
@@ -75,8 +70,14 @@ public abstract class BaseModeLiveMirrorMixin {
             for (MirrorAxis axis : plannedPosition.stateMirrors()) {
                 resolvedState = MirrorTransforms.mirrorState(resolvedState, plane(axis));
             }
+
             PlanPos position = plannedPosition.position();
-            resolved.add(new StatePos(resolvedState, new BlockPos(position.x(), position.y(), position.z())));
+            BlockPos localPos = new BlockPos(position.x(), position.y(), position.z());
+            if (!plannedPosition.stateMirrors().isEmpty()) {
+                BlockPos worldPos = start.offset(localPos);
+                if (!mode.isPosValid(player.level(), player, worldPos, resolvedState)) continue;
+            }
+            resolved.add(new StatePos(resolvedState, localPos));
         }
         cir.setReturnValue(resolved);
     }
