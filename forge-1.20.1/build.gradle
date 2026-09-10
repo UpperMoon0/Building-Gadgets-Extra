@@ -84,14 +84,11 @@ minecraft {
             }
         }
         clientIntegrationTestServer {
-            // FG6's RunConfig.merge accepts a RunConfig object (not the old string DSL shown in
-            // historical docs). Copy the complete stock server launch definition as one unit.
-            merge runs.server, true
+            parent runs.server
             client false
             workingDirectory project.file('run-client-integration-server')
             property 'bge.clientIntegrationTest', 'true'
             property 'bge.clientIntegrationResultDir', project.file('build/client-integration-dedicated').absolutePath
-            args '--nogui'
             mods {
                 "${mod_id}" { source sourceSets.clientIntegrationTest }
             }
@@ -99,10 +96,15 @@ minecraft {
     }
 }
 
-// Client-derived custom runs already receive ForgeGradle's client launch data; keep the explicit
-// entrypoint fallback for CI where inherited run defaults are finalized late.
+// ForgeGradle finalizes the userdev launcher metadata after these child runs are configured.
+// Keep their parent relation for normal inheritance and copy the resolved launcher entrypoint and
+// environment late so Gradle-run CI tasks cannot end up with an empty main class.
 gradle.projectsEvaluated {
-    [clientIntegrationTest: 'client', dedicatedClientIntegrationTest: 'client'].each { childName, parentName ->
+    [
+            clientIntegrationTest: 'client',
+            dedicatedClientIntegrationTest: 'client',
+            clientIntegrationTestServer: 'server'
+    ].each { childName, parentName ->
         def parentRun = minecraft.runs.getByName(parentName)
         def childRun = minecraft.runs.getByName(childName)
         childRun.main(parentRun.main)
