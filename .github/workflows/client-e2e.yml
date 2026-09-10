@@ -100,7 +100,9 @@ jobs:
           EOF
 
           chmod +x ./gradlew
-          setsid ./gradlew '${{ matrix.integration_server_task }}' --no-daemon --no-configuration-cache > "$SERVER_LOG" 2>&1 &
+          # Keep stdin open for server versions that treat EOF as a shutdown request. setsid keeps
+          # the whole tail|gradle pipeline in one process group so cleanup can terminate it safely.
+          setsid bash -c 'tail -f /dev/null | ./gradlew "$1" --no-daemon --no-configuration-cache' _ '${{ matrix.integration_server_task }}' > "$SERVER_LOG" 2>&1 &
           SERVER_PID=$!
           cleanup() {
             kill -- -"$SERVER_PID" >/dev/null 2>&1 || true
