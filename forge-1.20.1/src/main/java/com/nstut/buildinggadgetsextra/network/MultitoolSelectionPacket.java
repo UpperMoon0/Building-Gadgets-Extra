@@ -16,8 +16,8 @@ public final class MultitoolSelectionPacket {
     private final int toolOrdinal;
     private final String gadgetMode;
     public MultitoolSelectionPacket(int toolOrdinal, String gadgetMode) { this.toolOrdinal = toolOrdinal; this.gadgetMode = gadgetMode; }
-    public static void encode(MultitoolSelectionPacket packet, FriendlyByteBuf buffer) { buffer.writeVarInt(packet.toolOrdinal); buffer.writeUtf(packet.gadgetMode); }
-    public static MultitoolSelectionPacket decode(FriendlyByteBuf buffer) { return new MultitoolSelectionPacket(buffer.readVarInt(), buffer.readUtf()); }
+    public static void encode(MultitoolSelectionPacket packet, FriendlyByteBuf buffer) { buffer.writeVarInt(packet.toolOrdinal); buffer.writeUtf(packet.gadgetMode, 128); }
+    public static MultitoolSelectionPacket decode(FriendlyByteBuf buffer) { return new MultitoolSelectionPacket(buffer.readVarInt(), buffer.readUtf(128)); }
     public static void handle(MultitoolSelectionPacket packet, Supplier<NetworkEvent.Context> supplier) {
         NetworkEvent.Context context = supplier.get();
         context.enqueueWork(() -> {

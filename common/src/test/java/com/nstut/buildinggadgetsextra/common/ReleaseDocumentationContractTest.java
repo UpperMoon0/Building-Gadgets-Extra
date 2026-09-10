@@ -21,6 +21,8 @@ class ReleaseDocumentationContractTest {
         contains(workflow, ".conclusion == \"success\"");
         contains(workflow, "GITHUB_REF_NAME");
         contains(workflow, "mod_version");
+        contains(workflow, "body_path: changelog/${{ steps.version.outputs.value }}.md");
+        contains(workflow, "test -s \"changelog/$MOD_VERSION.md\"");
     }
 
     @Test
@@ -28,7 +30,11 @@ class ReleaseDocumentationContractTest {
         Path root = repositoryRoot();
         String readme = read(root.resolve("README.md"));
         String curseforge = read(root.resolve("CURSEFORGE.md"));
-        String changelog = read(root.resolve("CHANGELOG.md"));
+        java.util.Properties properties = new java.util.Properties();
+        try (java.io.Reader reader = Files.newBufferedReader(root.resolve("gradle.properties"), StandardCharsets.UTF_8)) {
+            properties.load(reader);
+        }
+        String changelog = read(root.resolve("changelog/" + properties.getProperty("mod_version") + ".md"));
 
         for (String document : new String[]{readme, curseforge, changelog}) {
             contains(document, "100,000-position bounding volume");

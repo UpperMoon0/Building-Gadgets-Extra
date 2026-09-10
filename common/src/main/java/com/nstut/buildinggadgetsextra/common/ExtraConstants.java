@@ -32,6 +32,8 @@ public final class ExtraConstants {
     public static final int STRUCTURE_CHUNK_SIZE = 32 * 1024;
     public static final int MAX_STRUCTURE_FILE_BYTES = 8 * 1024 * 1024;
     public static final int MAX_STRUCTURE_TRANSFERS_PER_PLAYER = 2;
+    public static final int MAX_STRUCTURE_UPLOADS = 64;
+    public static final long MAX_STRUCTURE_UPLOAD_BYTES = 64L * 1024L * 1024L;
 
     public static final String DIALOG_SAVE_STRUCTURE = MOD_ID + ".dialog.save_structure";
     public static final String DIALOG_OPEN_STRUCTURE = MOD_ID + ".dialog.open_structure";

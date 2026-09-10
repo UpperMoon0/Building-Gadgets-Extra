@@ -132,7 +132,7 @@ A release is started only by either:
 
 Before publishing:
 
-1. Update `mod_version` in `gradle.properties` and update `CHANGELOG.md`.
+1. Update `mod_version` in `gradle.properties` and add or update `changelog/<mod_version>.md` (for example, [0.0.4](changelog/0.0.4.md)).
 2. Merge the changes to `main` and let CI pass on that exact commit.
 3. Create the matching `v<mod_version>` tag on the current `main` commit, or run the Release workflow manually from `main`.
 

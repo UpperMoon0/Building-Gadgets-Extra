@@ -47,7 +47,7 @@ class CorrectnessRegressionContractTest {
                 ? "StructureUploadPacket.java" : "StructureUploadHandler.java"));
         contains(upload, "TransferState", "server-side upload session identity");
         contains(upload, "gadgetId", "initiating gadget UUID binding");
-        contains(upload, "MAX_STRUCTURE_TRANSFERS_PER_PLAYER", "per-player transfer cap");
+        contains(upload, "UploadTransferRegistry", "shared per-player and global transfer caps");
         contains(upload, "matches(player)", "target revalidation before commit");
     }
 

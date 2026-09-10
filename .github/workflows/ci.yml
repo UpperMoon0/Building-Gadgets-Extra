@@ -103,7 +103,6 @@ jobs:
           selected = set(entries) if select_all else set()
           light_only = {
               "README.md",
-              "CHANGELOG.md",
               "CURSEFORGE.md",
               "LICENSE",
               ".github/workflows/release.yml",
@@ -129,7 +128,7 @@ jobs:
                   selected.add("neoforge1211")
               elif path.startswith("neoforge-26.1.2/"):
                   selected.add("neoforge2612")
-              elif path in light_only or path.startswith("docs/"):
+              elif path in light_only or path.startswith("docs/") or path.startswith("changelog/"):
                   pass
               else:
                   # Unknown repository-level changes are safer to verify everywhere.

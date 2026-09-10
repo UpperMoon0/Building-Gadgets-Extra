@@ -6,6 +6,7 @@ import com.direwolf20.buildinggadgets2.common.items.GadgetCutPaste;
 import com.direwolf20.buildinggadgets2.util.GadgetNBT;
 import com.direwolf20.buildinggadgets2.util.modes.Paste;
 import com.nstut.buildinggadgetsextra.common.ChunkAccumulator;
+import com.nstut.buildinggadgetsextra.common.UploadTransferRegistry;
 import com.nstut.buildinggadgetsextra.common.ExtraConstants;
 import com.nstut.buildinggadgetsextra.common.MultitoolMode;
 import com.nstut.buildinggadgetsextra.common.StructureFileName;
@@ -17,13 +18,19 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
 import net.minecraftforge.network.NetworkEvent;
 
-import java.util.HashMap;
-import java.util.Map;
+import net.minecraftforge.event.TickEvent;
+import net.minecraftforge.event.entity.player.PlayerEvent;
+import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.minecraftforge.fml.common.Mod;
+import net.minecraftforge.event.server.ServerStoppedEvent;
+
 import java.util.UUID;
 import java.util.function.Supplier;
 
+@Mod.EventBusSubscriber(modid = ExtraConstants.MOD_ID, bus = Mod.EventBusSubscriber.Bus.FORGE)
 public record StructureUploadPacket(UUID id, String name, int index, int total, byte[] data) {
-    private static final Map<String, TransferState> TRANSFERS = new HashMap<>();
+    private static final UploadTransferRegistry<TransferState> TRANSFERS =
+            new UploadTransferRegistry<>(transfer -> transfer.chunks);
 
     public static void encode(StructureUploadPacket packet, FriendlyByteBuf buffer) {
         buffer.writeUUID(packet.id);
@@ -44,16 +51,14 @@ public record StructureUploadPacket(UUID id, String name, int index, int total, 
             ServerPlayer player = context.getSender();
             if (player == null || !StructureFileName.isValid(packet.name)) return;
 
-            TRANSFERS.entrySet().removeIf(entry -> entry.getValue().chunks.isExpired());
+            TRANSFERS.pruneExpired();
             String prefix = player.getUUID() + ":";
             String key = prefix + packet.id;
             TransferState transfer = TRANSFERS.get(key);
             if (transfer == null) {
-                if (TRANSFERS.keySet().stream().filter(value -> value.startsWith(prefix)).count()
-                        >= ExtraConstants.MAX_STRUCTURE_TRANSFERS_PER_PLAYER) return;
                 transfer = TransferState.capture(player, packet.total);
                 if (transfer == null) return;
-                TRANSFERS.put(key, transfer);
+                if (!TRANSFERS.put(key, transfer)) return;
             }
 
             if (!transfer.matches(player)) {
@@ -62,7 +67,7 @@ public record StructureUploadPacket(UUID id, String name, int index, int total, 
             }
 
             try {
-                if (!transfer.chunks.accept(packet.index, packet.data)) {
+                if (!TRANSFERS.accept(key, packet.index, packet.data)) {
                     TRANSFERS.remove(key);
                     return;
                 }
@@ -79,6 +84,22 @@ public record StructureUploadPacket(UUID id, String name, int index, int total, 
             }
         });
         context.setPacketHandled(true);
+    }
+
+    @SubscribeEvent
+    public static void onServerTick(TickEvent.ServerTickEvent event) {
+        if (event.phase != TickEvent.Phase.END) return;
+        TRANSFERS.pruneExpired();
+    }
+
+    @SubscribeEvent
+    public static void onPlayerLogout(PlayerEvent.PlayerLoggedOutEvent event) {
+        TRANSFERS.removePlayer(event.getEntity().getUUID());
+    }
+
+    @SubscribeEvent
+    public static void onServerStopped(ServerStoppedEvent event) {
+        TRANSFERS.clear();
     }
 
     private static final class TransferState {

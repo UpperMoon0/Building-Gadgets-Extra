@@ -49,6 +49,12 @@ jobs:
           fi
           echo "value=$version" >> "$GITHUB_OUTPUT"
 
+      - name: Verify release changelog
+        env:
+          MOD_VERSION: ${{ steps.version.outputs.value }}
+        shell: bash
+        run: test -s "changelog/$MOD_VERSION.md"
+
       - name: Verify release source is current main
         shell: bash
         run: |
@@ -146,7 +152,7 @@ jobs:
           tag_name: v${{ steps.version.outputs.value }}
           target_commitish: ${{ github.sha }}
           name: Building Gadgets Extra v${{ steps.version.outputs.value }}
-          generate_release_notes: true
+          body_path: changelog/${{ steps.version.outputs.value }}.md
           fail_on_unmatched_files: true
           files: |
             neoforge-26.1.2/build/libs/building-gadgets-extra-neoforge-26.1.2-${{ steps.version.outputs.value }}.jar

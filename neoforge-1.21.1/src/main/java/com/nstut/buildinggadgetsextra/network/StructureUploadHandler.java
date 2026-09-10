@@ -6,6 +6,7 @@ import com.direwolf20.buildinggadgets2.common.items.GadgetCutPaste;
 import com.direwolf20.buildinggadgets2.util.GadgetNBT;
 import com.direwolf20.buildinggadgets2.util.modes.Paste;
 import com.nstut.buildinggadgetsextra.common.ChunkAccumulator;
+import com.nstut.buildinggadgetsextra.common.UploadTransferRegistry;
 import com.nstut.buildinggadgetsextra.common.ExtraConstants;
 import com.nstut.buildinggadgetsextra.common.MultitoolMode;
 import com.nstut.buildinggadgetsextra.common.StructureFileName;
@@ -16,12 +17,18 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 
-import java.util.HashMap;
-import java.util.Map;
+import net.neoforged.neoforge.event.tick.ServerTickEvent;
+import net.neoforged.neoforge.event.entity.player.PlayerEvent;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.EventBusSubscriber;
+import net.neoforged.neoforge.event.server.ServerStoppedEvent;
+
 import java.util.UUID;
 
+@EventBusSubscriber(modid = ExtraConstants.MOD_ID)
 public final class StructureUploadHandler {
-    private static final Map<String, TransferState> TRANSFERS = new HashMap<>();
+    private static final UploadTransferRegistry<TransferState> TRANSFERS =
+            new UploadTransferRegistry<>(transfer -> transfer.chunks);
 
     private StructureUploadHandler() {}
 
@@ -29,16 +36,14 @@ public final class StructureUploadHandler {
         context.enqueueWork(() -> {
             if (!(context.player() instanceof ServerPlayer player) || !StructureFileName.isValid(payload.name())) return;
 
-            TRANSFERS.entrySet().removeIf(entry -> entry.getValue().chunks.isExpired());
+            TRANSFERS.pruneExpired();
             String prefix = player.getUUID() + ":";
             String key = prefix + payload.transferId();
             TransferState transfer = TRANSFERS.get(key);
             if (transfer == null) {
-                if (TRANSFERS.keySet().stream().filter(value -> value.startsWith(prefix)).count()
-                        >= ExtraConstants.MAX_STRUCTURE_TRANSFERS_PER_PLAYER) return;
                 transfer = TransferState.capture(player, payload.total());
                 if (transfer == null) return;
-                TRANSFERS.put(key, transfer);
+                if (!TRANSFERS.put(key, transfer)) return;
             }
 
             if (!transfer.matches(player)) {
@@ -47,7 +52,7 @@ public final class StructureUploadHandler {
             }
 
             try {
-                if (!transfer.chunks.accept(payload.index(), payload.data())) {
+                if (!TRANSFERS.accept(key, payload.index(), payload.data())) {
                     TRANSFERS.remove(key);
                     return;
                 }
@@ -63,6 +68,21 @@ public final class StructureUploadHandler {
                 TRANSFERS.remove(key);
             }
         });
+    }
+
+    @SubscribeEvent
+    public static void onServerTick(ServerTickEvent.Post event) {
+        TRANSFERS.pruneExpired();
+    }
+
+    @SubscribeEvent
+    public static void onPlayerLogout(PlayerEvent.PlayerLoggedOutEvent event) {
+        TRANSFERS.removePlayer(event.getEntity().getUUID());
+    }
+
+    @SubscribeEvent
+    public static void onServerStopped(ServerStoppedEvent event) {
+        TRANSFERS.clear();
     }
 
     private static final class TransferState {

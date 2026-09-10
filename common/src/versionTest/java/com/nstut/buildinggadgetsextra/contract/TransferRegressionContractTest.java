@@ -68,7 +68,7 @@ class TransferRegressionContractTest {
         contains(matches, pasteGuard, "Paste-mode authorization during transfer revalidation");
 
         int perChunkRevalidation = upload.indexOf("if (!transfer.matches(player))");
-        int acceptChunk = upload.indexOf("transfer.chunks.accept");
+        int acceptChunk = upload.indexOf("TRANSFERS.accept");
         assertTrue(perChunkRevalidation >= 0 && acceptChunk > perChunkRevalidation,
                 label("authorization must be revalidated before accepting each upload chunk"));
 
@@ -79,13 +79,42 @@ class TransferRegressionContractTest {
                 label("Paste mode and gadget/profile identity must be revalidated immediately before import commit"));
     }
 
+    @Test
+    void uploadsHaveServerLifecycleCleanupAndGlobalBudgets() throws Exception {
+        String upload = source("network/" + ("forge".equals(loader)
+                ? "StructureUploadPacket.java" : "StructureUploadHandler.java"));
+        contains(upload, "@", "event subscriber registration");
+        contains(upload, "EventBusSubscriber(modid = ExtraConstants.MOD_ID", "server event subscriber");
+        contains(upload, "UploadTransferRegistry<TransferState>", "shared bounded upload storage");
+        contains(upload, "if (!TRANSFERS.put(key, transfer)) return;", "upload admission limit");
+        contains(upload, "TRANSFERS.accept(key,", "global byte ceiling before chunk retention");
+        contains(upload, "@SubscribeEvent\n    public static void onServerTick", "independent expiry event");
+        contains(upload, "PlayerEvent.PlayerLoggedOutEvent", "logout event");
+        contains(upload, "TRANSFERS.removePlayer(", "per-player logout cleanup");
+        contains(upload, "ServerStoppedEvent event", "shutdown event");
+        contains(upload, "TRANSFERS.clear();", "shutdown cleanup");
+    }
+
+    @Test
+    void modernModeIdentifiersUseSmallWireBounds() throws Exception {
+        if ("1.16.5".equals(minecraftVersion)) return;
+        String selection = source("network/" + ("forge".equals(loader)
+                ? "MultitoolSelectionPacket.java" : "MultitoolSelectionPayload.java"));
+        if ("forge".equals(loader)) {
+            contains(selection, "readUtf(128)", "bounded mode decoding");
+            contains(selection, "writeUtf(packet.gadgetMode, 128)", "bounded mode encoding");
+        } else {
+            contains(selection, "ByteBufCodecs.stringUtf8(128)", "bounded mode codec");
+        }
+    }
+
     private String source(String relative) throws IOException {
         return read(module.resolve("src/main/java/com/nstut/buildinggadgetsextra").resolve(relative));
     }
 
     private String read(Path path) throws IOException {
         assertTrue(Files.isRegularFile(path), label("missing file " + path));
-        return new String(Files.readAllBytes(path), StandardCharsets.UTF_8);
+        return new String(Files.readAllBytes(path), StandardCharsets.UTF_8).replace("\r\n", "\n");
     }
 
     private void contains(String source, String expected, String feature) {

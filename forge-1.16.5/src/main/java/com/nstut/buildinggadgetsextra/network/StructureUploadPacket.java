@@ -3,6 +3,7 @@ package com.nstut.buildinggadgetsextra.network;
 import com.direwolf20.buildinggadgets.common.items.AbstractGadget;
 import com.direwolf20.buildinggadgets.common.items.GadgetCopyPaste;
 import com.nstut.buildinggadgetsextra.common.ChunkAccumulator;
+import com.nstut.buildinggadgetsextra.common.UploadTransferRegistry;
 import com.nstut.buildinggadgetsextra.common.ExtraConstants;
 import com.nstut.buildinggadgetsextra.common.MultitoolMode;
 import com.nstut.buildinggadgetsextra.common.StructureFileName;
@@ -14,13 +15,19 @@ import net.minecraft.item.ItemStack;
 import net.minecraft.network.PacketBuffer;
 import net.minecraftforge.fml.network.NetworkEvent;
 
-import java.util.HashMap;
-import java.util.Map;
+import net.minecraftforge.event.TickEvent;
+import net.minecraftforge.event.entity.player.PlayerEvent;
+import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.minecraftforge.fml.common.Mod;
+import net.minecraftforge.fml.event.server.FMLServerStoppedEvent;
+
 import java.util.UUID;
 import java.util.function.Supplier;
 
+@Mod.EventBusSubscriber(modid = ExtraConstants.MOD_ID, bus = Mod.EventBusSubscriber.Bus.FORGE)
 public final class StructureUploadPacket {
-    private static final Map<String, TransferState> TRANSFERS = new HashMap<>();
+    private static final UploadTransferRegistry<TransferState> TRANSFERS =
+            new UploadTransferRegistry<>(transfer -> transfer.chunks);
 
     final UUID id;
     final String name;
@@ -55,16 +62,14 @@ public final class StructureUploadPacket {
             ServerPlayerEntity player = context.getSender();
             if (player == null || !StructureFileName.isValid(packet.name)) return;
 
-            TRANSFERS.entrySet().removeIf(entry -> entry.getValue().chunks.isExpired());
+            TRANSFERS.pruneExpired();
             String prefix = player.getUUID() + ":";
             String key = prefix + packet.id;
             TransferState transfer = TRANSFERS.get(key);
             if (transfer == null) {
-                if (TRANSFERS.keySet().stream().filter(value -> value.startsWith(prefix)).count()
-                        >= ExtraConstants.MAX_STRUCTURE_TRANSFERS_PER_PLAYER) return;
                 transfer = TransferState.capture(player, packet.total);
                 if (transfer == null) return;
-                TRANSFERS.put(key, transfer);
+                if (!TRANSFERS.put(key, transfer)) return;
             }
 
             if (!transfer.matches(player)) {
@@ -73,7 +78,7 @@ public final class StructureUploadPacket {
             }
 
             try {
-                if (!transfer.chunks.accept(packet.index, packet.data)) {
+                if (!TRANSFERS.accept(key, packet.index, packet.data)) {
                     TRANSFERS.remove(key);
                     return;
                 }
@@ -90,6 +95,22 @@ public final class StructureUploadPacket {
             }
         });
         context.setPacketHandled(true);
+    }
+
+    @SubscribeEvent
+    public static void onServerTick(TickEvent.ServerTickEvent event) {
+        if (event.phase != TickEvent.Phase.END) return;
+        TRANSFERS.pruneExpired();
+    }
+
+    @SubscribeEvent
+    public static void onPlayerLogout(PlayerEvent.PlayerLoggedOutEvent event) {
+        TRANSFERS.removePlayer(event.getPlayer().getUUID());
+    }
+
+    @SubscribeEvent
+    public static void onServerStopped(FMLServerStoppedEvent event) {
+        TRANSFERS.clear();
     }
 
     private static final class TransferState {
