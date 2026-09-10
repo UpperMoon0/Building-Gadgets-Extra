@@ -3,8 +3,6 @@ name: Release
 on:
   push:
     branches: [main]
-    paths:
-      - gradle.properties
   workflow_dispatch:
 
 permissions:
@@ -16,7 +14,7 @@ concurrency:
 
 jobs:
   version-change:
-    name: Check mod version change
+    name: Check release version
     runs-on: ubuntu-latest
     outputs:
       changed: ${{ steps.version.outputs.changed }}
@@ -27,7 +25,7 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Compare mod_version with the previous revision
+      - name: Detect version bump or unpublished version
         id: version
         shell: bash
         env:
@@ -46,6 +44,8 @@ jobs:
             || { echo "Invalid mod_version: $current" >&2; exit 1; }
 
           changed=false
+          tag="v${current}"
+
           if [[ "$EVENT_NAME" == "workflow_dispatch" ]]; then
             changed=true
             echo "Manual release requested for mod_version $current."
@@ -54,10 +54,16 @@ jobs:
             echo "No previous revision is available; treating $current as a release version."
           else
             previous="$(git show "${BEFORE_SHA}:gradle.properties" | read_version)"
+            echo "mod_version: ${previous} -> ${current}"
             if [[ "$current" != "$previous" ]]; then
               changed=true
+              echo "Version bump detected."
+            elif ! git show-ref --tags --verify --quiet "refs/tags/$tag"; then
+              changed=true
+              echo "Current version $current has no $tag tag; recovering the unpublished release."
+            else
+              echo "Version is unchanged and $tag already exists; nothing to publish."
             fi
-            echo "mod_version: ${previous} -> ${current}"
           fi
 
           echo "changed=$changed" >> "$GITHUB_OUTPUT"
