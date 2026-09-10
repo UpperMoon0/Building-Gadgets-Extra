@@ -18,8 +18,12 @@ import java.nio.file.Paths;
 
 /** Shared authoritative-server observer for BG2-based ports (1.20.1+). */
 public final class ModernServerRangeObserver {
+    private static final int PROVISION_DELAY_TICKS = 20;
+
     private static ServerPlayer watchedPlayer;
-    private static int ticks;
+    private static int loginTicks;
+    private static int observationTicks;
+    private static boolean provisioned;
     private static boolean finished;
     private static boolean buildRangeObserved;
     private static boolean exchangeRangeObserved;
@@ -28,33 +32,16 @@ public final class ModernServerRangeObserver {
 
     private ModernServerRangeObserver() {}
 
+    /**
+     * Start watching a newly logged-in player. The test stack is intentionally provisioned from
+     * a later server tick rather than directly inside the login event: vanilla can still be
+     * completing its initial inventory synchronization while that event is firing.
+     */
     public static void setupAndWatch(ServerPlayer player) {
-        ItemStack stack = new ItemStack(ExtraRegistration.BUILDERS_MULTITOOL.get());
-        BuildersMultitool multitool = (BuildersMultitool) stack.getItem();
-
-        // Seed distinct profiles so the client test can detect a submenu built from stale profile data.
-        GadgetNBT.setToolRange(stack, ClientRangeRoundTripScenario.START_RANGE);
-
-        multitool.selectTool(stack, MultitoolMode.EXCHANGING);
-        GadgetNBT.setToolRange(stack, ClientRangeRoundTripScenario.EXCHANGE_INITIAL_RANGE);
-
-        multitool.selectTool(stack, MultitoolMode.COPY_PASTE);
-        GadgetNBT.setCopyStartPos(stack, BlockPos.ZERO);
-        GadgetNBT.setCopyEndPos(stack, new BlockPos(2, 2, 2));
-
-        multitool.selectTool(stack, MultitoolMode.DESTRUCTION);
-        GadgetNBT.setToolValue(stack, 0, "left");
-        GadgetNBT.setToolValue(stack, 0, "right");
-        GadgetNBT.setToolValue(stack, 0, "up");
-        GadgetNBT.setToolValue(stack, 0, "down");
-        GadgetNBT.setToolValue(stack, 0, "depth");
-
-        multitool.selectTool(stack, MultitoolMode.BUILD);
-
-        player.setItemInHand(InteractionHand.MAIN_HAND, stack);
-        player.containerMenu.broadcastChanges();
         watchedPlayer = player;
-        ticks = 0;
+        loginTicks = 0;
+        observationTicks = 0;
+        provisioned = false;
         finished = false;
         buildRangeObserved = false;
         exchangeRangeObserved = false;
@@ -65,8 +52,16 @@ public final class ModernServerRangeObserver {
     /** Must be called from the loader's normal post-server-tick event. */
     public static void tick() {
         if (finished || watchedPlayer == null) return;
-        ticks++;
 
+        if (!provisioned) {
+            loginTicks++;
+            if (loginTicks < PROVISION_DELAY_TICKS) return;
+            provision(watchedPlayer);
+            provisioned = true;
+            return;
+        }
+
+        observationTicks++;
         ItemStack held = watchedPlayer.getItemInHand(InteractionHand.MAIN_HAND);
         if (held.getItem() instanceof BuildersMultitool) {
             MultitoolMode mode = MultitoolState.getActiveMode(held);
@@ -95,7 +90,7 @@ public final class ModernServerRangeObserver {
             return;
         }
 
-        if (ticks > ClientRangeRoundTripScenario.TIMEOUT_TICKS) {
+        if (observationTicks > ClientRangeRoundTripScenario.TIMEOUT_TICKS) {
             finished = true;
             write("server-fail.txt", "server did not observe all UI mutations; build=" + buildRangeObserved
                     + " exchange=" + exchangeRangeObserved
@@ -106,6 +101,37 @@ public final class ModernServerRangeObserver {
                     + " copyStart=" + GadgetNBT.getCopyStartPos(held)
                     + " left=" + GadgetNBT.getToolValue(held, "left")
                     + " depth=" + GadgetNBT.getToolValue(held, "depth"));
+        }
+    }
+
+    private static void provision(ServerPlayer player) {
+        ItemStack stack = new ItemStack(ExtraRegistration.BUILDERS_MULTITOOL.get());
+        BuildersMultitool multitool = (BuildersMultitool) stack.getItem();
+
+        // Seed distinct profiles so the client test can detect a submenu built from stale profile data.
+        GadgetNBT.setToolRange(stack, ClientRangeRoundTripScenario.START_RANGE);
+
+        multitool.selectTool(stack, MultitoolMode.EXCHANGING);
+        GadgetNBT.setToolRange(stack, ClientRangeRoundTripScenario.EXCHANGE_INITIAL_RANGE);
+
+        multitool.selectTool(stack, MultitoolMode.COPY_PASTE);
+        GadgetNBT.setCopyStartPos(stack, BlockPos.ZERO);
+        GadgetNBT.setCopyEndPos(stack, new BlockPos(2, 2, 2));
+
+        multitool.selectTool(stack, MultitoolMode.DESTRUCTION);
+        GadgetNBT.setToolValue(stack, 0, "left");
+        GadgetNBT.setToolValue(stack, 0, "right");
+        GadgetNBT.setToolValue(stack, 0, "up");
+        GadgetNBT.setToolValue(stack, 0, "down");
+        GadgetNBT.setToolValue(stack, 0, "depth");
+
+        multitool.selectTool(stack, MultitoolMode.BUILD);
+
+        player.setItemInHand(InteractionHand.MAIN_HAND, stack);
+        // Force a post-login inventory/container diff now that the player's initial sync is complete.
+        player.inventoryMenu.broadcastChanges();
+        if (player.containerMenu != player.inventoryMenu) {
+            player.containerMenu.broadcastChanges();
         }
     }
 
