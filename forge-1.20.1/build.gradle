@@ -97,6 +97,18 @@ minecraft {
     }
 }
 
+// ForgeGradle does not reliably resolve the executable main for custom inherited runs.
+// Resolve it after evaluation so the integration server/client tasks always launch the same
+// userdev entrypoints as their stock parent runs.
+gradle.projectsEvaluated {
+    [clientIntegrationTest: 'client', dedicatedClientIntegrationTest: 'client', clientIntegrationTestServer: 'server'].each { childName, parentName ->
+        def parentRun = minecraft.runs.getByName(parentName)
+        def childRun = minecraft.runs.getByName(childName)
+        childRun.main(parentRun.main)
+        parentRun.environment.each { key, value -> childRun.environment(key, value) }
+    }
+}
+
 repositories {
     mavenCentral()
     maven { url = 'https://www.cursemaven.com' }
