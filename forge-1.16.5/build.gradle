@@ -51,8 +51,8 @@ minecraft {
             client true
             workingDirectory project.file('run-client-integration')
             property 'bge.clientIntegrationTest', 'true'
+            property 'bge.clientIntegrationDedicated', 'true'
             property 'bge.clientIntegrationResultDir', project.file('build/client-integration').absolutePath
-            args '--server', '127.0.0.1', '--port', '25565'
             mods { "${mod_id}" { source sourceSets.clientIntegrationTest } }
         }
         clientIntegrationTestServer {
