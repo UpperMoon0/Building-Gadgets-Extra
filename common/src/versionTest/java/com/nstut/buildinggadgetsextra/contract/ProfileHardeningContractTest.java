@@ -39,7 +39,7 @@ class ProfileHardeningContractTest {
 
         String state = source("item/MultitoolState.java");
         contains(state, "profile.putLongArray(\"AnchorList\", anchorValues)", "collection-sized anchor serialization");
-        contains(state, "profile.getLongArrayOr(\"AnchorList\", new long[0])", "collection-sized anchor restoration");
+        contains(state, "profile.getLongArray(\"AnchorList\").orElseGet(() -> new long[0])", "collection-sized anchor restoration");
         assertFalse(state.contains("AnchorListSize"), label("anchor restoration must not trust an independent count field"));
         contains(state, "UUID copyId = parseUuid(profile.getStringOr(\"CopyId\", \"\"))", "defensive CopyId parsing");
         assertFalse(state.contains("UUID.fromString(copyId)"), label("CopyId must not be parsed without validation"));
