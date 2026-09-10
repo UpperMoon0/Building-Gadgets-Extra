@@ -8,7 +8,7 @@ import net.minecraftforge.network.PacketDistributor;
 import net.minecraftforge.network.simple.SimpleChannel;
 
 public final class ExtraNetwork {
-    private static final String VERSION = "3";
+    private static final String VERSION = "4";
     private static final SimpleChannel CHANNEL = NetworkRegistry.newSimpleChannel(
             ResourceLocation.fromNamespaceAndPath(ExtraConstants.MOD_ID, "main"),
             () -> VERSION, VERSION::equals, VERSION::equals);
@@ -30,6 +30,8 @@ public final class ExtraNetwork {
                 MultitoolCutPacket::encode, MultitoolCutPacket::decode, MultitoolCutPacket::handle);
         CHANNEL.registerMessage(6, MultitoolRangePacket.class,
                 MultitoolRangePacket::encode, MultitoolRangePacket::decode, MultitoolRangePacket::handle);
+        CHANNEL.registerMessage(7, MultitoolLiveMirrorPacket.class,
+                MultitoolLiveMirrorPacket::encode, MultitoolLiveMirrorPacket::decode, MultitoolLiveMirrorPacket::handle);
     }
 
     public static void sendToServer(MirrorPacket packet) { CHANNEL.sendToServer(packet); }
@@ -38,6 +40,7 @@ public final class ExtraNetwork {
     public static void sendToServer(MultitoolSelectionPacket packet) { CHANNEL.sendToServer(packet); }
     public static void sendToServer(MultitoolCutPacket packet) { CHANNEL.sendToServer(packet); }
     public static void sendToServer(MultitoolRangePacket packet) { CHANNEL.sendToServer(packet); }
+    public static void sendToServer(MultitoolLiveMirrorPacket packet) { CHANNEL.sendToServer(packet); }
     public static void sendToPlayer(ServerPlayer player, StructureDownloadPacket packet) {
         CHANNEL.send(PacketDistributor.PLAYER.with(() -> player), packet);
     }
