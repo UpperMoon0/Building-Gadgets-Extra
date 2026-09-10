@@ -66,7 +66,6 @@ neoForge {
             gameDirectory = project.file('run-client-integration')
             systemProperty 'bge.clientIntegrationTest', 'true'
             systemProperty 'bge.clientIntegrationResultDir', project.file('build/client-integration').absolutePath
-            programArguments = ['--quickPlaySingleplayer', 'bge-client-integration']
         }
         dedicatedClientIntegrationTest {
             client()
@@ -74,7 +73,6 @@ neoForge {
             systemProperty 'bge.clientIntegrationTest', 'true'
             systemProperty 'bge.clientIntegrationDedicated', 'true'
             systemProperty 'bge.clientIntegrationResultDir', project.file('build/client-integration-dedicated').absolutePath
-            programArguments = ['--quickPlayMultiplayer', '127.0.0.1:25565']
         }
         clientIntegrationTestServer {
             server()
