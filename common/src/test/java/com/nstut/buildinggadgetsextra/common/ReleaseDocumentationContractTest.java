@@ -15,8 +15,9 @@ class ReleaseDocumentationContractTest {
     void releaseRunsOnVersionBumpsAndPublishesEveryTarget() throws Exception {
         String workflow = read(repositoryRoot().resolve(".github/workflows/release.yml"));
         contains(workflow, "branches: [main]");
-        contains(workflow, "- gradle.properties");
         contains(workflow, "github.event.before");
+        contains(workflow, "git show-ref --tags --verify --quiet");
+        contains(workflow, "recovering the unpublished release");
         contains(workflow, "needs.version-change.outputs.changed == 'true'");
         contains(workflow, "mod_version");
         contains(workflow, "test -s \"changelog/$MOD_VERSION.md\"");
