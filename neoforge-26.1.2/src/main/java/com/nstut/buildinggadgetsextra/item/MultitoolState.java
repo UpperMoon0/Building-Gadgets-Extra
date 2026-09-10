@@ -30,6 +30,7 @@ public final class MultitoolState {
     private static final String STATE_PREFIX = "BGEStateProfile_";
     private static final String UNDO_PREFIX = "BGEUndoProfile_";
     private static final String UUID_PREFIX = "BGEGadgetProfile_";
+    private static final int MAX_UNDO_ENTRIES = 10;
 
     private MultitoolState() {
     }
@@ -85,8 +86,8 @@ public final class MultitoolState {
             GadgetNBT.setRelativePaste(stack, BlockPos.ZERO);
             return;
         }
-        String copyId = profile.getStringOr("CopyId", "");
-        if (!copyId.isEmpty()) stack.set(BG2DataComponents.COPY_UUID, UUID.fromString(copyId));
+        UUID copyId = parseUuid(profile.getStringOr("CopyId", ""));
+        if (copyId != null) stack.set(BG2DataComponents.COPY_UUID, copyId);
         else GadgetNBT.clearCopyUUID(stack);
         GadgetNBT.setCopyStartPos(stack, BlockPos.of(profile.getLongOr("Start", GadgetNBT.nullPos.asLong())));
         GadgetNBT.setCopyEndPos(stack, BlockPos.of(profile.getLongOr("End", GadgetNBT.nullPos.asLong())));
@@ -106,8 +107,9 @@ public final class MultitoolState {
         BlockPos anchor = GadgetNBT.getAnchorPos(stack);
         if (!GadgetNBT.nullPos.equals(anchor)) profile.putLong("Anchor", anchor.asLong());
         List<BlockPos> anchors = GadgetNBT.getAnchorList(stack);
-        profile.putInt("AnchorListSize", anchors.size());
-        for (int i = 0; i < anchors.size(); i++) profile.putLong("AnchorList" + i, anchors.get(i).asLong());
+        long[] anchorValues = new long[anchors.size()];
+        for (int i = 0; i < anchors.size(); i++) anchorValues[i] = anchors.get(i).asLong();
+        profile.putLongArray("AnchorList", anchorValues);
         Direction side = GadgetNBT.getAnchorSide(stack);
         profile.putInt("AnchorSide", side == null ? -1 : side.ordinal());
 
@@ -154,9 +156,10 @@ public final class MultitoolState {
             GadgetNBT.setAnchorPos(stack, BlockPos.of(profile.getLongOr("Anchor", GadgetNBT.nullPos.asLong())));
         }
         ArrayList<BlockPos> anchors = new ArrayList<>();
-        int anchorCount = initialized ? profile.getIntOr("AnchorListSize", 0) : 0;
-        for (int i = 0; i < anchorCount; i++) {
-            anchors.add(BlockPos.of(profile.getLongOr("AnchorList" + i, 0L)));
+        if (initialized) {
+            for (long packed : profile.getLongArrayOr("AnchorList", new long[0])) {
+                anchors.add(BlockPos.of(packed));
+            }
         }
         GadgetNBT.setAnchorList(stack, anchors);
         int side = initialized ? profile.getIntOr("AnchorSide", -1) : -1;
@@ -217,8 +220,9 @@ public final class MultitoolState {
     private static void saveUndoProfile(ItemStack stack, MultitoolMode mode) {
         CompoundTag saved = new CompoundTag();
         LinkedList<UUID> undo = GadgetNBT.getUndoList(stack);
-        saved.putInt("Size", undo.size());
-        for (int i = 0; i < undo.size(); i++) saved.putString("Entry" + i, undo.get(i).toString());
+        int size = boundedUndoSize(undo.size());
+        saved.putInt("Size", size);
+        for (int i = 0; i < size; i++) saved.putString("Entry" + i, undo.get(i).toString());
         CustomData.update(DataComponents.CUSTOM_DATA, stack,
                 tag -> tag.put(UNDO_PREFIX + mode.serializedName(), saved));
     }
@@ -227,11 +231,15 @@ public final class MultitoolState {
         CompoundTag root = stack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag();
         CompoundTag saved = root.getCompoundOrEmpty(UNDO_PREFIX + mode.serializedName());
         LinkedList<UUID> undo = new LinkedList<>();
-        int size = saved.getIntOr("Size", 0);
+        int size = boundedUndoSize(saved.getIntOr("Size", 0));
         for (int i = 0; i < size; i++) {
             UUID uuid = parseUuid(saved.getStringOr("Entry" + i, ""));
             if (uuid != null) undo.add(uuid);
         }
         GadgetNBT.setUndoList(stack, undo);
+    }
+
+    private static int boundedUndoSize(int size) {
+        return Math.max(0, Math.min(size, MAX_UNDO_ENTRIES));
     }
 }
