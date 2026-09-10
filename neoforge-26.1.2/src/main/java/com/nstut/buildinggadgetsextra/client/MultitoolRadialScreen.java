@@ -152,13 +152,17 @@ public final class MultitoolRadialScreen extends Screen {
             }
         }
 
-        if (RadialButtonPolicy.showMirrorButtons(effectiveMode)
-                && (selectedTool() == MultitoolMode.COPY_PASTE || selectedTool() == MultitoolMode.CUT_PASTE)) {
+        boolean liveMirrorTool = selectedTool() == MultitoolMode.BUILD || selectedTool() == MultitoolMode.EXCHANGING;
+        boolean templateMirrorTool = RadialButtonPolicy.showMirrorButtons(effectiveMode)
+                && (selectedTool() == MultitoolMode.COPY_PASTE || selectedTool() == MultitoolMode.CUT_PASTE);
+        if (liveMirrorTool || templateMirrorTool) {
             addRenderableWidget(new MirrorIconButton(width / 2 - 136, next(leftY), "mirror_horizontal",
-                    Component.translatable(ExtraConstants.MIRROR_HORIZONTAL),
+                    Component.translatable(liveMirrorTool
+                            ? ExtraConstants.LIVE_MIRROR_HORIZONTAL : ExtraConstants.MIRROR_HORIZONTAL),
                     () -> ClientPacketDistributor.sendToServer(new MirrorPayload(false))));
             addRenderableWidget(new MirrorIconButton(width / 2 - 136, next(leftY), "mirror_vertical",
-                    Component.translatable(ExtraConstants.MIRROR_VERTICAL),
+                    Component.translatable(liveMirrorTool
+                            ? ExtraConstants.LIVE_MIRROR_VERTICAL : ExtraConstants.MIRROR_VERTICAL),
                     () -> ClientPacketDistributor.sendToServer(new MirrorPayload(true))));
         }
 
@@ -289,7 +293,6 @@ public final class MultitoolRadialScreen extends Screen {
         drawOutline(graphics, x - half, y - half, x + half, y + half, hovered ? 0xFF3598FF : selected ? 0xFF00E640 : 0);
         Identifier icon = Identifier.fromNamespaceAndPath(actionIconNamespace(tool), actionIconPath(tool));
         int sourceSize = actionIconSourceSize(tool);
-        // Explicit source rectangle prevents the 15x15 action textures from tiling.
         graphics.blit(RenderPipelines.GUI_TEXTURED, icon, x - iconSize / 2, y - iconSize / 2,
                 0, 0, iconSize, iconSize, sourceSize, sourceSize, sourceSize, sourceSize, 0xFFFFFFFF);
     }
@@ -442,7 +445,4 @@ public final class MultitoolRadialScreen extends Screen {
     public boolean isPauseScreen() {
         return false;
     }
-
 }
-
-
