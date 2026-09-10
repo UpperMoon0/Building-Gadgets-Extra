@@ -35,7 +35,9 @@ class LiveMirrorContractTest {
         String mixinSource = read(mixin);
         contains(mixinSource, "OperationPlanner.mirrorCopies", "shared planner usage");
         contains(mixinSource, "MAX_LIVE_PLAN_POSITIONS", "bounded interactive plan");
-        contains(mixinSource, "GadgetNBT.getAnchorPos", "anchor-relative pivot");
+        contains(mixinSource, "PlanPos.ZERO", "BG2 local-coordinate mirror pivot");
+        contains(mixinSource, "start.offset(localPos)", "local-to-world validation conversion");
+        contains(mixinSource, "isPosValid", "generated-copy upstream validation");
         contains(mixinSource, "MirrorTransforms.mirrorState", "per-copy block-state transform");
         contains(mixinSource, "MultitoolMode.BUILD", "building-mode gate");
         contains(mixinSource, "MultitoolMode.EXCHANGING", "exchanging-mode gate");
@@ -54,6 +56,16 @@ class LiveMirrorContractTest {
         contains(handler, "containerMenu.broadcastChanges", "stack-state synchronization");
         contains(handler, "MultitoolMode.BUILD", "contextual mirror semantics");
         contains(handler, "MultitoolMode.EXCHANGING", "contextual mirror semantics");
+
+        String state = source("item/MultitoolState.java");
+        contains(state, "LIVE_MIRROR_HORIZONTAL", "persisted horizontal modifier state");
+        contains(state, "LIVE_MIRROR_VERTICAL", "persisted vertical modifier state");
+        if ("forge".equals(loader)) {
+            contains(state, "LIVE_MIRROR_HORIZONTAL, LIVE_MIRROR_VERTICAL", "Forge profile snapshot isolation");
+        } else {
+            contains(state, "profile.putBoolean(LIVE_MIRROR_HORIZONTAL", "NeoForge profile snapshot isolation");
+            contains(state, "setLiveMirror(stack, false", "NeoForge profile restore isolation");
+        }
     }
 
     @Test
@@ -62,6 +74,8 @@ class LiveMirrorContractTest {
         String planner = read(common.resolve("src/main/java/com/nstut/buildinggadgetsextra/common/planner/OperationPlanner.java"));
         contains(planner, "mirrorCopies", "shared live-mirror composition");
         contains(planner, "LinkedHashMap", "deterministic dedupe order");
+        String position = read(common.resolve("src/main/java/com/nstut/buildinggadgetsextra/common/planner/PlanPos.java"));
+        contains(position, "PlanPos ZERO", "shared local operation origin");
 
         String lang = read(common.resolve("src/main/resources/assets/buildinggadgetsextra/lang/en_us.json"));
         contains(lang, "buildinggadgetsextra.radialmenu.live_mirror_horizontal", "horizontal live-mirror label");
