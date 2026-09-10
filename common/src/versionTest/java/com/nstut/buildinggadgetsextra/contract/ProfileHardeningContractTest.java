@@ -92,11 +92,11 @@ class ProfileHardeningContractTest {
         if (!"1.20.1".equals(minecraftVersion) || !"forge".equals(loader)) return;
 
         String build = read(module.resolve("build.gradle"));
-        String serverRun = runBlock(build, "clientIntegrationTestServer");
+        String serverRun = runBlock(build, "serverClientIntegrationTest");
         contains(serverRun, "parent runs.server", "ForgeGradle server parent relation");
         assertFalse(serverRun.contains("merge runs.server"), label("integration server must not eagerly merge unresolved run metadata"));
-        contains(build, "clientIntegrationTestServer: 'server'", "late resolved launcher fallback");
-        contains(build, "childRun.main(parentRun.main)", "late resolved ForgeGradle main-class copy");
+        contains(serverRun, "taskName 'runClientIntegrationTestServer'", "stable CI server task name");
+        contains(build, "verifyIntegrationLaunchers", "resolved launcher verification");
     }
 
     private String source(String relative) throws IOException {
@@ -121,7 +121,7 @@ class ProfileHardeningContractTest {
 
     private String read(Path path) throws IOException {
         assertTrue(Files.isRegularFile(path), label("missing file " + path));
-        return new String(Files.readAllBytes(path), StandardCharsets.UTF_8);
+        return new String(Files.readAllBytes(path), StandardCharsets.UTF_8).replace("\r\n", "\n");
     }
 
     private void contains(String source, String expected, String feature) {

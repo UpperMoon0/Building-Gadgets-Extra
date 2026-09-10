@@ -97,11 +97,11 @@ class CorrectnessRegressionContractTest {
         contains(build, "clientIntegrationTest", "dedicated client-integration source set");
         contains(build, "run-client-integration", "isolated real-client run directory");
         contains(build, "bge.clientIntegrationTest", "real-client test enablement property");
-        contains(build, "clientIntegrationTestServer", "dedicated integration server run");
+        contains(build, "run-client-integration-server", "dedicated integration server run");
 
         if ("1.20.1".equals(minecraftVersion) && "forge".equals(loader)) {
-            contains(build, "parentRun.getJvmArgs() + childRun.getJvmArgs()",
-                    "Forge 1.20.1 late child-run JVM argument inheritance");
+            contains(build, "parent runs.client",
+                    "Forge 1.20.1 native child-run JVM argument inheritance");
             assertFalse(build.contains(".unique()"),
                     label("Forge 1.20.1 launcher JVM tokens must not be de-duplicated because repeated --add-opens flags are positional"));
         }

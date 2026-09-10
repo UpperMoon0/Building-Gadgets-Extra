@@ -82,7 +82,10 @@ minecraft {
                 "${mod_id}" { source sourceSets.clientIntegrationTest }
             }
         }
-        clientIntegrationTestServer {
+        // ForgeGradle merges parents in name order, without recursively resolving them.
+        // Sort after server so its Forge launcher is resolved before we inherit it.
+        serverClientIntegrationTest {
+            taskName 'runClientIntegrationTestServer'
             parent runs.server
             client false
             workingDirectory project.file('run-client-integration-server')
@@ -100,6 +103,32 @@ repositories {
     maven { url = 'https://www.cursemaven.com' }
     maven { url = 'https://repo.spongepowered.org/repository/maven-public/' }
 }
+
+// Check resolved metadata, so an unresolved parent or duplicated JVM options fail
+// during build instead of only when CI starts a real client or dedicated server.
+tasks.register('verifyIntegrationLaunchers') {
+    group = 'verification'
+    doLast {
+        [clientIntegrationTest: 'client', dedicatedClientIntegrationTest: 'client',
+         serverClientIntegrationTest: 'server'].each { childName, parentName ->
+            def child = minecraft.runs.getByName(childName)
+            def parent = minecraft.runs.getByName(parentName)
+            if (!parent.main || child.main != parent.main) {
+                throw new GradleException("${childName} must inherit the resolved ${parentName} main class")
+            }
+            if (!parent.jvmArgs || child.jvmArgs != parent.jvmArgs) {
+                throw new GradleException("${childName} must inherit exactly one copy of the ${parentName} JVM arguments")
+            }
+            def targetIndex = child.args.indexOf('--launchTarget')
+            if (targetIndex < 0 || child.args.count('--launchTarget') != 1
+                    || child.args[targetIndex + 1] != parent.args[parent.args.indexOf('--launchTarget') + 1]) {
+                throw new GradleException("${childName} must inherit the ${parentName} launch target exactly once")
+            }
+        }
+    }
+}
+
+tasks.named('check').configure { dependsOn 'verifyIntegrationLaunchers' }
 
 dependencies {
     minecraft "net.minecraftforge:forge:${minecraft_version}-${forge_version}"
