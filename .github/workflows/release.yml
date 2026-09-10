@@ -2,22 +2,77 @@ name: Release
 
 on:
   push:
-    tags:
-      - 'v*'
+    branches: [main]
+    paths:
+      - gradle.properties
   workflow_dispatch:
 
 permissions:
   contents: write
-  actions: read
+
+concurrency:
+  group: building-gadgets-extra-release
+  cancel-in-progress: false
 
 jobs:
+  version-change:
+    name: Check mod version change
+    runs-on: ubuntu-latest
+    outputs:
+      changed: ${{ steps.version.outputs.changed }}
+      value: ${{ steps.version.outputs.value }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Compare mod_version with the previous revision
+        id: version
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BEFORE_SHA: ${{ github.event.before }}
+        run: |
+          set -euo pipefail
+
+          read_version() {
+            sed -n 's/^mod_version[[:space:]]*=[[:space:]]*//p' \
+              | head -n1 | tr -d '\r' | xargs
+          }
+
+          current="$(read_version < gradle.properties)"
+          [[ "$current" =~ ^[0-9A-Za-z][0-9A-Za-z._+-]*$ ]] \
+            || { echo "Invalid mod_version: $current" >&2; exit 1; }
+
+          changed=false
+          if [[ "$EVENT_NAME" == "workflow_dispatch" ]]; then
+            changed=true
+            echo "Manual release requested for mod_version $current."
+          elif [[ -z "${BEFORE_SHA:-}" || "$BEFORE_SHA" =~ ^0+$ ]]; then
+            changed=true
+            echo "No previous revision is available; treating $current as a release version."
+          else
+            previous="$(git show "${BEFORE_SHA}:gradle.properties" | read_version)"
+            if [[ "$current" != "$previous" ]]; then
+              changed=true
+            fi
+            echo "mod_version: ${previous} -> ${current}"
+          fi
+
+          echo "changed=$changed" >> "$GITHUB_OUTPUT"
+          echo "value=$current" >> "$GITHUB_OUTPUT"
+
   client-e2e:
     name: Dedicated client E2E
+    needs: version-change
+    if: needs.version-change.outputs.changed == 'true'
     uses: ./.github/workflows/client-e2e.yml
 
   release:
-    name: Build and release
-    needs: client-e2e
+    name: Build and publish
+    needs: [version-change, client-e2e]
+    if: needs.version-change.outputs.changed == 'true'
     runs-on: ubuntu-latest
 
     steps:
@@ -42,9 +97,12 @@ jobs:
         id: version
         shell: bash
         run: |
-          version="$(sed -n 's/^mod_version=//p' gradle.properties | tr -d '\r' | xargs)"
-          if [[ -z "$version" ]]; then
-            echo "mod_version is missing from gradle.properties" >&2
+          set -euo pipefail
+          version="$(sed -n 's/^mod_version[[:space:]]*=[[:space:]]*//p' gradle.properties | head -n1 | tr -d '\r' | xargs)"
+          [[ "$version" =~ ^[0-9A-Za-z][0-9A-Za-z._+-]*$ ]] \
+            || { echo "Invalid mod_version: $version" >&2; exit 1; }
+          if [[ "$version" != "${{ needs.version-change.outputs.value }}" ]]; then
+            echo "Release version changed between gate and build: ${{ needs.version-change.outputs.value }} -> $version" >&2
             exit 1
           fi
           echo "value=$version" >> "$GITHUB_OUTPUT"
@@ -55,46 +113,6 @@ jobs:
         shell: bash
         run: test -s "changelog/$MOD_VERSION.md"
 
-      - name: Verify release source is current main
-        shell: bash
-        run: |
-          if [[ "$GITHUB_EVENT_NAME" == "workflow_dispatch" && "$GITHUB_REF" != "refs/heads/main" ]]; then
-            echo "Manual releases must be dispatched from the main branch, not $GITHUB_REF." >&2
-            exit 1
-          fi
-          git fetch --no-tags origin main
-          release_sha="$(git rev-parse HEAD)"
-          main_sha="$(git rev-parse origin/main)"
-          if [[ "$release_sha" != "$main_sha" ]]; then
-            echo "Release commit $release_sha is not the current origin/main commit $main_sha." >&2
-            exit 1
-          fi
-
-      - name: Verify release tag
-        if: github.event_name == 'push'
-        shell: bash
-        run: |
-          expected="v${{ steps.version.outputs.value }}"
-          if [[ "${GITHUB_REF_NAME}" != "$expected" ]]; then
-            echo "Release tag ${GITHUB_REF_NAME} does not match mod_version ($expected)." >&2
-            exit 1
-          fi
-
-      - name: Verify exact-commit CI
-        shell: bash
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          release_sha="$(git rev-parse HEAD)"
-          successful_runs="$(gh api \
-            -H 'Accept: application/vnd.github+json' \
-            "/repos/${GITHUB_REPOSITORY}/actions/workflows/ci.yml/runs?head_sha=${release_sha}&status=completed&per_page=20" \
-            --jq '[.workflow_runs[] | select(.conclusion == "success")] | length')"
-          if [[ "$successful_runs" -lt 1 ]]; then
-            echo "No successful CI run exists for exact release commit $release_sha. Let CI finish successfully, then rerun Release." >&2
-            exit 1
-          fi
-
       - name: Run tests
         run: ./gradlew test --no-daemon --no-configuration-cache
 
@@ -104,6 +122,7 @@ jobs:
       - name: Verify release JARs
         shell: bash
         run: |
+          set -euo pipefail
           jars=(
             "neoforge-26.1.2/build/libs/building-gadgets-extra-neoforge-26.1.2-${{ steps.version.outputs.value }}.jar"
             "neoforge-1.21.1/build/libs/building-gadgets-extra-neoforge-1.21.1-${{ steps.version.outputs.value }}.jar"
@@ -128,21 +147,110 @@ jobs:
             forge-1.16.5/build/libs/building-gadgets-extra-forge-1.16.5-${{ steps.version.outputs.value }}.jar
           if-no-files-found: error
 
-      - name: Create version tag for manual releases
-        if: github.event_name == 'workflow_dispatch'
+      - name: Publish to CurseForge
+        shell: bash
+        env:
+          CURSEFORGE_API_TOKEN: ${{ secrets.CURSEFORGE_API_TOKEN }}
+          CURSEFORGE_PROJECT_ID: '1614988'
+          MOD_VERSION: ${{ steps.version.outputs.value }}
+        run: |
+          set -euo pipefail
+
+          [[ -n "${CURSEFORGE_API_TOKEN:-}" ]] \
+            || { echo 'Missing required GitHub secret: CURSEFORGE_API_TOKEN' >&2; exit 1; }
+
+          changelog_path="changelog/${MOD_VERSION}.md"
+          [[ -f "$changelog_path" ]] \
+            || { echo "Missing release changelog: $changelog_path" >&2; exit 1; }
+
+          relations='{"projects":[{"slug":"building-gadgets","type":"requiredDependency"}]}'
+          targets=(
+            "neoforge-26.1.2:NeoForge:26.1.2:Java 25:neoforge-26.1.2/build/libs/building-gadgets-extra-neoforge-26.1.2-${MOD_VERSION}.jar"
+            "neoforge-1.21.1:NeoForge:1.21.1:Java 21:neoforge-1.21.1/build/libs/building-gadgets-extra-neoforge-1.21.1-${MOD_VERSION}.jar"
+            "forge-1.20.1:Forge:1.20.1:Java 17:forge-1.20.1/build/libs/building-gadgets-extra-forge-1.20.1-${MOD_VERSION}.jar"
+            "forge-1.16.5:Forge:1.16.5:Java 8:forge-1.16.5/build/libs/building-gadgets-extra-forge-1.16.5-${MOD_VERSION}.jar"
+          )
+
+          available_versions="$(curl --fail-with-body --silent --show-error \
+            --retry 4 \
+            --retry-max-time 90 \
+            --connect-timeout 15 \
+            --max-time 45 \
+            --header "X-Api-Token: ${CURSEFORGE_API_TOKEN}" \
+            https://minecraft.curseforge.com/api/game/versions)"
+
+          for entry in "${targets[@]}"; do
+            IFS=':' read -r target_key loader mc_ver java_ver jar_file <<< "$entry"
+            [[ -f "$jar_file" ]] || { echo "Missing release JAR: $jar_file" >&2; exit 1; }
+
+            game_version_names="$(jq -cn \
+              --arg minecraftVersion "$mc_ver" \
+              --arg loaderName "$loader" \
+              --arg javaVersionName "$java_ver" \
+              '[$minecraftVersion, $loaderName, $javaVersionName, "Client", "Server"]')"
+
+            while IFS= read -r version_name; do
+              jq -e --arg name "$version_name" 'any(.[]; .name == $name)' \
+                <<< "$available_versions" >/dev/null \
+                || { echo "CurseForge does not recognize game version tag: $version_name" >&2; exit 1; }
+            done < <(jq -r '.[]' <<< "$game_version_names")
+
+            metadata="$(jq -cn \
+              --rawfile changelog "$changelog_path" \
+              --arg displayName "Building Gadgets Extra ${MOD_VERSION} - ${loader} ${mc_ver}" \
+              --argjson gameVersionNames "$game_version_names" \
+              --argjson relations "$relations" \
+              '{
+                changelog: $changelog,
+                changelogType: "markdown",
+                displayName: $displayName,
+                gameVersionNames: $gameVersionNames,
+                releaseType: "release",
+                relations: $relations
+              }')"
+
+            response_file="$(mktemp)"
+            http_status="$(curl --silent --show-error \
+              --retry 4 \
+              --retry-max-time 90 \
+              --connect-timeout 15 \
+              --max-time 45 \
+              --output "$response_file" \
+              --write-out '%{http_code}' \
+              --request POST \
+              --header "X-Api-Token: ${CURSEFORGE_API_TOKEN}" \
+              --form-string "metadata=${metadata}" \
+              --form "file=@${jar_file}" \
+              "https://minecraft.curseforge.com/api/projects/${CURSEFORGE_PROJECT_ID}/upload-file")"
+            response="$(<"$response_file")"
+            rm -f "$response_file"
+
+            if [[ "$http_status" =~ ^2 ]]; then
+              echo "Published $target_key to CurseForge as file $(jq -er '.id' <<< "$response")."
+            elif grep -Eqi 'already|duplicate' <<< "$response"; then
+              echo "CurseForge already has $jar_file; treating retry as successful."
+            else
+              echo "CurseForge upload failed for $target_key with HTTP $http_status: $response" >&2
+              exit 1
+            fi
+          done
+
+      - name: Create version tag
         shell: bash
         run: |
+          set -euo pipefail
           tag="v${{ steps.version.outputs.value }}"
           if git show-ref --tags --verify --quiet "refs/tags/$tag"; then
             tagged_commit="$(git rev-list -n 1 "$tag")"
-            if [[ "$tagged_commit" != "$(git rev-parse HEAD)" ]]; then
+            if [[ "$tagged_commit" != "$GITHUB_SHA" ]]; then
               echo "Tag $tag already points to $tagged_commit. Bump mod_version before releasing another commit." >&2
               exit 1
             fi
+            echo "Tag $tag already points to this commit; reusing it."
           else
             git config user.name "github-actions[bot]"
             git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git tag -a "$tag" -m "Building Gadgets Extra $tag" "$(git rev-parse HEAD)"
+            git tag -a "$tag" -m "Building Gadgets Extra $tag" "$GITHUB_SHA"
             git push origin "$tag"
           fi
 
@@ -153,6 +261,8 @@ jobs:
           target_commitish: ${{ github.sha }}
           name: Building Gadgets Extra v${{ steps.version.outputs.value }}
           body_path: changelog/${{ steps.version.outputs.value }}.md
+          draft: false
+          prerelease: false
           fail_on_unmatched_files: true
           files: |
             neoforge-26.1.2/build/libs/building-gadgets-extra-neoforge-26.1.2-${{ steps.version.outputs.value }}.jar
