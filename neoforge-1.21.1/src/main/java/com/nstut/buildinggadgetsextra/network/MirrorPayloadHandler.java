@@ -8,11 +8,11 @@ import com.direwolf20.buildinggadgets2.common.worlddata.BG2Data;
 import com.direwolf20.buildinggadgets2.util.GadgetNBT;
 import com.direwolf20.buildinggadgets2.util.datatypes.StatePos;
 import com.direwolf20.buildinggadgets2.util.datatypes.TagPos;
-import com.nstut.buildinggadgetsextra.transform.MirrorTransforms;
 import com.nstut.buildinggadgetsextra.common.ExtraConstants;
 import com.nstut.buildinggadgetsextra.common.MultitoolMode;
 import com.nstut.buildinggadgetsextra.item.BuildersMultitool;
 import com.nstut.buildinggadgetsextra.item.MultitoolState;
+import com.nstut.buildinggadgetsextra.transform.MirrorTransforms;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
@@ -27,19 +27,27 @@ public final class MirrorPayloadHandler {
 
     public static void handle(MirrorPayload payload, IPayloadContext context) {
         context.enqueueWork(() -> {
-            if (!(context.player() instanceof ServerPlayer player)) {
-                return;
-            }
+            if (!(context.player() instanceof ServerPlayer player)) return;
 
             ItemStack gadget = BaseGadget.getGadget(player);
-            if (!(gadget.getItem() instanceof GadgetCopyPaste)
-                    && !(gadget.getItem() instanceof GadgetCutPaste)) {
-                return;
+            if (gadget.getItem() instanceof BuildersMultitool) {
+                MultitoolMode active = MultitoolState.getActiveMode(gadget);
+                if (active == MultitoolMode.BUILD || active == MultitoolMode.EXCHANGING) {
+                    MultitoolState.toggleLiveMirror(gadget, payload.vertical());
+                    boolean enabled = payload.vertical()
+                            ? MultitoolState.isLiveMirrorVertical(gadget)
+                            : MultitoolState.isLiveMirrorHorizontal(gadget);
+                    player.containerMenu.broadcastChanges();
+                    player.displayClientMessage(Component.translatable(liveMirrorMessage(payload.vertical(), enabled)), true);
+                    return;
+                }
             }
 
+            if (!(gadget.getItem() instanceof GadgetCopyPaste)
+                    && !(gadget.getItem() instanceof GadgetCutPaste)) return;
+
             if (!GadgetNBT.hasCopyUUID(gadget)) {
-                player.displayClientMessage(
-                        Component.translatable(ExtraConstants.NO_TEMPLATE), true);
+                player.displayClientMessage(Component.translatable(ExtraConstants.NO_TEMPLATE), true);
                 return;
             }
 
@@ -48,16 +56,14 @@ public final class MirrorPayloadHandler {
                     || gadget.getItem() instanceof BuildersMultitool
                     && MultitoolState.getActiveMode(gadget) == MultitoolMode.CUT_PASTE;
             if (cut && ServerTickHandler.gadgetWorking(gadgetId)) {
-                player.displayClientMessage(
-                        Component.translatable(ExtraConstants.BUSY), true);
+                player.displayClientMessage(Component.translatable(ExtraConstants.BUSY), true);
                 return;
             }
 
             BG2Data data = BG2Data.get(player.server.overworld());
             ArrayList<StatePos> blocks = data.getCopyPasteList(gadgetId, false);
             if (blocks == null || blocks.isEmpty()) {
-                player.displayClientMessage(
-                        Component.translatable(ExtraConstants.NO_TEMPLATE), true);
+                player.displayClientMessage(Component.translatable(ExtraConstants.NO_TEMPLATE), true);
                 return;
             }
 
@@ -65,15 +71,18 @@ public final class MirrorPayloadHandler {
             ArrayList<StatePos> mirrored = payload.vertical()
                     ? MirrorTransforms.vertical(blocks, blockEntities)
                     : MirrorTransforms.horizontal(blocks, blockEntities, player.getDirection());
-
             data.addToCopyPaste(gadgetId, mirrored);
-            if (blockEntities != null && !blockEntities.isEmpty()) {
-                data.addToTEMap(gadgetId, blockEntities);
-            }
+            if (blockEntities != null && !blockEntities.isEmpty()) data.addToTEMap(gadgetId, blockEntities);
             GadgetNBT.setCopyUUID(gadget);
             player.displayClientMessage(Component.translatable(payload.vertical()
-                    ? ExtraConstants.MIRRORED_VERTICAL
-                    : ExtraConstants.MIRRORED_HORIZONTAL), true);
+                    ? ExtraConstants.MIRRORED_VERTICAL : ExtraConstants.MIRRORED_HORIZONTAL), true);
         });
+    }
+
+    private static String liveMirrorMessage(boolean vertical, boolean enabled) {
+        if (vertical) {
+            return enabled ? ExtraConstants.LIVE_MIRROR_VERTICAL_ENABLED : ExtraConstants.LIVE_MIRROR_VERTICAL_DISABLED;
+        }
+        return enabled ? ExtraConstants.LIVE_MIRROR_HORIZONTAL_ENABLED : ExtraConstants.LIVE_MIRROR_HORIZONTAL_DISABLED;
     }
 }

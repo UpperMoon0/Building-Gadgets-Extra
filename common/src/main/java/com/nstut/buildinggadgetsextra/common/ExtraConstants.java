@@ -4,10 +4,16 @@ public final class ExtraConstants {
     public static final String MOD_ID = "buildinggadgetsextra";
     public static final String MIRROR_HORIZONTAL = MOD_ID + ".radialmenu.mirror_horizontal";
     public static final String MIRROR_VERTICAL = MOD_ID + ".radialmenu.mirror_vertical";
+    public static final String LIVE_MIRROR_HORIZONTAL = MOD_ID + ".radialmenu.live_mirror_horizontal";
+    public static final String LIVE_MIRROR_VERTICAL = MOD_ID + ".radialmenu.live_mirror_vertical";
     public static final String NO_TEMPLATE = MOD_ID + ".message.no_template";
     public static final String BUSY = MOD_ID + ".message.busy";
     public static final String MIRRORED_HORIZONTAL = MOD_ID + ".message.mirrored_horizontal";
     public static final String MIRRORED_VERTICAL = MOD_ID + ".message.mirrored_vertical";
+    public static final String LIVE_MIRROR_HORIZONTAL_ENABLED = MOD_ID + ".message.live_mirror_horizontal_enabled";
+    public static final String LIVE_MIRROR_HORIZONTAL_DISABLED = MOD_ID + ".message.live_mirror_horizontal_disabled";
+    public static final String LIVE_MIRROR_VERTICAL_ENABLED = MOD_ID + ".message.live_mirror_vertical_enabled";
+    public static final String LIVE_MIRROR_VERTICAL_DISABLED = MOD_ID + ".message.live_mirror_vertical_disabled";
     public static final String SAVE_STRUCTURE = MOD_ID + ".radialmenu.save_structure";
     public static final String LOAD_STRUCTURE = MOD_ID + ".radialmenu.load_structure";
     public static final String CUT_SELECTION = MOD_ID + ".radialmenu.cut_selection";
@@ -34,6 +40,10 @@ public final class ExtraConstants {
     public static final int MAX_STRUCTURE_TRANSFERS_PER_PLAYER = 2;
     public static final int MAX_STRUCTURE_UPLOADS = 64;
     public static final long MAX_STRUCTURE_UPLOAD_BYTES = 64L * 1024L * 1024L;
+
+    // Live modifiers are intentionally below the structure-file envelope because these plans are
+    // regenerated interactively by both the client preview and the authoritative server operation.
+    public static final int MAX_LIVE_PLAN_POSITIONS = 65_536;
 
     public static final String DIALOG_SAVE_STRUCTURE = MOD_ID + ".dialog.save_structure";
     public static final String DIALOG_OPEN_STRUCTURE = MOD_ID + ".dialog.open_structure";

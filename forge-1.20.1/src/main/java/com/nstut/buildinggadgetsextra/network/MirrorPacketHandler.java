@@ -9,6 +9,9 @@ import com.direwolf20.buildinggadgets2.util.GadgetNBT;
 import com.direwolf20.buildinggadgets2.util.datatypes.StatePos;
 import com.direwolf20.buildinggadgets2.util.datatypes.TagPos;
 import com.nstut.buildinggadgetsextra.common.ExtraConstants;
+import com.nstut.buildinggadgetsextra.common.MultitoolMode;
+import com.nstut.buildinggadgetsextra.item.BuildersMultitool;
+import com.nstut.buildinggadgetsextra.item.MultitoolState;
 import com.nstut.buildinggadgetsextra.transform.MirrorTransforms;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
@@ -25,6 +28,19 @@ public final class MirrorPacketHandler {
         if (player == null) return;
 
         ItemStack gadget = BaseGadget.getGadget(player);
+        if (gadget.getItem() instanceof BuildersMultitool) {
+            MultitoolMode active = MultitoolState.getActiveMode(gadget);
+            if (active == MultitoolMode.BUILD || active == MultitoolMode.EXCHANGING) {
+                MultitoolState.toggleLiveMirror(gadget, vertical);
+                boolean enabled = vertical
+                        ? MultitoolState.isLiveMirrorVertical(gadget)
+                        : MultitoolState.isLiveMirrorHorizontal(gadget);
+                player.containerMenu.broadcastChanges();
+                player.displayClientMessage(Component.translatable(liveMirrorMessage(vertical, enabled)), true);
+                return;
+            }
+        }
+
         if (!(gadget.getItem() instanceof GadgetCopyPaste)
                 && !(gadget.getItem() instanceof GadgetCutPaste)) return;
 
@@ -34,7 +50,10 @@ public final class MirrorPacketHandler {
         }
 
         UUID gadgetId = GadgetNBT.getUUID(gadget);
-        if (gadget.getItem() instanceof GadgetCutPaste && ServerTickHandler.gadgetWorking(gadgetId)) {
+        boolean cut = gadget.getItem() instanceof GadgetCutPaste
+                || gadget.getItem() instanceof BuildersMultitool
+                && MultitoolState.getActiveMode(gadget) == MultitoolMode.CUT_PASTE;
+        if (cut && ServerTickHandler.gadgetWorking(gadgetId)) {
             player.displayClientMessage(Component.translatable(ExtraConstants.BUSY), true);
             return;
         }
@@ -55,5 +74,12 @@ public final class MirrorPacketHandler {
         GadgetNBT.setCopyUUID(gadget);
         player.displayClientMessage(Component.translatable(vertical
                 ? ExtraConstants.MIRRORED_VERTICAL : ExtraConstants.MIRRORED_HORIZONTAL), true);
+    }
+
+    private static String liveMirrorMessage(boolean vertical, boolean enabled) {
+        if (vertical) {
+            return enabled ? ExtraConstants.LIVE_MIRROR_VERTICAL_ENABLED : ExtraConstants.LIVE_MIRROR_VERTICAL_DISABLED;
+        }
+        return enabled ? ExtraConstants.LIVE_MIRROR_HORIZONTAL_ENABLED : ExtraConstants.LIVE_MIRROR_HORIZONTAL_DISABLED;
     }
 }

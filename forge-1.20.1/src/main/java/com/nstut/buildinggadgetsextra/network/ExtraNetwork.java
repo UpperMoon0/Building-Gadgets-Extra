@@ -8,7 +8,9 @@ import net.minecraftforge.network.PacketDistributor;
 import net.minecraftforge.network.simple.SimpleChannel;
 
 public final class ExtraNetwork {
-    private static final String VERSION = "3";
+    // 0.0.5 gives MirrorPacket contextual live-modifier semantics for the Multitool.
+    // Reject mixed 0.0.4/0.0.5 peers rather than let an old server treat a live-mirror click as template mutation.
+    private static final String VERSION = "4";
     private static final SimpleChannel CHANNEL = NetworkRegistry.newSimpleChannel(
             ResourceLocation.fromNamespaceAndPath(ExtraConstants.MOD_ID, "main"),
             () -> VERSION, VERSION::equals, VERSION::equals);

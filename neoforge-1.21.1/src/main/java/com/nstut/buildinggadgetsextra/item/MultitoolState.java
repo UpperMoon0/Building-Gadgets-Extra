@@ -30,6 +30,8 @@ public final class MultitoolState {
     private static final String STATE_PREFIX = "BGEStateProfile_";
     private static final String UNDO_PREFIX = "BGEUndoProfile_";
     private static final String UUID_PREFIX = "BGEGadgetProfile_";
+    private static final String LIVE_MIRROR_HORIZONTAL = "BGELiveMirrorHorizontal";
+    private static final String LIVE_MIRROR_VERTICAL = "BGELiveMirrorVertical";
     private static final int MAX_UNDO_ENTRIES = 10;
 
     private MultitoolState() {
@@ -43,6 +45,25 @@ public final class MultitoolState {
     public static void setActiveMode(ItemStack stack, MultitoolMode mode) {
         CustomData.update(DataComponents.CUSTOM_DATA, stack,
                 tag -> tag.putString(ACTIVE_MODE, mode.serializedName()));
+    }
+
+    public static boolean isLiveMirrorHorizontal(ItemStack stack) {
+        return stack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY)
+                .copyTag().getBoolean(LIVE_MIRROR_HORIZONTAL);
+    }
+
+    public static boolean isLiveMirrorVertical(ItemStack stack) {
+        return stack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY)
+                .copyTag().getBoolean(LIVE_MIRROR_VERTICAL);
+    }
+
+    public static void toggleLiveMirror(ItemStack stack, boolean vertical) {
+        setLiveMirror(stack, vertical, !(vertical ? isLiveMirrorVertical(stack) : isLiveMirrorHorizontal(stack)));
+    }
+
+    private static void setLiveMirror(ItemStack stack, boolean vertical, boolean enabled) {
+        String key = vertical ? LIVE_MIRROR_VERTICAL : LIVE_MIRROR_HORIZONTAL;
+        CustomData.update(DataComponents.CUSTOM_DATA, stack, tag -> tag.putBoolean(key, enabled));
     }
 
     public static ResourceLocation getProfileMode(ItemStack stack, MultitoolMode mode) {
@@ -115,6 +136,8 @@ public final class MultitoolState {
         profile.put("BlockState", NbtUtils.writeBlockState(GadgetNBT.getGadgetBlockState(stack)));
         profile.putInt("Range", GadgetNBT.getToolRange(stack));
         profile.putString("TemplateName", GadgetNBT.getTemplateName(stack));
+        profile.putBoolean(LIVE_MIRROR_HORIZONTAL, isLiveMirrorHorizontal(stack));
+        profile.putBoolean(LIVE_MIRROR_VERTICAL, isLiveMirrorVertical(stack));
 
         for (GadgetNBT.ToggleableSettings setting : GadgetNBT.ToggleableSettings.values()) {
             profile.putBoolean("Toggle_" + setting.getName(), GadgetNBT.getSetting(stack, setting.getName()));
@@ -179,6 +202,8 @@ public final class MultitoolState {
                     initialized ? profile.getInt("Value_" + setting.getName()) : 0,
                     setting.getName());
         }
+        setLiveMirror(stack, false, initialized && profile.getBoolean(LIVE_MIRROR_HORIZONTAL));
+        setLiveMirror(stack, true, initialized && profile.getBoolean(LIVE_MIRROR_VERTICAL));
     }
 
     private static void saveGadgetUuidProfile(ItemStack stack, MultitoolMode mode) {
