@@ -4,6 +4,8 @@ import java.util.Objects;
 
 /** Immutable Minecraft-independent integer block position used by the shared operation planner. */
 public final class PlanPos {
+    public static final PlanPos ZERO = new PlanPos(0, 0, 0);
+
     private final int x;
     private final int y;
     private final int z;
