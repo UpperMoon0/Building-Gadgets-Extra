@@ -17,6 +17,7 @@ public final class MultitoolState {
     private static final String STATE_PREFIX = "BGEStateProfile_";
     private static final String UNDO_PREFIX = "BGEUndoProfile_";
     private static final String UUID_PREFIX = "BGEGadgetProfile_";
+    private static final int MAX_UNDO_ENTRIES = 10;
 
     /**
      * BG2 1.0.8 keeps gadget behavior in the stack's item NBT. These keys are the
@@ -131,20 +132,25 @@ public final class MultitoolState {
     private static void saveUndoProfile(ItemStack stack, MultitoolMode mode) {
         CompoundTag saved = new CompoundTag();
         LinkedList<UUID> undo = GadgetNBT.getUndoList(stack);
-        saved.putInt("Size", undo.size());
-        for (int i = 0; i < undo.size(); i++) saved.putUUID("Entry" + i, undo.get(i));
+        int size = boundedUndoSize(undo.size());
+        saved.putInt("Size", size);
+        for (int i = 0; i < size; i++) saved.putUUID("Entry" + i, undo.get(i));
         stack.getOrCreateTag().put(UNDO_PREFIX + mode.serializedName(), saved);
     }
 
     private static void restoreUndoProfile(ItemStack stack, MultitoolMode mode) {
         CompoundTag saved = stack.getOrCreateTag().getCompound(UNDO_PREFIX + mode.serializedName());
         LinkedList<UUID> undo = new LinkedList<>();
-        int size = saved.getInt("Size");
+        int size = boundedUndoSize(saved.getInt("Size"));
         for (int i = 0; i < size; i++) {
             String key = "Entry" + i;
             if (saved.hasUUID(key)) undo.add(saved.getUUID(key));
         }
         GadgetNBT.setUndoList(stack, undo);
+    }
+
+    private static int boundedUndoSize(int size) {
+        return Math.max(0, Math.min(size, MAX_UNDO_ENTRIES));
     }
 
     private static void clearCopyState(ItemStack stack) {
