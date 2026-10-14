@@ -8,7 +8,10 @@ public final class ExtraPayloads {
     }
 
     public static void register(RegisterPayloadHandlersEvent event) {
-        PayloadRegistrar registrar = event.registrar("2");
+        PayloadRegistrar registrar = event.registrar("3");
+        registrar.playToClient(CopyDataPayload.TYPE, CopyDataPayload.STREAM_CODEC,
+                (payload, context) -> context.enqueueWork(() ->
+                        com.nstut.buildinggadgetsextra.client.ClientCopyData.receive(payload)));
         registrar.playToServer(MultitoolSelectionPayload.TYPE, MultitoolSelectionPayload.STREAM_CODEC,
                 MultitoolSelectionHandler::handle);
         registrar.playToServer(MultitoolCutPayload.TYPE, MultitoolCutPayload.STREAM_CODEC,

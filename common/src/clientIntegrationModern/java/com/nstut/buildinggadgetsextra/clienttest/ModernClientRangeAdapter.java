@@ -5,7 +5,9 @@ import com.direwolf20.buildinggadgets2.client.screen.DestructionGUI;
 import com.direwolf20.buildinggadgets2.client.screen.widgets.GuiIncrementer;
 import com.direwolf20.buildinggadgets2.client.screen.widgets.IncrementalSliderWidget;
 import com.direwolf20.buildinggadgets2.common.items.BaseGadget;
+import com.direwolf20.buildinggadgets2.common.worlddata.BG2DataClient;
 import com.direwolf20.buildinggadgets2.util.GadgetNBT;
+import com.direwolf20.buildinggadgets2.util.datatypes.StatePos;
 import com.nstut.buildinggadgetsextra.client.MultitoolRadialScreen;
 import com.nstut.buildinggadgetsextra.common.MultitoolMode;
 import com.nstut.buildinggadgetsextra.item.BuildersMultitool;
@@ -14,12 +16,14 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.components.events.GuiEventListener;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.block.Blocks;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 
 /** Shared client driver for BG2-based ports (1.20.1+). */
 public final class ModernClientRangeAdapter implements ClientRangeRoundTripScenario.Adapter {
@@ -29,6 +33,49 @@ public final class ModernClientRangeAdapter implements ClientRangeRoundTripScena
     }
 
     private final ScreenClicker clicker;
+    private String pendingPassDetail;
+    private int copyTransportTicks;
+    private boolean copyTransportVerified;
+
+    /** Called even after the UI scenario is DONE so a missing/truncated delivery cannot pass. */
+    public void tickCopyTransport() {
+        try {
+            if (!copyTransportVerified) {
+                copyTransportTicks++;
+                ArrayList<StatePos> received = BG2DataClient.getLookupFromUUID(ModernCopyTransportFixture.GADGET_UUID);
+                if (received != null) {
+                    if (!ModernCopyTransportFixture.COPY_UUID.equals(
+                            BG2DataClient.getCopyUUID(ModernCopyTransportFixture.GADGET_UUID))) {
+                        throw new IllegalStateException("copy transport cache UUID mismatch");
+                    }
+                    if (received.size() != ModernCopyTransportFixture.POSITION_COUNT) {
+                        throw new IllegalStateException("copy transport position count=" + received.size());
+                    }
+                    // Check every coordinate and alternating air/stone entry, including both corners.
+                    // This also rejects duplicate positions, missing air, reordered chunks and bad bounds.
+                    for (int index = 0; index < received.size(); index++) {
+                        StatePos entry = received.get(index);
+                        if (entry.pos.getX() != index % 100
+                                || entry.pos.getY() != (index / 100) % 100
+                                || entry.pos.getZ() != index / 10_000
+                                || !entry.state.equals((index % 2 == 0 ? Blocks.AIR : Blocks.STONE).defaultBlockState())) {
+                            throw new IllegalStateException("copy transport content mismatch at index=" + index);
+                        }
+                    }
+                    copyTransportVerified = true;
+                    System.out.println("[BGE client integration] million-position upstream copy delivery verified");
+                } else if (copyTransportTicks > ClientRangeRoundTripScenario.TIMEOUT_TICKS) {
+                    throw new IllegalStateException("timeout waiting for million-position upstream copy delivery");
+                }
+            }
+            if (copyTransportVerified && pendingPassDetail != null) {
+                finish("client-pass.txt", pendingPassDetail
+                        + "; million-position upstream copy delivery verified (UUIDs, count, air, bounds)", null, 0);
+            }
+        } catch (Throwable error) {
+            fail("million-position upstream copy delivery failed", error);
+        }
+    }
 
     public ModernClientRangeAdapter(ScreenClicker clicker) {
         this.clicker = clicker;
@@ -267,7 +314,7 @@ public final class ModernClientRangeAdapter implements ClientRangeRoundTripScena
 
     @Override
     public void pass(String detail) {
-        finish("client-pass.txt", detail, null, 0);
+        pendingPassDetail = detail;
     }
 
     @Override

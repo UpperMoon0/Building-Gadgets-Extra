@@ -9,11 +9,16 @@ public final class StructureLimits {
      * Returns -1 when the dimensions are invalid, too large, or overflow a signed long.
      */
     public static long checkedVolume(int x, int y, int z) {
-        if (x <= 0 || y <= 0 || z <= 0) return -1L;
+        return checkedVolume(x, y, z, (int) ExtraConstants.MAX_STRUCTURE_BLOCKS);
+    }
+
+    public static long checkedVolume(int x, int y, int z, int maxVolume) {
+        if (x <= 0 || y <= 0 || z <= 0 || maxVolume <= 0
+                || maxVolume > ExtraConstants.HARD_MAX_COPY_VOLUME) return -1L;
         try {
             long xy = Math.multiplyExact((long) x, (long) y);
             long volume = Math.multiplyExact(xy, (long) z);
-            return volume <= ExtraConstants.MAX_STRUCTURE_BLOCKS ? volume : -1L;
+            return volume <= maxVolume ? volume : -1L;
         } catch (ArithmeticException overflow) {
             return -1L;
         }
@@ -21,8 +26,13 @@ public final class StructureLimits {
 
     /** Prevent a crafted palette from allocating more entries than its declared structure can contain. */
     public static boolean validPaletteEntryCount(int entries, long volume) {
-        return entries >= 0 && volume >= 0
-                && entries <= volume && entries <= ExtraConstants.MAX_STRUCTURE_BLOCKS;
+        return validPaletteEntryCount(entries, volume, (int) ExtraConstants.MAX_STRUCTURE_BLOCKS);
+    }
+
+    public static boolean validPaletteEntryCount(int entries, long volume, int maxVolume) {
+        return maxVolume > 0 && maxVolume <= ExtraConstants.HARD_MAX_COPY_VOLUME
+                && entries >= 0 && volume >= 0 && volume <= maxVolume
+                && entries <= volume && entries <= maxVolume;
     }
 
     /** Validate a palette position before retaining it in an import-side lookup table. */

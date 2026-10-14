@@ -13,6 +13,7 @@ import com.direwolf20.buildinggadgets2.util.datatypes.TagPos;
 import com.nstut.buildinggadgetsextra.common.ExtraConstants;
 import com.nstut.buildinggadgetsextra.common.MultitoolMode;
 import com.nstut.buildinggadgetsextra.common.StructureLimits;
+import com.nstut.buildinggadgetsextra.setup.ExtraConfig;
 import com.nstut.buildinggadgetsextra.item.BuildersMultitool;
 import com.nstut.buildinggadgetsextra.item.MultitoolState;
 import com.nstut.buildinggadgetsextra.mixin.StructurePaletteInvoker;
@@ -134,14 +135,14 @@ public final class NativeStructureBridge {
         int sizeX = template.getSize().getX();
         int sizeY = template.getSize().getY();
         int sizeZ = template.getSize().getZ();
-        long volume = StructureLimits.checkedVolume(sizeX, sizeY, sizeZ);
+        long volume = StructureLimits.checkedVolume(sizeX, sizeY, sizeZ, ExtraConfig.maxCopyVolume());
         if (volume < 0) {
             message(player, ExtraConstants.STRUCTURE_TOO_LARGE, name);
             return;
         }
 
         List<StructureTemplate.StructureBlockInfo> paletteBlocks = accessor.buildingGadgetsExtra$getPalettes().getFirst().blocks();
-        if (!StructureLimits.validPaletteEntryCount(paletteBlocks.size(), volume)) {
+        if (!StructureLimits.validPaletteEntryCount(paletteBlocks.size(), volume, ExtraConfig.maxCopyVolume())) {
             message(player, ExtraConstants.STRUCTURE_TOO_LARGE, name);
             return;
         }

@@ -15,12 +15,14 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.function.Consumer;
 
 /** Shared authoritative-server observer for BG2-based ports (1.20.1+). */
 public final class ModernServerRangeObserver {
     private static final int PROVISION_DELAY_TICKS = 20;
 
     private static ServerPlayer watchedPlayer;
+    private static Consumer<ServerPlayer> copyTransportSender;
     private static int loginTicks;
     private static int observationTicks;
     private static boolean provisioned;
@@ -37,7 +39,8 @@ public final class ModernServerRangeObserver {
      * a later server tick rather than directly inside the login event: vanilla can still be
      * completing its initial inventory synchronization while that event is firing.
      */
-    public static void setupAndWatch(ServerPlayer player) {
+    public static void setupAndWatch(ServerPlayer player, Consumer<ServerPlayer> sender) {
+        copyTransportSender = sender;
         watchedPlayer = player;
         loginTicks = 0;
         observationTicks = 0;
@@ -57,6 +60,8 @@ public final class ModernServerRangeObserver {
             loginTicks++;
             if (loginTicks < PROVISION_DELAY_TICKS) return;
             provision(watchedPlayer);
+            // Exercise the actual upstream send path, including our redirect and real client decoder.
+            copyTransportSender.accept(watchedPlayer);
             provisioned = true;
             return;
         }
