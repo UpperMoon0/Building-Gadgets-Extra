@@ -12,6 +12,7 @@
     "CopyGUIMultitoolMixin"
   ],
   "mixins": [
+    "CopyDataPacketMixin",
     "CopyVolumeMixin",
     "PacketDestructionRangesMultitoolMixin",
     "VectorHelperMultitoolRangeMixin",

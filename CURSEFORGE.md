@@ -52,6 +52,8 @@ Building Gadgets Extra works in singleplayer and multiplayer. For multiplayer, i
 
 Set `maxCopyVolume = 1000000` in the world's `serverconfig/buildinggadgetsextra-server.toml` to allow up to 1,000,000 positions. The default remains a 100,000-position bounding volume; air still counts because Building Gadgets stores every position in the selection. This setting applies to the native BG2 Copy/Paste gadget, the Builder's Multitool Copy/Paste profile, and Extra's native structure imports. It is a server/world setting, not a client option. Restart the server/world after editing it.
 
-The configurable range is 1–1,000,000. Larger copies use more memory and may pause copying or rendering. Existing compressed-transfer and decoded-NBT budgets, upstream axis limits, and Cut/Paste limits still apply. Sparse or air-only selections also consume the volume budget.
+The configurable range is 1â€“1,000,000. Larger copies use more memory and may pause copying or rendering. Existing compressed-transfer and decoded-NBT budgets, upstream axis limits, and Cut/Paste limits still apply. Sparse or air-only selections also consume the volume budget.
 
 Forge 1.16.5 already supports larger world copies through Building Gadgets' `Max Copy Dimensions` server setting (and its operator-controlled `OverrideCopySize` command); Extra's `maxCopyVolume` controls native structure imports on that version.
+
+Large BG2 copy previews are synchronized in bounded chunks rather than one oversized packet. Preview transfers are limited to 8 MiB of serialized NBT and a 64 MiB decoded-NBT budget. Update Extra on both the server and all clients together; 0.0.5 uses a new preview-transfer protocol.

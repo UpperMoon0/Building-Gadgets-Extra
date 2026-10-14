@@ -2,16 +2,22 @@ package com.nstut.buildinggadgetsextra.network;
 
 import com.direwolf20.buildinggadgets2.api.gadgets.GadgetModes;
 import com.direwolf20.buildinggadgets2.common.events.ServerTickHandler;
+import com.direwolf20.buildinggadgets2.common.worlddata.BG2Data;
 import com.direwolf20.buildinggadgets2.setup.Config;
 import com.direwolf20.buildinggadgets2.util.BuildingUtils;
 import com.direwolf20.buildinggadgets2.util.GadgetNBT;
+import com.direwolf20.buildinggadgets2.util.datatypes.StatePos;
 import com.direwolf20.buildinggadgets2.util.modes.BaseMode;
+import com.nstut.buildinggadgetsextra.common.CopyDataAssembly;
 import com.nstut.buildinggadgetsextra.common.ExtraConstants;
 import com.nstut.buildinggadgetsextra.common.MultitoolMode;
 import com.nstut.buildinggadgetsextra.item.BuildersMultitool;
 import com.nstut.buildinggadgetsextra.item.MultitoolState;
+import com.nstut.buildinggadgetsextra.network.CopyDataPayload;
+import com.nstut.buildinggadgetsextra.network.CopyDataTransfer;
 import com.nstut.buildinggadgetsextra.setup.ExtraConfig;
 import com.nstut.buildinggadgetsextra.setup.ExtraRegistration;
+import io.netty.buffer.Unpooled;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;
 import net.minecraft.core.registries.Registries;
@@ -19,6 +25,9 @@ import net.minecraft.gametest.framework.FunctionGameTestInstance;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.gametest.framework.TestData;
 import net.minecraft.gametest.framework.TestEnvironmentDefinition;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.NbtIo;
+import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.InteractionHand;
@@ -34,7 +43,11 @@ import net.neoforged.neoforge.registries.DeferredRegister;
 import net.neoforged.neoforge.transfer.energy.EnergyHandler;
 import net.neoforged.neoforge.transfer.transaction.Transaction;
 
+import java.io.ByteArrayOutputStream;
+import java.io.DataOutputStream;
+import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
 import java.util.function.Consumer;
@@ -55,6 +68,8 @@ public final class BgeGameTests {
         test("multitool_cut_queues_real_server_work", 40, BgeGameTests::cutQueuesRealServerWork);
         test("multitool_creative_zero_energy", 40, BgeGameTests::creativeZeroEnergy);
         test("configurable_copy_volume", 40, BgeGameTests::configurableCopyVolume);
+        test("million_block_copy_network_round_trip", 100, BgeGameTests::millionBlockCopyNetworkRoundTrip);
+        test("copy_network_rejects_malformed_data", 40, BgeGameTests::copyNetworkRejectsMalformedData);
         FUNCTIONS.register(modEventBus);
         modEventBus.addListener(BgeGameTests::onRegisterGameTests);
     }
@@ -241,5 +256,159 @@ public final class BgeGameTests {
             player.setItemInHand(InteractionHand.MAIN_HAND, ItemStack.EMPTY);
         }
         helper.succeed();
+    }
+
+    private static void millionBlockCopyNetworkRoundTrip(GameTestHelper helper) {
+        int previous = ExtraConfig.MAX_COPY_VOLUME.get();
+        try {
+            ExtraConfig.MAX_COPY_VOLUME.set(1_000_000);
+            CompoundTag original = millionBlockTemplate();
+            byte[] bytes = CopyDataTransfer.encode(original);
+            helper.assertTrue(bytes.length > 2 * 1024 * 1024,
+                    "fixture must exceed the old NBT quota, regardless of compression");
+            int total = (bytes.length + ExtraConstants.STRUCTURE_CHUNK_SIZE - 1)
+                    / ExtraConstants.STRUCTURE_CHUNK_SIZE;
+            UUID transferId = UUID.randomUUID();
+            UUID gadgetId = UUID.randomUUID();
+            UUID copyId = UUID.randomUUID();
+            CopyDataAssembly assembly = new CopyDataAssembly();
+            byte[] complete = null;
+            for (int index = 0; index < total; index++) {
+                int offset = index * ExtraConstants.STRUCTURE_CHUNK_SIZE;
+                byte[] chunk = Arrays.copyOfRange(bytes, offset,
+                        Math.min(bytes.length, offset + ExtraConstants.STRUCTURE_CHUNK_SIZE));
+                CopyDataPayload sent = new CopyDataPayload(transferId, gadgetId, copyId, index, total, chunk);
+                RegistryFriendlyByteBuf wire = new RegistryFriendlyByteBuf(Unpooled.buffer(), helper.getLevel().registryAccess());
+                try {
+                    CopyDataPayload.STREAM_CODEC.encode(wire, sent);
+                    helper.assertTrue(wire.readableBytes() < 1024 * 1024,
+                            "every encoded fragment must fit the vanilla clientbound payload limit");
+                    var received = CopyDataPayload.STREAM_CODEC.decode(wire);
+                    helper.assertTrue(!wire.isReadable(), "fragment decoder must consume the entire packet");
+                    helper.assertTrue(received.transferId().equals(transferId)
+                                    && received.gadgetId().equals(gadgetId) && received.copyId().equals(copyId),
+                            "fragment wire codec must preserve transfer, gadget and copy identities");
+                    helper.assertTrue(received.index() == index && received.total() == total
+                                    && Arrays.equals(received.data(), chunk),
+                            "fragment wire codec must preserve chunk ordering and bytes");
+                    complete = assembly.accept(received.transferId(), received.gadgetId(), received.copyId(),
+                            received.index(), received.total(), received.data());
+                    helper.assertTrue((complete != null) == (index == total - 1),
+                            "a template must only become available after every fragment arrives");
+                } finally {
+                    wire.release();
+                }
+            }
+            helper.assertTrue(Arrays.equals(bytes, complete), "reassembly must preserve all serialized template bytes");
+            CompoundTag restored = CopyDataTransfer.decode(complete);
+            helper.assertTrue(original.equals(restored), "network round trip must preserve the complete BG2 template NBT");
+            var positions = BG2Data.statePosListFromNBTMapArray(restored);
+            helper.assertTrue(positions.size() == 1_000_000, "BG2 must reconstruct every selected position, including air");
+            for (int index = 0; index < positions.size(); index++) {
+                StatePos entry = positions.get(index);
+                if (entry.pos.getX() != index % 100 || entry.pos.getY() != (index / 100) % 100
+                        || entry.pos.getZ() != index / 10_000
+                        || !entry.state.is((index & 1) == 0 ? Blocks.AIR : Blocks.STONE)) {
+                    throw new IllegalStateException("BG2 template changed relative position or palette state at " + index);
+                }
+            }
+            helper.assertTrue(CopyDataTransfer.decode(CopyDataTransfer.encode(new CompoundTag())).isEmpty(),
+                    "empty upstream copy templates must still round trip");
+        } catch (IOException exception) {
+            throw new IllegalStateException("million-block template must survive its real network codecs", exception);
+        } finally {
+            ExtraConfig.MAX_COPY_VOLUME.set(previous);
+        }
+        helper.succeed();
+    }
+
+    private static void copyNetworkRejectsMalformedData(GameTestHelper helper) {
+        // Exercise allocation and input bounds without visiting blocks or allocating a million StatePos objects.
+        boolean rejected = false;
+        try {
+            CopyDataTransfer.decode(new byte[ExtraConstants.MAX_STRUCTURE_FILE_BYTES + 1]);
+        } catch (IOException exception) {
+            rejected = true;
+        }
+        helper.assertTrue(rejected, "serialized templates above the byte budget must be rejected");
+        CompoundTag invalid = twoBlockTemplate();
+        invalid.putIntArray("statelist", new int[]{0});
+        assertTemplateRejected(helper, invalid, "palette index count must match the selected volume");
+        invalid = twoBlockTemplate();
+        invalid.putIntArray("statelist", new int[]{0, 2});
+        assertTemplateRejected(helper, invalid, "out-of-range palette indices must be rejected");
+        invalid = twoBlockTemplate();
+        CompoundTag justOverCap = new CompoundTag();
+        justOverCap.putInt("X", 1_000_000);
+        justOverCap.putInt("Y", 0);
+        justOverCap.putInt("Z", 0);
+        invalid.put("endpos", justOverCap);
+        invalid.putIntArray("statelist", new int[1_000_001]);
+        assertTemplateRejected(helper, invalid, "a well-sized template of 1,000,001 positions must be rejected");
+        invalid = twoBlockTemplate();
+        CompoundTag farCorner = new CompoundTag();
+        farCorner.putInt("X", Integer.MAX_VALUE);
+        farCorner.putInt("Y", Integer.MAX_VALUE);
+        farCorner.putInt("Z", Integer.MAX_VALUE);
+        invalid.put("endpos", farCorner);
+        assertTemplateRejected(helper, invalid, "oversized geometry must be rejected before BG2 expands it");
+
+        RegistryFriendlyByteBuf wire = new RegistryFriendlyByteBuf(Unpooled.buffer(), helper.getLevel().registryAccess());
+        try {
+            // Deliberately bypass the sender to test the untrusted wire decoder's own chunk-size limit.
+            wire.writeUUID(UUID.randomUUID());
+            wire.writeUUID(UUID.randomUUID());
+            wire.writeUUID(UUID.randomUUID());
+            wire.writeVarInt(0);
+            wire.writeVarInt(1);
+            wire.writeByteArray(new byte[ExtraConstants.STRUCTURE_CHUNK_SIZE + 1]);
+            rejected = false;
+            try {
+                CopyDataPayload.STREAM_CODEC.decode(wire);
+            } catch (RuntimeException exception) {
+                rejected = true;
+            }
+            helper.assertTrue(rejected, "wire decoder must reject oversized fragments before assembly");
+        } finally {
+            wire.release();
+        }
+        helper.succeed();
+    }
+
+    private static void assertTemplateRejected(GameTestHelper helper, CompoundTag tag, String message) {
+        boolean rejected = false;
+        try {
+            // Bypass sender validation: malformed peers must be rejected by the receiving decoder itself.
+            ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+            try (DataOutputStream output = new DataOutputStream(bytes)) {
+                NbtIo.write(tag, output);
+            }
+            CopyDataTransfer.decode(bytes.toByteArray());
+        } catch (IOException exception) {
+            rejected = true;
+        }
+        helper.assertTrue(rejected, message);
+    }
+
+    private static CompoundTag twoBlockTemplate() {
+        ArrayList<StatePos> seed = new ArrayList<>();
+        seed.add(new StatePos(Blocks.AIR.defaultBlockState(), BlockPos.ZERO));
+        seed.add(new StatePos(Blocks.STONE.defaultBlockState(), new BlockPos(1, 0, 0)));
+        return BG2Data.statePosListToNBTMapArray(seed);
+    }
+
+    private static CompoundTag millionBlockTemplate() {
+        // Get the palette and version-specific position NBT from BG2 itself. Expanding only its index array
+        // avoids both a huge world scan and the serializer's million-entry temporary position map.
+        CompoundTag tag = twoBlockTemplate();
+        ArrayList<StatePos> corner = new ArrayList<>();
+        corner.add(new StatePos(Blocks.STONE.defaultBlockState(), new BlockPos(99, 99, 99)));
+        tag.put("endpos", BG2Data.statePosListToNBTMapArray(corner).get("endpos"));
+        int[] indices = new int[1_000_000];
+        for (int index = 0; index < indices.length; index++) {
+            indices[index] = index & 1;
+        }
+        tag.putIntArray("statelist", indices);
+        return tag;
     }
 }

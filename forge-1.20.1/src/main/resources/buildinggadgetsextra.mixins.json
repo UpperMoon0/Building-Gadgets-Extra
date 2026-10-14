@@ -13,6 +13,8 @@
   ],
   "mixins": [
     "CopyVolumeMixin",
+    "CopyDataSendMixin",
+    "PacketSendCopyDataAccessor",
     "VectorHelperMultitoolRangeMixin",
     "BuildToMeMultitoolRangeMixin",
     "StructurePaletteInvoker",
