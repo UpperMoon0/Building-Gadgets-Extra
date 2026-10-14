@@ -30,17 +30,18 @@ public final class MirrorTransforms {
         return MirrorEngine.transform(blocks, blockEntities, MirrorPlane.Y, ADAPTER);
     }
 
+    public static BlockState mirrorState(BlockState state, MirrorPlane plane) {
+        return switch (plane) {
+            case X -> state.mirror(Mirror.FRONT_BACK);
+            case Y -> VerticalStateMirror.mirror(state, ADAPTER);
+            case Z -> state.mirror(Mirror.LEFT_RIGHT);
+        };
+    }
+
     private static final class StatePosAdapter implements MirrorEngine.Adapter<StatePos, TagPos, BlockPos>,
             VerticalStateMirror.Adapter<BlockState, Property<?>> {
-        @Override
-        public BlockPos blockPosition(StatePos block) {
-            return block.pos;
-        }
-
-        @Override
-        public BlockPos blockEntityPosition(TagPos blockEntity) {
-            return blockEntity.pos;
-        }
+        @Override public BlockPos blockPosition(StatePos block) { return block.pos; }
+        @Override public BlockPos blockEntityPosition(TagPos blockEntity) { return blockEntity.pos; }
 
         @Override
         public BlockPos mirrorPosition(BlockPos position, MirrorPlane plane) {
@@ -53,43 +54,23 @@ public final class MirrorTransforms {
 
         @Override
         public StatePos mirrorBlock(StatePos block, BlockPos newPosition, MirrorPlane plane) {
-            BlockState state = switch (plane) {
-                case X -> block.state.mirror(Mirror.FRONT_BACK);
-                case Y -> VerticalStateMirror.mirror(block.state, this);
-                case Z -> block.state.mirror(Mirror.LEFT_RIGHT);
-            };
-            return new StatePos(state, newPosition);
+            return new StatePos(mirrorState(block.state, plane), newPosition);
         }
 
-        @Override
-        public void moveBlockEntity(TagPos blockEntity, BlockPos newPosition) {
-            blockEntity.pos = newPosition;
-        }
-
+        @Override public void moveBlockEntity(TagPos blockEntity, BlockPos newPosition) { blockEntity.pos = newPosition; }
         @Override public Iterable<Property<?>> properties(BlockState state) { return state.getProperties(); }
-        @Override public Property<?> property(BlockState state, String name) {
-            return state.getBlock().getStateDefinition().getProperty(name);
-        }
-        @Override public boolean sameValueType(Property<?> first, Property<?> second) {
-            return first.getValueClass().equals(second.getValueClass());
-        }
+        @Override public Property<?> property(BlockState state, String name) { return state.getBlock().getStateDefinition().getProperty(name); }
+        @Override public boolean sameValueType(Property<?> first, Property<?> second) { return first.getValueClass().equals(second.getValueClass()); }
         @Override public Object value(BlockState state, Property<?> property) { return get(state, property); }
         @Override public String valueName(Property<?> property, Object value) { return name(property, value); }
         @Override public Object valueByName(Property<?> property, String name) { return property.getValue(name).orElse(null); }
-        @Override public BlockState set(BlockState state, Property<?> property, Object value) {
-            return setUnchecked(state, property, value);
-        }
-        @Override public boolean isVerticalDirection(Object value) {
-            return value instanceof Direction && ((Direction) value).getAxis() == Direction.Axis.Y;
-        }
+        @Override public BlockState set(BlockState state, Property<?> property, Object value) { return setUnchecked(state, property, value); }
+        @Override public boolean isVerticalDirection(Object value) { return value instanceof Direction && ((Direction) value).getAxis() == Direction.Axis.Y; }
         @Override public Object oppositeDirection(Object value) { return ((Direction) value).getOpposite(); }
 
-        @SuppressWarnings({"rawtypes", "unchecked"})
-        private static Object get(BlockState state, Property property) { return state.getValue(property); }
-        @SuppressWarnings({"rawtypes", "unchecked"})
-        private static String name(Property property, Object value) { return property.getName((Comparable) value); }
-        @SuppressWarnings({"rawtypes", "unchecked"})
-        private static BlockState setUnchecked(BlockState state, Property property, Object value) {
+        @SuppressWarnings({"rawtypes", "unchecked"}) private static Object get(BlockState state, Property property) { return state.getValue(property); }
+        @SuppressWarnings({"rawtypes", "unchecked"}) private static String name(Property property, Object value) { return property.getName((Comparable) value); }
+        @SuppressWarnings({"rawtypes", "unchecked"}) private static BlockState setUnchecked(BlockState state, Property property, Object value) {
             return property.getPossibleValues().contains(value) ? state.setValue(property, (Comparable) value) : state;
         }
     }

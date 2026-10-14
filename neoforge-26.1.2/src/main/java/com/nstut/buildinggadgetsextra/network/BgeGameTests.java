@@ -1,5 +1,10 @@
 package com.nstut.buildinggadgetsextra.network;
 
+import net.minecraft.core.Direction;
+import net.minecraft.world.level.block.StairBlock;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.block.state.properties.Half;
+
 import com.direwolf20.buildinggadgets2.api.gadgets.GadgetModes;
 import com.direwolf20.buildinggadgets2.common.events.ServerTickHandler;
 import com.direwolf20.buildinggadgets2.common.worlddata.BG2Data;
@@ -70,15 +75,20 @@ public final class BgeGameTests {
         test("configurable_copy_volume", 40, BgeGameTests::configurableCopyVolume);
         test("million_block_copy_network_round_trip", 100, BgeGameTests::millionBlockCopyNetworkRoundTrip);
         test("copy_network_rejects_malformed_data", 40, BgeGameTests::copyNetworkRejectsMalformedData);
+        test("live_mirror_collect_preserves_states_and_profiles", 40, BgeGameTests::liveMirrorCollectPreservesStatesAndProfiles, "bge_live_mirror");
         FUNCTIONS.register(modEventBus);
         modEventBus.addListener(BgeGameTests::onRegisterGameTests);
     }
 
     private static void test(String name, int maxTicks, Consumer<GameTestHelper> body) {
+        test(name, maxTicks, body, "bge_empty");
+    }
+
+    private static void test(String name, int maxTicks, Consumer<GameTestHelper> body, String structure) {
         DeferredHolder<Consumer<GameTestHelper>, Consumer<GameTestHelper>> holder =
                 FUNCTIONS.register(name, () -> body);
         SPECS.add(new Spec(holder.getKey(),
-                Identifier.fromNamespaceAndPath(ExtraConstants.MOD_ID, "bge_empty"),
+                Identifier.fromNamespaceAndPath(ExtraConstants.MOD_ID, structure),
                 Rotation.NONE, maxTicks));
     }
 
@@ -410,5 +420,95 @@ public final class BgeGameTests {
         }
         tag.putIntArray("statelist", indices);
         return tag;
+    }
+    public static void liveMirrorCollectPreservesStatesAndProfiles(GameTestHelper helper) {
+        var player = helper.makeMockPlayer(net.minecraft.world.level.GameType.CREATIVE);
+        helper.assertTrue(player.isCreative() && player.mayBuild(),
+                "live mirror collection requires a creative player allowed to build");
+        ItemStack stack = new ItemStack(ExtraRegistration.BUILDERS_MULTITOOL.get());
+        BuildersMultitool multitool = (BuildersMultitool) stack.getItem();
+        player.setItemInHand(InteractionHand.MAIN_HAND, stack);
+        // Facing north selects the X mirror plane. Use a nonzero world origin to catch
+        // accidentally reflecting absolute positions or validating local offsets as world positions.
+        player.setYRot(180.0F);
+        BlockPos start = helper.absolutePos(new BlockPos(2, 2, 2));
+        BlockState stairs = Blocks.OAK_STAIRS.defaultBlockState()
+                .setValue(StairBlock.FACING, Direction.EAST).setValue(StairBlock.HALF, Half.BOTTOM);
+        try {
+            for (MultitoolMode profile : new MultitoolMode[]{MultitoolMode.BUILD, MultitoolMode.EXCHANGING}) {
+                multitool.selectTool(stack, profile);
+                helper.assertTrue(!MultitoolState.isLiveMirrorHorizontal(stack)
+                                && !MultitoolState.isLiveMirrorVertical(stack),
+                        "fresh profile must not inherit another profile's live mirror toggles");
+                GadgetNBT.setGadgetBlockState(stack, stairs);
+                if (profile == MultitoolMode.EXCHANGING && !GadgetNBT.getSetting(stack, "fuzzy")) {
+                    GadgetNBT.toggleSetting(stack, "fuzzy");
+                }
+                for (int x : new int[]{-1, 1}) {
+                    for (int y : new int[]{-1, 1}) {
+                        helper.getLevel().setBlockAndUpdate(start.offset(x, y, 0),
+                                (profile == MultitoolMode.EXCHANGING ? Blocks.STONE : Blocks.AIR).defaultBlockState());
+                    }
+                }
+                GadgetNBT.setAnchorPos(stack, start);
+                GadgetNBT.setAnchorList(stack, new ArrayList<>(List.of(new BlockPos(1, 1, 0))));
+                var mode = GadgetNBT.getMode(stack);
+                var plain = mode.collect(Direction.UP, player, start, stairs);
+                helper.assertTrue(plain.size() == 1, "disabled mirrors must retain native anchor collection");
+                MultitoolState.toggleLiveMirror(stack, false);
+                MultitoolState.toggleLiveMirror(stack, true);
+                var mirrored = mode.collect(Direction.UP, player, start, stairs);
+                helper.assertTrue(mirrored.size() == 4, profile + " must generate four local copies through BaseMode.collect");
+                assertMirrorEntry(helper, mirrored, new BlockPos(1, 1, 0), Direction.EAST, Half.BOTTOM);
+                assertMirrorEntry(helper, mirrored, new BlockPos(-1, 1, 0), Direction.WEST, Half.BOTTOM);
+                assertMirrorEntry(helper, mirrored, new BlockPos(1, -1, 0), Direction.EAST, Half.TOP);
+                assertMirrorEntry(helper, mirrored, new BlockPos(-1, -1, 0), Direction.WEST, Half.TOP);
+
+                BlockPos rejectedCopy = new BlockPos(-1, 1, 0);
+                helper.getLevel().setBlockAndUpdate(start.offset(rejectedCopy),
+                        (profile == MultitoolMode.EXCHANGING ? Blocks.AIR : Blocks.STONE).defaultBlockState());
+                var filtered = mode.collect(Direction.UP, player, start, stairs);
+                helper.assertTrue(filtered.size() == 3
+                                && filtered.stream().noneMatch(entry -> entry.pos.equals(rejectedCopy)),
+                        "generated copies must honor native " + profile + " validity at start + local offset");
+                helper.getLevel().setBlockAndUpdate(start.offset(rejectedCopy),
+                        (profile == MultitoolMode.EXCHANGING ? Blocks.STONE : Blocks.AIR).defaultBlockState());
+
+                // Both original positions are already selected. Neither may be replaced by
+                // a differently oriented reflected copy from the other source position.
+                GadgetNBT.setAnchorList(stack, new ArrayList<>(List.of(
+                        new BlockPos(1, 1, 0), new BlockPos(-1, 1, 0))));
+                var overlaps = mode.collect(Direction.UP, player, start, stairs);
+                helper.assertTrue(overlaps.size() == 4, "overlapping mirror copies must be deduplicated");
+                assertMirrorEntry(helper, overlaps, new BlockPos(1, 1, 0), Direction.EAST, Half.BOTTOM);
+                assertMirrorEntry(helper, overlaps, new BlockPos(-1, 1, 0), Direction.EAST, Half.BOTTOM);
+
+                MultitoolState.toggleLiveMirror(stack, true);
+                MultitoolState.toggleLiveMirror(stack, false);
+                helper.assertTrue(mode.collect(Direction.UP, player, start, stairs).size() == 2,
+                        "disabling both mirrors must immediately restore the original selection");
+                // Leave different flags in the two profiles and verify their snapshots below.
+                MultitoolState.toggleLiveMirror(stack, profile == MultitoolMode.EXCHANGING);
+            }
+            multitool.selectTool(stack, MultitoolMode.BUILD);
+            helper.assertTrue(MultitoolState.isLiveMirrorHorizontal(stack) && !MultitoolState.isLiveMirrorVertical(stack),
+                    "Build must restore its own horizontal-only mirror flags");
+            multitool.selectTool(stack, MultitoolMode.EXCHANGING);
+            helper.assertTrue(!MultitoolState.isLiveMirrorHorizontal(stack) && MultitoolState.isLiveMirrorVertical(stack),
+                    "Exchange must restore its own vertical-only mirror flags");
+        } finally {
+            player.setItemInHand(InteractionHand.MAIN_HAND, ItemStack.EMPTY);
+        }
+        helper.succeed();
+    }
+
+    private static void assertMirrorEntry(GameTestHelper helper, List<StatePos> entries,
+                                          BlockPos position, Direction facing, Half half) {
+        var matches = entries.stream().filter(entry -> entry.pos.equals(position)).toList();
+        helper.assertTrue(matches.size() == 1, "expected exactly one local copy at " + position);
+        BlockState state = matches.get(0).state;
+        helper.assertTrue(state.is(Blocks.OAK_STAIRS) && state.getValue(StairBlock.FACING) == facing
+                        && state.getValue(StairBlock.HALF) == half,
+                "copy at " + position + " must preserve its own transformed facing/half, got " + state);
     }
 }

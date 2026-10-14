@@ -17,6 +17,8 @@ public final class MultitoolState {
     private static final String STATE_PREFIX = "BGEStateProfile_";
     private static final String UNDO_PREFIX = "BGEUndoProfile_";
     private static final String UUID_PREFIX = "BGEGadgetProfile_";
+    private static final String LIVE_MIRROR_HORIZONTAL = "BGELiveMirrorHorizontal";
+    private static final String LIVE_MIRROR_VERTICAL = "BGELiveMirrorVertical";
     private static final int MAX_UNDO_ENTRIES = 10;
 
     /**
@@ -30,7 +32,8 @@ public final class MultitoolState {
             "blockstate", "range", "templatename",
             "raytracefluid", "placeontop", "affecttiles", "pastereplace",
             "bind", "fuzzy", "connected_area",
-            "depth", "right", "left", "up", "down"
+            "depth", "right", "left", "up", "down",
+            LIVE_MIRROR_HORIZONTAL, LIVE_MIRROR_VERTICAL
     };
 
     private MultitoolState() {}
@@ -41,6 +44,20 @@ public final class MultitoolState {
 
     public static void setActiveMode(ItemStack stack, MultitoolMode mode) {
         stack.getOrCreateTag().putString(ACTIVE_MODE, mode.serializedName());
+    }
+
+    public static boolean isLiveMirrorHorizontal(ItemStack stack) {
+        return stack.getOrCreateTag().getBoolean(LIVE_MIRROR_HORIZONTAL);
+    }
+
+    public static boolean isLiveMirrorVertical(ItemStack stack) {
+        return stack.getOrCreateTag().getBoolean(LIVE_MIRROR_VERTICAL);
+    }
+
+    public static void toggleLiveMirror(ItemStack stack, boolean vertical) {
+        String key = vertical ? LIVE_MIRROR_VERTICAL : LIVE_MIRROR_HORIZONTAL;
+        CompoundTag root = stack.getOrCreateTag();
+        root.putBoolean(key, !root.getBoolean(key));
     }
 
     public static ResourceLocation getProfileMode(ItemStack stack, MultitoolMode mode) {

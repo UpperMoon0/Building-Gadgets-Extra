@@ -17,6 +17,7 @@
     "PacketDestructionRangesMultitoolMixin",
     "VectorHelperMultitoolRangeMixin",
     "BuildToMeMultitoolRangeMixin",
+    "BaseModeLiveMirrorMixin",
     "GadgetNBTMultitoolMixin",
     "GadgetNBTRangeMixin",
     "BuildingUtilsMultitoolEnergyMixin",

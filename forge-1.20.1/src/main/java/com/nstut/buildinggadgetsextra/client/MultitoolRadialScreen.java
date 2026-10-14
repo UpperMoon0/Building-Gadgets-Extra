@@ -141,15 +141,19 @@ public final class MultitoolRadialScreen extends Screen {
             }
         }
 
-        if (RadialButtonPolicy.showMirrorButtons(effectiveMode)
-                && (selectedTool() == MultitoolMode.COPY_PASTE || selectedTool() == MultitoolMode.CUT_PASTE)) {
+        boolean liveMirrorTool = selectedTool() == MultitoolMode.BUILD || selectedTool() == MultitoolMode.EXCHANGING;
+        boolean templateMirrorTool = RadialButtonPolicy.showMirrorButtons(effectiveMode)
+                && (selectedTool() == MultitoolMode.COPY_PASTE || selectedTool() == MultitoolMode.CUT_PASTE);
+        if (liveMirrorTool || templateMirrorTool) {
             addRenderableWidget(new MirrorIconButton(width / 2 - 136, next(leftY),
                     MirrorIconButton.addonSettingIcon("mirror_horizontal"), RadialIconLayout.SOURCE_TEXTURE_SIZE,
-                    Component.translatable(ExtraConstants.MIRROR_HORIZONTAL),
+                    Component.translatable(liveMirrorTool
+                            ? ExtraConstants.LIVE_MIRROR_HORIZONTAL : ExtraConstants.MIRROR_HORIZONTAL),
                     () -> ExtraNetwork.sendToServer(new MirrorPacket(false))));
             addRenderableWidget(new MirrorIconButton(width / 2 - 136, next(leftY),
                     MirrorIconButton.addonSettingIcon("mirror_vertical"), RadialIconLayout.SOURCE_TEXTURE_SIZE,
-                    Component.translatable(ExtraConstants.MIRROR_VERTICAL),
+                    Component.translatable(liveMirrorTool
+                            ? ExtraConstants.LIVE_MIRROR_VERTICAL : ExtraConstants.MIRROR_VERTICAL),
                     () -> ExtraNetwork.sendToServer(new MirrorPacket(true))));
         }
 
@@ -432,7 +436,4 @@ public final class MultitoolRadialScreen extends Screen {
     public boolean isPauseScreen() {
         return false;
     }
-
 }
-
-

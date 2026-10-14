@@ -17,6 +17,7 @@
     "PacketSendCopyDataAccessor",
     "VectorHelperMultitoolRangeMixin",
     "BuildToMeMultitoolRangeMixin",
+    "BaseModeLiveMirrorMixin",
     "StructurePaletteInvoker",
     "StructureTemplateAccessor",
     "GadgetNBTMultitoolMixin",

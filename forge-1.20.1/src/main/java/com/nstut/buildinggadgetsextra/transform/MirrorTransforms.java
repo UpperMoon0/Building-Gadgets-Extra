@@ -30,6 +30,14 @@ public final class MirrorTransforms {
         return MirrorEngine.transform(blocks, blockEntities, MirrorPlane.Y, ADAPTER);
     }
 
+    public static BlockState mirrorState(BlockState state, MirrorPlane plane) {
+        return switch (plane) {
+            case X -> state.mirror(Mirror.FRONT_BACK);
+            case Y -> VerticalStateMirror.mirror(state, ADAPTER);
+            case Z -> state.mirror(Mirror.LEFT_RIGHT);
+        };
+    }
+
     private static final class StatePosAdapter implements MirrorEngine.Adapter<StatePos, TagPos, BlockPos>,
             VerticalStateMirror.Adapter<BlockState, Property<?>> {
         @Override public BlockPos blockPosition(StatePos block) { return block.pos; }
@@ -46,12 +54,7 @@ public final class MirrorTransforms {
 
         @Override
         public StatePos mirrorBlock(StatePos block, BlockPos newPosition, MirrorPlane plane) {
-            BlockState state = switch (plane) {
-                case X -> block.state.mirror(Mirror.FRONT_BACK);
-                case Y -> VerticalStateMirror.mirror(block.state, this);
-                case Z -> block.state.mirror(Mirror.LEFT_RIGHT);
-            };
-            return new StatePos(state, newPosition);
+            return new StatePos(mirrorState(block.state, plane), newPosition);
         }
 
         @Override public void moveBlockEntity(TagPos blockEntity, BlockPos newPosition) { blockEntity.pos = newPosition; }
