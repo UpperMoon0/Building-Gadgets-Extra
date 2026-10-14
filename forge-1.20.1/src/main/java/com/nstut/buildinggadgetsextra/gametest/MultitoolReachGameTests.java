@@ -95,20 +95,24 @@ public final class MultitoolReachGameTests {
                 // Above world height: a large all-air selection without loading extra chunks.
                 BlockPos start = new BlockPos(0, 1000, 0);
                 GadgetNBT.setCopyStartPos(stack, start);
-                // BG2 1.0.8 uses AABB(BlockPos, BlockPos), whose upper corner adds one.
-                GadgetNBT.setCopyEndPos(stack, start.offset(108, 98, 8));
+                GadgetNBT.setCopyEndPos(stack, start.offset(120, 120, 10));
+                // Use this version's native box semantics to measure the regression fixture.
+                var area = new net.minecraft.world.phys.AABB(start, GadgetNBT.getCopyEndPos(stack));
+                int expected = (int) BlockPos.betweenClosedStream(area).count();
+                BlockPos last = BlockPos.betweenClosedStream(area).reduce((a, b) -> b.immutable()).orElseThrow().subtract(start);
+                helper.assertTrue(expected > 100_000 && expected < 1_000_000, "fixture must cross the old cap");
                 com.direwolf20.buildinggadgets2.util.modes.Copy copy = new com.direwolf20.buildinggadgets2.util.modes.Copy();
                 ExtraConfig.MAX_COPY_VOLUME.set(100_000);
                 helper.assertTrue(copy.collectWorld(net.minecraft.core.Direction.UP, player, start,
-                        Blocks.AIR.defaultBlockState()).isEmpty(), "default cap must reject 110,000 air positions");
-                ExtraConfig.MAX_COPY_VOLUME.set(110_000);
+                        Blocks.AIR.defaultBlockState()).isEmpty(), "default cap must reject this large air selection");
+                ExtraConfig.MAX_COPY_VOLUME.set(expected);
                 var copied = copy.collectWorld(net.minecraft.core.Direction.UP, player, start, Blocks.AIR.defaultBlockState());
-                helper.assertTrue(copied.size() == 110_000, "configured cap must accept every position including air, got " + copied.size());
+                helper.assertTrue(copied.size() == expected, "configured cap must accept every position including air, got " + copied.size());
                 helper.assertTrue(copied.stream().allMatch(entry -> entry.state.isAir()), "air entries must be preserved");
                 helper.assertTrue(copied.stream().anyMatch(entry -> entry.pos.equals(BlockPos.ZERO))
-                        && copied.stream().anyMatch(entry -> entry.pos.equals(new BlockPos(109, 99, 9))),
+                        && copied.stream().anyMatch(entry -> entry.pos.equals(last)),
                         "relative selection bounds must be preserved");
-                ExtraConfig.MAX_COPY_VOLUME.set(109_999);
+                ExtraConfig.MAX_COPY_VOLUME.set(expected - 1);
                 helper.assertTrue(copy.collectWorld(net.minecraft.core.Direction.UP, player, start,
                         Blocks.AIR.defaultBlockState()).isEmpty(), "lowering the server cap must reject existing selections");
             }
