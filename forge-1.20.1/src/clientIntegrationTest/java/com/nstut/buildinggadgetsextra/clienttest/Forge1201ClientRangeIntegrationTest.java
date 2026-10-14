@@ -43,5 +43,6 @@ public final class Forge1201ClientRangeIntegrationTest {
         }
 
         SCENARIO.tick();
+        ADAPTER.tickCopyTransport();
     }
 }
