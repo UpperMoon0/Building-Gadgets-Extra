@@ -67,6 +67,7 @@ minecraft {
             property 'bge.clientIntegrationTest', 'true'
             property 'bge.clientIntegrationResultDir', project.file('build/client-integration').absolutePath
             args '--quickPlaySingleplayer', 'bge-client-integration'
+            if (project.hasProperty('uiScreenshots')) args '--width', '1920', '--height', '1080'
             mods {
                 "${mod_id}" { source sourceSets.clientIntegrationTest }
             }

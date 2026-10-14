@@ -24,23 +24,27 @@ public final class InlineModifiers {
     private final List<AbstractWidget> moving = new ArrayList<>();
     private final List<Integer> rows = new ArrayList<>();
     private final List<String> labels = new ArrayList<>();
-    private final List<Integer> labelRows = new ArrayList<>();
+    private final List<Integer> labelRows = new ArrayList<>(), labelXs = new ArrayList<>();
+    private final List<Boolean> labelFields = new ArrayList<>();
     private final Button[] toggles = new Button[2], expand = new Button[2];
     private final Button mirrorH, mirrorV, reset, order;
-    private final MirrorIconButton arrayIcon, radialIcon;
+    private final MirrorIconButton arrayIcon, radialIcon, mirrorHIcon, mirrorVIcon;
+    private final Button up, down;
     private int expanded = -1, scroll, contentHeight, lastFocus = -1, waitTicks;
     private boolean pending;
     private String error = "";
     private Runnable navigation;
-    private static final String[] NAMES = {"Copies", "Spacing X", "Spacing Y", "Spacing Z", "Copies", "Center X", "Center Z"};
+    private static final String[] NAMES = {"Copies", "Spacing X", "Spacing Y", "Spacing Z", "Copies", "Pivot X", "Pivot Z"};
 
     public InlineModifiers(Font font, int x, int width, int top, int bottom, Supplier<ItemStack> held, Consumer<AbstractWidget> add) {
         this.font=font; this.x=x; this.width=width; this.top=top; this.bottom=bottom; this.held=held;
         ItemStack stack=held.get(); profile=MultitoolState.getActiveMode(stack).ordinal();
         LiveModifiers saved=MultitoolState.getLiveModifiers(stack);
         for(int i=0;i<draft.length;i++) draft[i]=saved.value(i);
-        mirrorH=button("",width,()->net.neoforged.neoforge.network.PacketDistributor.sendToServer(new com.nstut.buildinggadgetsextra.network.MirrorPayload(false))); add.accept(mirrorH);
-        mirrorV=button("",width,()->net.neoforged.neoforge.network.PacketDistributor.sendToServer(new com.nstut.buildinggadgetsextra.network.MirrorPayload(true))); add.accept(mirrorV);
+        mirrorH=button("",width-28,()->net.neoforged.neoforge.network.PacketDistributor.sendToServer(new com.nstut.buildinggadgetsextra.network.MirrorPayload(false))); add.accept(mirrorH);
+        mirrorV=button("",width-28,()->net.neoforged.neoforge.network.PacketDistributor.sendToServer(new com.nstut.buildinggadgetsextra.network.MirrorPayload(true))); add.accept(mirrorV);
+        mirrorH.setX(x+28); mirrorV.setX(x+28);
+        mirrorHIcon=icon("mirror_horizontal",()->mirrorH.onPress()); mirrorVIcon=icon("mirror_vertical",()->mirrorV.onPress()); add.accept(mirrorHIcon); add.accept(mirrorVIcon);
         arrayIcon=icon("array",()->expand(0)); radialIcon=icon("radial",()->expand(1)); add.accept(arrayIcon); add.accept(radialIcon);
         for(int stage=0;stage<2;stage++) {
             final int selected=stage;
@@ -48,13 +52,16 @@ public final class InlineModifiers {
             expand[stage]=button("+",24,()->expand(selected)); expand[stage].setX(x+width-24); add.accept(expand[stage]);
         }
         for(int i=0;i<fields.length;i++) {
-            fields[i]=new EditBox(font,x+width-66,top,66,18,Component.literal(NAMES[i]));
+            fields[i]=new ProfileField(font,x+width-66,top,66,24,Component.literal(NAMES[i]));
             fields[i].setMaxLength(4); fields[i].setValue(Integer.toString(fieldValue(i))); add.accept(fields[i]);
         }
         reset=button("Reset",width,()->reset()); add.accept(reset);
         order=button("",width,()->cycleOrder()); add.accept(order);
-        Button up=button("^",18,()->scroll(-36)); up.setX(x+width-38); up.setY(top); add.accept(up);
-        Button down=button("v",18,()->scroll(36)); down.setX(x+width-18); down.setY(top); add.accept(down);
+        up=button("^",18,()->scroll(-36)); up.setX(x+width-38); up.setY(top); add.accept(up);
+        down=button("v",18,()->scroll(36)); down.setX(x+width-18); down.setY(top); add.accept(down);
+        ((ProfileButton)mirrorH).selected(()->MultitoolState.isLiveMirrorHorizontal(held.get()));
+        ((ProfileButton)mirrorV).selected(()->MultitoolState.isLiveMirrorVertical(held.get()));
+        ((ProfileButton)toggles[0]).selected(()->draft[0]>1); ((ProfileButton)toggles[1]).selected(()->draft[4]>1);
         layout();
     }
     public void restoreFrom(InlineModifiers previous) {
@@ -65,13 +72,13 @@ public final class InlineModifiers {
         error=previous.error; waitTicks=previous.waitTicks; layout();
     }
     private Button button(String label,int width,Runnable action) {
-        return Button.builder(Component.literal(label), b->action.run()).bounds(x,top,width,20).build();
+        return new ProfileButton(x,top,width,24,Component.literal(label),action);
     }
     private MirrorIconButton icon(String name,Runnable action) {
-        return new MirrorIconButton(x,top,MirrorIconButton.addonSettingIcon(name),44,Component.literal(name+" settings"),action);
+        return new MirrorIconButton(x,top,MirrorIconButton.addonSettingIcon(name),44,Component.literal(name.equals("mirror_horizontal")?"Horizontal mirror":name.equals("mirror_vertical")?"Vertical mirror":name.equals("array")?"Array settings":"Radial settings"),action).profileStyle();
     }
     private int fieldValue(int i) { return draft[i==0?8:i==4?9:i]; }
-    public void expand(int stage) { if(flush()) { expanded=expanded==stage?-1:stage; scroll=0; layout(); } }
+    public void expand(int stage) { if(flush()) { expanded=expanded==stage?-1:stage; scroll=0; layout(); if(expanded==stage) { scroll=stage==0?56:84; layout(); } } }
     public void revealField(int index) {
         expanded=index>=4?1:0; layout();
         int at=moving.indexOf(fields[index]);
@@ -150,29 +157,35 @@ public final class InlineModifiers {
     public boolean contains(double mouseX,double mouseY) { return mouseX>=x && mouseX<x+width && mouseY>=top && mouseY<bottom; }
     private void addRow(AbstractWidget widget,int row) { moving.add(widget); rows.add(row); }
     private void layout() {
-        moving.clear(); rows.clear(); labels.clear(); labelRows.clear();
+        moving.clear(); rows.clear(); labels.clear(); labelRows.clear(); labelXs.clear(); labelFields.clear();
         ItemStack stack=held.get();
         mirrorH.setMessage(Component.literal("Horizontal: "+(MultitoolState.isLiveMirrorHorizontal(stack)?"On":"Off")));
         mirrorV.setMessage(Component.literal("Vertical: "+(MultitoolState.isLiveMirrorVertical(stack)?"On":"Off")));
-        int row=0; addRow(mirrorH,row); row+=24; addRow(mirrorV,row); row+=28;
+        int row=0; addRow(mirrorHIcon,row); addRow(mirrorH,row); row+=28; addRow(mirrorVIcon,row); addRow(mirrorV,row); row+=28;
         for(int stage=0;stage<2;stage++) {
             int first=stage==0?0:4;
             toggles[stage].setMessage(Component.literal((stage==0?"Array: ":"Radial: ")+(draft[first]>1?"On":"Off")));
             expand[stage].setMessage(Component.literal(expanded==stage?"-":"+"));
             addRow(stage==0?arrayIcon:radialIcon,row); addRow(toggles[stage],row); addRow(expand[stage],row); row+=28;
             if(expanded==stage) {
-                labels.add(stage==0?draft[8]+" copies; step "+draft[1]+","+draft[2]+","+draft[3]:draft[9]+" copies around Y"); labelRows.add(row); row+=14;
-                labels.add("Copies include original"); labelRows.add(row); row+=16;
-                for(int i=first;i<(stage==0?4:7);i++) {
+                fields[first].setWidth(66); fields[first].setX(x+width-66);
+                addRow(fields[first],row); fields[first].active=draft[first]>1;
+                label("Total copies",row+8,2,true); row+=28;
+                label(stage==0?"Spacing in blocks":"Pivot from target (blocks)",row,2,false); row+=16;
+                int axes=stage==0?3:2, cell=width/axes;
+                for(int axis=0;axis<axes;axis++) {
+                    int i=first+1+axis; fields[i].setWidth(cell-20); fields[i].setX(x+axis*cell+18);
                     addRow(fields[i],row); fields[i].active=draft[first]>1;
-                    labels.add(NAMES[i]); labelRows.add(row+5); row+=24;
+                    label(stage==0?new String[]{"X","Y","Z"}[axis]:axis==0?"X":"Z",row+8,axis*cell+2,true);
                 }
+                row+=28;
                 reset.setMessage(Component.literal(stage==0?"Reset Array":"Reset Radial")); addRow(reset,row); row+=28;
             }
         }
         String active=activeOrder();
-        if(active.indexOf(" > ")>=0) { labels.add("Composition order"); labelRows.add(row); row+=14; order.setMessage(Component.literal(active)); addRow(order,row); row+=24; }
+        if(active.indexOf(" > ")>=0) { label("Composition order",row,2,false); row+=14; order.setMessage(Component.literal(active)); addRow(order,row); row+=24; }
         contentHeight=row;
+        up.visible=down.visible=contentHeight>bottom-top-40;
         scroll=Math.min(scroll,Math.max(0,contentHeight-(bottom-top-40)));
         for(EditBox field:fields) field.visible=false;
         reset.visible=false; order.visible=false;
@@ -188,10 +201,11 @@ public final class InlineModifiers {
         for(String stage:stages) if((stage.equals("Mirror") && mirror) || (stage.equals("Array") && draft[0]>1) || (stage.equals("Radial") && draft[4]>1)) result+=(result.isEmpty()?"":" > ")+stage;
         return result;
     }
+    private void label(String text,int row,int offset,boolean field) {
+        labels.add(text); labelRows.add(row); labelXs.add(offset); labelFields.add(field);
+    }
     private boolean labelVisible(int index,int y) {
-        boolean fieldLabel=false;
-        for(String name:NAMES) fieldLabel |= name.equals(labels.get(index));
-        return fieldLabel ? y-5>=top+24 && y+13<=bottom-16 : y>=top+24 && y+9<=bottom-16;
+        return labelFields.get(index) ? y-8>=top+24 && y+16<=bottom-16 : y>=top+24 && y+9<=bottom-16;
     }
     private void cycleOrder() {
         if(!flush()) return;
@@ -199,10 +213,11 @@ public final class InlineModifiers {
         for(int i=0;i<6;i++) { draft[7]=(draft[7]+1)%6; if(!activeOrder().equals(before)) break; }
         send(); layout();
     }
-    public void background(GuiGraphics g) { g.fill(x-4,top-2,x+width+4,bottom,0xCC161616); }
+    public void background(GuiGraphics g) { g.fill(x-6,8,x+width+6,bottom,com.nstut.buildinggadgetsextra.common.ProfileUiStyle.PANEL); }
     public void render(GuiGraphics g) {
-        g.drawString(font,(expanded==0?"Array settings":expanded==1?"Radial settings":"Modifiers"),x,top+5,0xFFFFFF,false);
-        for(int i=0;i<labels.size();i++) { int y=top+24+labelRows.get(i)-scroll; if(labelVisible(i,y)) g.drawString(font,font.plainSubstrByWidth(labels.get(i),width-4),x+2,y,0xBBBBBB,false); }
+        g.drawString(font,"Settings",x,14,0xFFFFFF);
+        g.drawString(font,"Modifiers",x,top+5,0xFFFFFF,false);
+        for(int i=0;i<labels.size();i++) { int y=top+24+labelRows.get(i)-scroll; if(labelVisible(i,y)) g.drawString(font,font.plainSubstrByWidth(labels.get(i),width-labelXs.get(i)-2),x+labelXs.get(i),y,0xBBBBBB,false); }
         String rejected=com.nstut.buildinggadgetsextra.common.LivePlanFeedback.reason(profile);
         boolean bad=!error.isEmpty() || rejected!=null;
         String status=!error.isEmpty()?error:rejected!=null?rejected:pending?"Saving...":"Saved";

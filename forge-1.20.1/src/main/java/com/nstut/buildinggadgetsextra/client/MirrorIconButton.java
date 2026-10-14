@@ -13,6 +13,8 @@ public final class MirrorIconButton extends GuiIconActionable {
     private static final String BG2_MOD_ID = "buildinggadgets2";
     private final ResourceLocation icon;
     private final int sourceSize;
+    private boolean profile;
+    public MirrorIconButton profileStyle() { profile=true; return this; }
 
     public MirrorIconButton(int x, int y, ResourceLocation icon, int sourceSize,
                             Component tooltip, Runnable action) {
@@ -50,10 +52,17 @@ public final class MirrorIconButton extends GuiIconActionable {
 
         Minecraft minecraft = Minecraft.getInstance();
         graphics.fill(getX(), getY(), getX() + width, getY() + height,
-                RadialIconLayout.BACKGROUND_COLOR);
+                profile?com.nstut.buildinggadgetsextra.common.ProfileUiStyle.CONTROL:RadialIconLayout.BACKGROUND_COLOR);
+        int pad=profile?4:0;
+        if(profile) {
+            int edge=(mouseX>=getX() && mouseX<getX()+width && mouseY>=getY() && mouseY<getY()+height)?0xFF3598FF:0xFF56616B;
+            graphics.fill(getX(),getY(),getX()+width,getY()+1,edge); graphics.fill(getX(),getY()+height-1,getX()+width,getY()+height,edge);
+            graphics.fill(getX(),getY(),getX()+1,getY()+height,edge); graphics.fill(getX()+width-1,getY(),getX()+width,getY()+height,edge);
+        }
+        graphics.flush();
         RenderSystem.enableBlend();
         RenderSystem.setShaderColor(1, 1, 1, this.alpha);
-        graphics.blit(icon, getX(), getY(), width, height,
+        graphics.blit(icon, getX()+pad, getY()+pad, width-pad*2, height-pad*2,
                 0, 0,
                 sourceSize, sourceSize, sourceSize, sourceSize);
         RenderSystem.setShaderColor(1, 1, 1, 1);

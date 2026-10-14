@@ -20,9 +20,14 @@ public final class ModifierScreenRoundTrip {
             LiveModifiers current=MultitoolState.getLiveModifiers(stack);
             if(phase==0) {
                 if(MultitoolState.getActiveMode(stack)!=com.nstut.buildinggadgetsextra.common.MultitoolMode.BUILD) return false;
-                Minecraft.getInstance().options.guiScale().set(1); Minecraft.getInstance().resizeDisplay();
+                Minecraft.getInstance().options.guiScale().set(4); Minecraft.getInstance().resizeDisplay();
                 screen=new MultitoolRadialScreen(stack); Minecraft.getInstance().setScreen(screen); screen.openActiveProfile(); panel=screen.inlineModifiers();
                 if(panel==null) throw new IllegalStateException("inline Build settings missing");
+                captureTicks=0; phase=8; return false;
+            }
+            if(phase==8) {
+                if(++captureTicks<20) return false;
+                capture("inline-collapsed-scale4.png");
                 press(((Button[])field("toggles"))[0]); panel.expand(0);
                 edit(0,"2"); edit(1,"3"); edit(3,"-2"); phase=1; return false;
             }
@@ -38,7 +43,7 @@ public final class ModifierScreenRoundTrip {
             }
             if(phase==2) {
                 if(current.value(4)!=4 || current.value(5)!=1 || current.value(6)!=-1) return false;
-                if(!preparedCapture) { panel.revealField(4); preparedCapture=true; captureTicks=0; return false; }
+                if(!preparedCapture) { panel.expand(1); panel.expand(1); preparedCapture=true; captureTicks=0; return false; }
                 if(++captureTicks<20) return false;
                 capture("inline-radial.png"); preparedCapture=false;
                 press(((Button[])field("toggles"))[0]); phase=6; return false;
@@ -88,6 +93,18 @@ public final class ModifierScreenRoundTrip {
         button.onPress();
     }
     private void capture(String name) {
+        // Render the current screen completely; tick-time framebuffer reads can catch an older frame.
+        Minecraft mc=Minecraft.getInstance();
+        org.joml.Matrix4f previous=new org.joml.Matrix4f(com.mojang.blaze3d.systems.RenderSystem.getProjectionMatrix());
+        com.mojang.blaze3d.systems.RenderSystem.setProjectionMatrix(new org.joml.Matrix4f().setOrtho(0,screen.width,screen.height,0,1000,21000),com.mojang.blaze3d.vertex.VertexSorting.ORTHOGRAPHIC_Z);
+        com.mojang.blaze3d.vertex.PoseStack modelView=com.mojang.blaze3d.systems.RenderSystem.getModelViewStack();
+        modelView.pushPose(); modelView.setIdentity(); modelView.translate(0,0,-11000);
+        com.mojang.blaze3d.systems.RenderSystem.applyModelViewMatrix();
+        mc.getMainRenderTarget().bindWrite(true);
+        net.minecraft.client.gui.GuiGraphics graphics=new net.minecraft.client.gui.GuiGraphics(mc,mc.renderBuffers().bufferSource());
+        graphics.drawManaged(()->screen.render(graphics,0,0,0)); graphics.flush();
+        modelView.popPose(); com.mojang.blaze3d.systems.RenderSystem.applyModelViewMatrix();
+        com.mojang.blaze3d.systems.RenderSystem.setProjectionMatrix(previous,com.mojang.blaze3d.vertex.VertexSorting.ORTHOGRAPHIC_Z);
         try(var image=net.minecraft.client.Screenshot.takeScreenshot(Minecraft.getInstance().getMainRenderTarget())) {
             java.nio.file.Path path=java.nio.file.Paths.get(System.getProperty("bge.clientIntegrationResultDir","build/client-integration"));
             java.nio.file.Files.createDirectories(path); image.writeToFile(path.resolve(name));

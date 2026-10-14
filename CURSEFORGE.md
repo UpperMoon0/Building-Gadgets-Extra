@@ -68,6 +68,8 @@ Interactive plans are limited to 65,536 positions. Since 0.0.7, an oversized or 
 
 Select the Builder's Multitool Building or Exchanging profile. Its settings area contains Range, the existing profile options, and a **Modifiers** group. Horizontal/Vertical Mirror, Array and Radial have visible On/Off states. The separate Array and Radial icons (or disclosure buttons) expand their numeric controls inline; they do not open another screen.
 
+The profile toolbar, Range, mode wheel and modifier controls use one flat visual style. Total copies and compact axis fields keep the expanded forms readable at larger GUI scales.
+
 Array repeats with signed X/Y/Z spacing in blocks. Radial repeats around the vertical Y axis with center offsets relative to the operation origin. Counts include the original. Enabled counts are 2-16; spacing and center offsets are bounded to -64..64. Turning a stage off preserves its configured count and offsets. Each expanded stage has its own reset. Composition order is shown only when multiple stages are enabled and lists only those stages.
 
 Valid numeric edits save on Enter or leaving the field. Toggles save immediately. The server confirms the active profile's settings; there is no extra Apply/Cancel screen. Invalid fields show a specific error. Scrolling and resizing preserve edits; settings do not overlap the operation wheel at smaller GUI sizes. Build and Exchange settings are independent. Copy/Paste, Cut/Paste, Destruction and native gadgets keep their existing workflows.

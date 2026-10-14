@@ -48,6 +48,7 @@ public final class LegacyMultitoolScreen extends Screen {
     private int contextIcons, rangeEnd;
     public int menuCenterX() { return settingsLayout == null ? width / 2 : settingsLayout.centerX; }
     public int menuCenterY() { return height / 2; }
+    private int backRadius() { return settingsLayout==null?BACK_RADIUS:settingsLayout.backRadius; }
     private int actionRadius() { return settingsLayout == null ? 82 : settingsLayout.radius; }
     public InlineModifiers inlineModifiers() { return inlineModifiers; }
     public void openActiveProfile() {
@@ -59,13 +60,13 @@ public final class LegacyMultitoolScreen extends Screen {
     }
     private void addContext(net.minecraft.client.gui.widget.Widget widget) {
         if (settingsLayout != null) {
-            int columns = settingsLayout.panelWidth / 26;
-            widget.x=settingsLayout.panelX+(contextIcons%columns)*26; widget.y=8+(contextIcons/columns)*26;
+            int columns = settingsLayout.panelWidth / 28;
+            widget.x=settingsLayout.panelX+(contextIcons%columns)*28; widget.y=28+(contextIcons/columns)*28;
             contextIcons++;
         }
         addButton(widget);
     }
-    private int contextRow() { return settingsLayout == null ? 0 : 8 + ((contextIcons + settingsLayout.panelWidth/26-1)/(settingsLayout.panelWidth/26))*26; }
+    private int contextRow() { return settingsLayout == null ? 0 : 28 + ((contextIcons + settingsLayout.panelWidth/28-1)/(settingsLayout.panelWidth/28))*28; }
     private void addInline(net.minecraft.client.gui.widget.Widget widget) { addButton(widget); }
     private void closeNow() { super.onClose(); }
     @Override public void onClose() {
@@ -206,7 +207,7 @@ public final class LegacyMultitoolScreen extends Screen {
     private void setting(boolean leftSide, int[] y, String icon, String translation, boolean selectable,
                          BooleanSupplier selected, int operation) {
         int x = leftSide ? menuCenterX() - 136 : menuCenterX() + 112;
-        addContext(new GuiIconActionable(x, next(y), icon, new TranslationTextComponent(translation), selectable, send -> {
+        addContext(contextIcon(x, next(y), icon, new TranslationTextComponent(translation), selectable, send -> {
             if (send) ExtraNetwork.sendToServer(new LegacyMultitoolPacket(operation, 0));
             return selected.getAsBoolean();
         }));
@@ -214,22 +215,24 @@ public final class LegacyMultitoolScreen extends Screen {
 
     private void clientSetting(boolean leftSide, int[] y, String icon, String translation, Runnable action) {
         int x = leftSide ? menuCenterX() - 136 : menuCenterX() + 112;
-        addContext(new GuiIconActionable(x, next(y), icon, new TranslationTextComponent(translation), false, send -> {
+        addContext(contextIcon(x, next(y), icon, new TranslationTextComponent(translation), false, send -> {
             if (send) action.run();
             return false;
         }));
     }
 
     private void addRange(int[] right) {
-        int y = settingsLayout == null ? next(right) : contextRow(); rangeLabelY = y + 6;
-        rangeEnd=y+26;
-        int rangeX=settingsLayout == null ? menuCenterX()+112 : settingsLayout.panelX;
-        addButton(new Button(rangeX, y, 18, 20, new StringTextComponent("-"),
-                b -> ExtraNetwork.sendToServer(new LegacyMultitoolPacket(LegacyMultitoolPacket.RANGE, -1))));
-        addButton(new Button(rangeX + 64, y, 18, 20, new StringTextComponent("+"),
-                b -> ExtraNetwork.sendToServer(new LegacyMultitoolPacket(LegacyMultitoolPacket.RANGE, 1))));
+        int y=contextRow()+4; rangeLabelY=y+8; rangeEnd=y+32;
+        int rangeX=settingsLayout.panelX;
+        addButton(new ProfileButton(rangeX,y,24,24,new StringTextComponent("-"),
+                ()->ExtraNetwork.sendToServer(new LegacyMultitoolPacket(LegacyMultitoolPacket.RANGE,-1))));
+        addButton(new ProfileButton(rangeX+settingsLayout.panelWidth-24,y,24,24,new StringTextComponent("+"),
+                ()->ExtraNetwork.sendToServer(new LegacyMultitoolPacket(LegacyMultitoolPacket.RANGE,1))));
     }
 
+    private GuiIconActionable contextIcon(int x,int y,String icon,net.minecraft.util.text.ITextComponent tooltip,boolean selectable,java.util.function.Predicate<Boolean> action) {
+        return settingsLayout==null?new GuiIconActionable(x,y,icon,tooltip,selectable,action):new ProfileIconButton(x,y,icon,tooltip,selectable,action);
+    }
     private static int next(int[] value) { int result = value[0]; value[0] += 30; return result; }
 
     @Override public void render(MatrixStack matrices, int mouseX, int mouseY, float partialTick) {
@@ -248,9 +251,9 @@ public final class LegacyMultitoolScreen extends Screen {
         } else {
             List<LegacyAction> actions = actions(selectedTool());
             hoveredAction = findAction(actions.size(), dx, dy);
-            hoveredBack = Math.sqrt(dx * dx + dy * dy) <= BACK_RADIUS;
-            fill(matrices, cx - BACK_RADIUS, cy - BACK_RADIUS, cx + BACK_RADIUS, cy + BACK_RADIUS, 0xCC20252A);
-            outline(matrices, cx - BACK_RADIUS, cy - BACK_RADIUS, cx + BACK_RADIUS, cy + BACK_RADIUS, hoveredBack ? 0xFF3598FF : 0);
+            hoveredBack = Math.sqrt(dx * dx + dy * dy) <= backRadius();
+            fill(matrices, cx - backRadius(), cy - backRadius(), cx + backRadius(), cy + backRadius(), settingsLayout==null?0xCC20252A:com.nstut.buildinggadgetsextra.common.ProfileUiStyle.CONTROL);
+            outline(matrices, cx - backRadius(), cy - backRadius(), cx + backRadius(), cy + backRadius(), hoveredBack ? 0xFF3598FF : settingsLayout==null?0:com.nstut.buildinggadgetsextra.common.ProfileUiStyle.BORDER);
             drawCenteredString(matrices, font, new TranslationTextComponent("buildinggadgetsextra.multitool.back").getString(), cx, cy - 4, 0xFFFFFF);
             drawCenteredString(matrices, font, new TranslationTextComponent(selectedTool().translationKey()).getString(), cx, cy - (settingsLayout == null ? 122 : actionRadius()+40), selectedTool().accentColor());
             for (int i = 0; i < actions.size(); i++) {
@@ -262,15 +265,16 @@ public final class LegacyMultitoolScreen extends Screen {
                 drawCenteredString(matrices, font, new TranslationTextComponent(actions.get(label).translation).getString(), cx, cy + (settingsLayout != null && actionRadius() < 82 ? actionRadius()+24 : 34), selectedTool().accentColor());
             }
         }
-        if (rangeLabelY >= 0) drawCenteredString(matrices, font, "Range: " + GadgetUtils.getToolRange(stack), menuCenterX() + 153, rangeLabelY, 0xFFFFFF);
         if(inlineModifiers != null) inlineModifiers.background(matrices);
+        if (rangeLabelY >= 0) drawCenteredString(matrices, font, "Range: " + GadgetUtils.getToolRange(stack), settingsLayout.panelX+settingsLayout.panelWidth/2, rangeLabelY, 0xFFFFFF);
+
         super.render(matrices, mouseX, mouseY, partialTick);
         if(inlineModifiers != null) inlineModifiers.render(matrices);
     }
 
     private void drawTool(MatrixStack matrices, MultitoolMode mode, int x, int y, boolean hovered) {
         int half = RadialIconLayout.MULTITOOL_MODE_BUTTON_SIZE / 2;
-        fill(matrices, x-half, y-half, x+half, y+half, 0xAA394149);
+        fill(matrices, x-half, y-half, x+half, y+half, settingsLayout==null?0xAA394149:com.nstut.buildinggadgetsextra.common.ProfileUiStyle.CONTROL);
         outline(matrices, x-half, y-half, x+half, y+half, hovered ? 0xFF3598FF : mode == selectedTool() ? 0xFF00E640 : 0);
         String namespace; String path; int source; int renderSize;
         if (mode == MultitoolMode.BUILD) { namespace = ExtraConstants.MOD_ID; path = "textures/gui/setting/build.png"; source = 44; renderSize = 24; }
@@ -286,8 +290,8 @@ public final class LegacyMultitoolScreen extends Screen {
 
     private void drawAction(MatrixStack matrices, LegacyAction action, int x, int y, boolean selected, boolean hovered) {
         int half = RadialIconLayout.MULTITOOL_MODE_BUTTON_SIZE / 2;
-        fill(matrices, x-half, y-half, x+half, y+half, 0xAA394149);
-        outline(matrices, x-half, y-half, x+half, y+half, hovered ? 0xFF3598FF : selected ? 0xFF00E640 : 0);
+        fill(matrices, x-half, y-half, x+half, y+half, settingsLayout==null?0xAA394149:com.nstut.buildinggadgetsextra.common.ProfileUiStyle.CONTROL);
+        outline(matrices, x-half, y-half, x+half, y+half, hovered ? 0xFF3598FF : selected ? 0xFF00E640 : settingsLayout==null?0:com.nstut.buildinggadgetsextra.common.ProfileUiStyle.BORDER);
         minecraft.getTextureManager().bind(new ResourceLocation(action.namespace, action.icon));
         blit(matrices, x - BG1_ACTION_ICON_SIZE / 2, y - BG1_ACTION_ICON_SIZE / 2,
                 BG1_ACTION_ICON_SIZE, BG1_ACTION_ICON_SIZE,
@@ -326,14 +330,14 @@ public final class LegacyMultitoolScreen extends Screen {
             }
             rebuildSettings(); return true;
         }
-        if (Math.sqrt(dx*dx+dy*dy)<=BACK_RADIUS) { navigation.back(); rememberedPage=MultitoolMenuState.Page.GENERAL; rebuildSettings(); return true; }
+        if (Math.sqrt(dx*dx+dy*dy)<=backRadius()) { navigation.back(); rememberedPage=MultitoolMenuState.Page.GENERAL; rebuildSettings(); return true; }
         List<LegacyAction> actions=actions(selectedTool()); int action=findAction(actions.size(),dx,dy); if(action<0)return false;
         selectedAction=action; MultitoolState.applyProfile(stack,selectedTool(),action);
         ExtraNetwork.sendToServer(new LegacyMultitoolPacket(LegacyMultitoolPacket.SELECT_ACTION,action)); rebuildSettings(); return true;
     }
 
     private MultitoolMode findTool(double dx,double dy){double d=Math.sqrt(dx*dx+dy*dy);if(d<42||d>94)return null;int n=LEGACY_TOOLS.length;double s=Math.PI*2/n;int i=(int)Math.floor((angle(dx,dy)+s/2)/s)%n;return LEGACY_TOOLS[i];}
-    private int findAction(int n,double dx,double dy){double d=Math.sqrt(dx*dx+dy*dy);if(n==0||d<(settingsLayout==null?54:actionRadius()-18)||d>(settingsLayout==null?108:actionRadius()+18))return-1;double s=Math.PI*2/n;return(int)Math.floor((angle(dx,dy)+s/2)/s)%n;}
+    private int findAction(int n,double dx,double dy){if(settingsLayout!=null) return settingsLayout.actionAt(n,dx,dy);double d=Math.sqrt(dx*dx+dy*dy);if(n==0||d<(settingsLayout==null?54:actionRadius()-18)||d>(settingsLayout==null?108:actionRadius()+18))return-1;double s=Math.PI*2/n;return(int)Math.floor((angle(dx,dy)+s/2)/s)%n;}
     private static double angle(double dx,double dy){double a=Math.atan2(dy,dx)+Math.PI/2;return a<0?a+Math.PI*2:a;}
     private MultitoolMode selectedTool(){return navigation.selectedTool();}
 

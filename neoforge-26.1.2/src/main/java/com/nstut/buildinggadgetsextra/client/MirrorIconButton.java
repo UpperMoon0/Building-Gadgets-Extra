@@ -13,6 +13,8 @@ public final class MirrorIconButton extends GuiIconActionable {
     private static final String BG2_MOD_ID = "buildinggadgets2";
     private final Identifier icon;
     private final int sourceSize;
+    private boolean profile;
+    public MirrorIconButton profileStyle() { profile=true; return this; }
 
     public MirrorIconButton(int x, int y, String iconName, Component tooltip, Runnable action) {
         this(x, y, addonSettingIcon(iconName), RadialIconLayout.SOURCE_TEXTURE_SIZE, tooltip, action);
@@ -51,9 +53,15 @@ public final class MirrorIconButton extends GuiIconActionable {
     @Override
     protected void extractContents(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
         graphics.fill(getX(), getY(), getX() + width, getY() + height,
-                RadialIconLayout.BACKGROUND_COLOR);
-        graphics.blit(RenderPipelines.GUI_TEXTURED, icon, getX(), getY(), 0, 0,
-                width, height,
+                profile?com.nstut.buildinggadgetsextra.common.ProfileUiStyle.CONTROL:RadialIconLayout.BACKGROUND_COLOR);
+        int pad=profile?4:0;
+        if(profile) {
+            int edge=(mouseX>=getX() && mouseX<getX()+width && mouseY>=getY() && mouseY<getY()+height)?0xFF3598FF:0xFF56616B;
+            graphics.fill(getX(),getY(),getX()+width,getY()+1,edge); graphics.fill(getX(),getY()+height-1,getX()+width,getY()+height,edge);
+            graphics.fill(getX(),getY(),getX()+1,getY()+height,edge); graphics.fill(getX()+width-1,getY(),getX()+width,getY()+height,edge);
+        }
+        graphics.blit(RenderPipelines.GUI_TEXTURED, icon, getX()+pad, getY()+pad, 0, 0,
+                width-pad*2, height-pad*2,
                 sourceSize, sourceSize, sourceSize, sourceSize,
                 0xFFFFFFFF);
         if (isHoveredOrFocused()) {

@@ -12,6 +12,8 @@ import net.minecraft.util.text.ITextComponent;
 public final class MirrorIconButton extends GuiIconActionable {
     private final ResourceLocation icon;
     private final int sourceSize;
+    private boolean profile;
+    public MirrorIconButton profileStyle() { profile=true; return this; }
 
     public MirrorIconButton(int x, int y, String iconName, ITextComponent tooltip, Runnable action) {
         this(x, y, iconName, RadialIconLayout.SOURCE_TEXTURE_SIZE, tooltip, action);
@@ -37,11 +39,17 @@ public final class MirrorIconButton extends GuiIconActionable {
         RenderSystem.enableBlend();
         RenderSystem.disableTexture();
         RenderSystem.color4f(1, 1, 1, .2f);
-        fill(poseStack, x, y, x + width, y + height, RadialIconLayout.BACKGROUND_COLOR);
+        fill(poseStack, x, y, x + width, y + height, profile?com.nstut.buildinggadgetsextra.common.ProfileUiStyle.CONTROL:RadialIconLayout.BACKGROUND_COLOR);
         RenderSystem.enableTexture();
+        int pad=profile?4:0;
+        if(profile) {
+            int edge=(mouseX>=x && mouseX<x+width && mouseY>=y && mouseY<y+height)?0xFF3598FF:0xFF56616B;
+            fill(poseStack,x,y,x+width,y+1,edge); fill(poseStack,x,y+height-1,x+width,y+height,edge);
+            fill(poseStack,x,y,x+1,y+height,edge); fill(poseStack,x+width-1,y,x+width,y+height,edge);
+        }
         RenderSystem.color4f(1, 1, 1, alpha);
         minecraft.getTextureManager().bind(icon);
-        blit(poseStack, x, y, width, height,
+        blit(poseStack, x+pad, y+pad, width-pad*2, height-pad*2,
                 0, 0,
                 sourceSize, sourceSize, sourceSize, sourceSize);
         RenderSystem.color4f(1, 1, 1, 1);
