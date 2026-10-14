@@ -26,6 +26,13 @@ public final class LegacyLivePlan {
             this.transforms=Collections.unmodifiableList(new ArrayList<StateTransform>(transforms));
         }
     }
+    public static Iterator<BlockPos> trackingIterator(List<BlockPos> positions, java.util.function.Consumer<BlockPos> current) {
+        final Iterator<BlockPos> iterator = positions.iterator();
+        return new Iterator<BlockPos>() {
+            public boolean hasNext() { return iterator.hasNext(); }
+            public BlockPos next() { BlockPos pos = iterator.next(); current.accept(pos); return pos; }
+        };
+    }
     public static BlockState state(BlockState state, BlockPos pos) {
         if (!(pos instanceof Position)) return state;
         for(StateTransform transform:((Position)pos).transforms) {
