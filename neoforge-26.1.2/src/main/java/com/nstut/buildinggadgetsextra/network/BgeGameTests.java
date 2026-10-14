@@ -213,7 +213,7 @@ public final class BgeGameTests {
             for (ItemStack stack : new ItemStack[]{nativeCopy, multitool}) {
                 player.setItemInHand(InteractionHand.MAIN_HAND, stack);
                 // Above world height: a large all-air selection without loading extra chunks.
-                BlockPos start = new BlockPos(0, 10000, 0);
+                BlockPos start = new BlockPos(0, 1000, 0);
                 GadgetNBT.setCopyStartPos(stack, start);
                 GadgetNBT.setCopyEndPos(stack, start.offset(109, 99, 9));
                 com.direwolf20.buildinggadgets2.util.modes.Copy copy = new com.direwolf20.buildinggadgets2.util.modes.Copy();

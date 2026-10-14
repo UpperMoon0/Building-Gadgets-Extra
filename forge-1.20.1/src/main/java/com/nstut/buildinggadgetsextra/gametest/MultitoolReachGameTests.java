@@ -93,9 +93,10 @@ public final class MultitoolReachGameTests {
             for (ItemStack stack : new ItemStack[]{nativeCopy, multitool}) {
                 player.setItemInHand(InteractionHand.MAIN_HAND, stack);
                 // Above world height: a large all-air selection without loading extra chunks.
-                BlockPos start = new BlockPos(0, 10000, 0);
+                BlockPos start = new BlockPos(0, 1000, 0);
                 GadgetNBT.setCopyStartPos(stack, start);
-                GadgetNBT.setCopyEndPos(stack, start.offset(109, 99, 9));
+                // BG2 1.0.8 uses AABB(BlockPos, BlockPos), whose upper corner adds one.
+                GadgetNBT.setCopyEndPos(stack, start.offset(108, 98, 8));
                 com.direwolf20.buildinggadgets2.util.modes.Copy copy = new com.direwolf20.buildinggadgets2.util.modes.Copy();
                 ExtraConfig.MAX_COPY_VOLUME.set(100_000);
                 helper.assertTrue(copy.collectWorld(net.minecraft.core.Direction.UP, player, start,
