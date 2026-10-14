@@ -27,6 +27,7 @@ public final class Forge1165ServerRangeIntegrationTest {
     private static int observationTicks;
     private static boolean provisioned;
     private static boolean finished;
+    private static boolean modifiersObserved;
 
     private Forge1165ServerRangeIntegrationTest() {}
 
@@ -40,6 +41,7 @@ public final class Forge1165ServerRangeIntegrationTest {
         observationTicks = 0;
         provisioned = false;
         finished = false;
+        modifiersObserved = false;
     }
 
     @SubscribeEvent
@@ -59,7 +61,8 @@ public final class Forge1165ServerRangeIntegrationTest {
 
         observationTicks++;
         ItemStack held = watchedPlayer.getItemInHand(Hand.MAIN_HAND);
-        if (held.getItem() instanceof BuildersMultitool
+        if (held.getItem() instanceof BuildersMultitool && com.nstut.buildinggadgetsextra.item.MultitoolState.getLiveModifiers(held).value(0)==2 && com.nstut.buildinggadgetsextra.item.MultitoolState.getLiveModifiers(held).value(4)==4) modifiersObserved=true;
+        if (modifiersObserved && held.getItem() instanceof BuildersMultitool
                 && GadgetUtils.getToolRange(held) == ClientRangeRoundTripScenario.TARGET_RANGE) {
             finished = true;
             write("server-pass.txt", "authoritative server range=" + GadgetUtils.getToolRange(held));

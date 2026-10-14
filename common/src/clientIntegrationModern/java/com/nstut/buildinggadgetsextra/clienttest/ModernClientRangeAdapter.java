@@ -33,6 +33,7 @@ public final class ModernClientRangeAdapter implements ClientRangeRoundTripScena
     }
 
     private final ScreenClicker clicker;
+    private final ModifierScreenRoundTrip modifierRoundTrip = new ModifierScreenRoundTrip();
     private String pendingPassDetail;
     private int copyTransportTicks;
     private boolean copyTransportVerified;
@@ -91,7 +92,7 @@ public final class ModernClientRangeAdapter implements ClientRangeRoundTripScena
 
     @Override
     public boolean hasReadyMultitool() {
-        return held().getItem() instanceof BuildersMultitool;
+        return held().getItem() instanceof BuildersMultitool && modifierRoundTrip.tick(held());
     }
 
     @Override

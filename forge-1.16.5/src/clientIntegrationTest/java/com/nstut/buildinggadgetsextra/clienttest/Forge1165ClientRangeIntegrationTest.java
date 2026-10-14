@@ -29,6 +29,7 @@ import java.nio.file.Paths;
 public final class Forge1165ClientRangeIntegrationTest {
     private static final long BOOT_TIMEOUT_NANOS = 120_000_000_000L;
     private static final boolean ENABLED = Boolean.getBoolean(ClientRangeRoundTripScenario.ENABLE_PROPERTY);
+    private static final ModifierScreenRoundTrip MODIFIERS = new ModifierScreenRoundTrip();
     private static final Adapter ADAPTER = new Adapter();
     private static final ClientRangeRoundTripScenario SCENARIO = new ClientRangeRoundTripScenario(ADAPTER);
     private static final long BOOT_STARTED_NANOS = System.nanoTime();
@@ -66,7 +67,7 @@ public final class Forge1165ClientRangeIntegrationTest {
 
         @Override
         public boolean hasReadyMultitool() {
-            return held().getItem() instanceof BuildersMultitool;
+            return held().getItem() instanceof BuildersMultitool && MODIFIERS.tick(held());
         }
 
         @Override
