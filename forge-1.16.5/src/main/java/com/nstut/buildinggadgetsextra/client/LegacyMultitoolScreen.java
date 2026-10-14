@@ -84,8 +84,9 @@ public final class LegacyMultitoolScreen extends Screen {
         }
 
         if (tool == MultitoolMode.BUILD || tool == MultitoolMode.EXCHANGING) {
-            clientSetting(false, right, "copypaste_opengui", "buildinggadgetsextra.radialmenu.modifiers",
-                    () -> minecraft.setScreen(new ModifierScreen(this, stack)));
+            addButton(new MirrorIconButton(width / 2 + 112, next(right), "modifiers",
+                    new TranslationTextComponent("buildinggadgetsextra.radialmenu.modifiers"),
+                    () -> minecraft.setScreen(new ModifierScreen(this, stack))));
             addButton(new MirrorIconButton(width / 2 - 136, next(left), "mirror_horizontal",
                     new TranslationTextComponent(ExtraConstants.LIVE_MIRROR_HORIZONTAL),
                     () -> ExtraNetwork.sendToServer(new MirrorPacket(false))));

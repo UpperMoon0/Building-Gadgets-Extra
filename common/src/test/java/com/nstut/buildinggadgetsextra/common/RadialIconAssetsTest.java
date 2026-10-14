@@ -12,6 +12,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 class RadialIconAssetsTest {
     @Test
     void everyRadialIconMatchesTheSharedSourceSize() throws Exception {
+        assertIcon("modifiers");
         assertIcon("mirror_horizontal");
         assertIcon("mirror_vertical");
         assertIcon("save");
