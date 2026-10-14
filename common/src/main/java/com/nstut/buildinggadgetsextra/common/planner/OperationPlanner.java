@@ -46,6 +46,9 @@ public final class OperationPlanner {
         LinkedHashMap<PlanPos, PlannedPosition> output = new LinkedHashMap<PlanPos, PlannedPosition>();
         for (Map.Entry<PlanPos, PlannedPosition> entry : input.entrySet()) {
             putBounded(output, entry.getKey(), entry.getValue(), maxPositions);
+        }
+        // Preserve every existing candidate before adding copies, including its state provenance.
+        for (Map.Entry<PlanPos, PlannedPosition> entry : input.entrySet()) {
             PlanPos mirroredPosition = mirrorPosition(entry.getKey(), anchor, axis);
             putBounded(output, mirroredPosition, entry.getValue().mirrored(mirroredPosition, axis), maxPositions);
         }

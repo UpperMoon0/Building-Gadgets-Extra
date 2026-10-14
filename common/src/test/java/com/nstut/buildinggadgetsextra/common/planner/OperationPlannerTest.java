@@ -69,6 +69,19 @@ class OperationPlannerTest {
     }
 
     @Test
+    void mirroredCopiesCannotReplaceExistingCandidateStates() {
+        List<PlannedPosition> planned = OperationPlanner.mirrorCopies(
+                Arrays.asList(new PlanPos(2, 3, 0), new PlanPos(-2, 3, 0)),
+                PlanPos.ZERO, MirrorAxis.X, true, true, 8);
+        assertEquals(4, planned.size());
+        assertEquals(0, planned.get(0).sourceIndex());
+        assertEquals(1, planned.get(1).sourceIndex());
+        assertEquals(Collections.emptyList(), planned.get(1).stateMirrors());
+        assertEquals(1, planned.get(3).sourceIndex());
+        assertEquals(Collections.singletonList(MirrorAxis.Y), planned.get(3).stateMirrors());
+    }
+
+    @Test
     void limitIsAppliedAfterDeduplication() {
         assertThrows(OperationPlanner.PlanLimitExceededException.class, () ->
                 OperationPlanner.mirrorCopies(
