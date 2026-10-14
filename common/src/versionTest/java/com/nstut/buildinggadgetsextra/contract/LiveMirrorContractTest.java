@@ -25,15 +25,18 @@ class LiveMirrorContractTest {
         Path legacyRadial = module.resolve("src/main/java/com/nstut/buildinggadgetsextra/client/LegacyMultitoolScreen.java");
 
         if (legacyCut) {
-            assertFalse(Files.exists(mixin), label("legacy BG1 must not claim live mirror without per-position block states"));
-            String radial = read(legacyRadial);
-            assertFalse(radial.contains("LIVE_MIRROR_HORIZONTAL"), label("legacy UI must keep unsupported live mirror hidden"));
+            String plan = source("transform/LegacyLivePlan.java");
+            contains(plan, "OperationPlanner.compose", "legacy shared modifier planner");
+            contains(plan, "TemplateTransforms.mirrorVerticalState", "legacy per-copy directional state");
+            contains(source("mixin/LegacyBuildRenderMixin.java"), "LegacyLivePlan.state", "legacy matching preview states");
+            contains(source("mixin/LegacyAnchorModifiersMixin.java"), "BGEAnchorTransforms", "anchored state provenance");
+            contains(read(legacyRadial), "LIVE_MIRROR_HORIZONTAL", "legacy live modifiers visible");
             return;
         }
 
         assertTrue(Files.isRegularFile(mixin), label("live mirror planner mixin"));
         String mixinSource = read(mixin);
-        contains(mixinSource, "OperationPlanner.mirrorCopies", "shared planner usage");
+        contains(mixinSource, "OperationPlanner.compose", "shared planner usage");
         contains(mixinSource, "MAX_LIVE_PLAN_POSITIONS", "bounded interactive plan");
         contains(mixinSource, "PlanPos.ZERO", "BG2 local-coordinate mirror pivot");
         contains(mixinSource, "start.offset(localPos)", "local-to-world validation conversion");

@@ -39,7 +39,8 @@ public abstract class BaseModeLiveMirrorMixin {
 
         boolean horizontal = MultitoolState.isLiveMirrorHorizontal(gadget);
         boolean vertical = MultitoolState.isLiveMirrorVertical(gadget);
-        if (!horizontal && !vertical) return;
+        var settings = MultitoolState.getLiveModifiers(gadget);
+        if (!horizontal && !vertical && !settings.enabled()) return;
 
         ArrayList<StatePos> source = cir.getReturnValue();
         if (source == null || source.isEmpty()) return;
@@ -55,10 +56,11 @@ public abstract class BaseModeLiveMirrorMixin {
 
         final List<PlannedPosition> planned;
         try {
-            planned = OperationPlanner.mirrorCopies(
-                    positions, PlanPos.ZERO, horizontalAxis, horizontal, vertical,
+            planned = OperationPlanner.compose(
+                    positions, PlanPos.ZERO, horizontalAxis, horizontal, vertical, settings,
                     ExtraConstants.MAX_LIVE_PLAN_POSITIONS);
         } catch (IllegalArgumentException rejectedPlan) {
+            cir.setReturnValue(new ArrayList<>());
             return;
         }
 
@@ -67,14 +69,25 @@ public abstract class BaseModeLiveMirrorMixin {
         for (PlannedPosition plannedPosition : planned) {
             StatePos original = source.get(plannedPosition.sourceIndex());
             BlockState resolvedState = original.state;
-            for (MirrorAxis axis : plannedPosition.stateMirrors()) {
-                resolvedState = MirrorTransforms.mirrorState(resolvedState, plane(axis));
+            for (com.nstut.buildinggadgetsextra.common.planner.StateTransform transform : plannedPosition.stateTransforms()) {
+                resolvedState = switch (transform) {
+                    case MIRROR_X -> MirrorTransforms.mirrorState(resolvedState, MirrorPlane.X);
+                    case MIRROR_Y -> MirrorTransforms.mirrorState(resolvedState, MirrorPlane.Y);
+                    case MIRROR_Z -> MirrorTransforms.mirrorState(resolvedState, MirrorPlane.Z);
+                    case ROTATE_90 -> resolvedState.rotate(net.minecraft.world.level.block.Rotation.CLOCKWISE_90);
+                    case ROTATE_180 -> resolvedState.rotate(net.minecraft.world.level.block.Rotation.CLOCKWISE_180);
+                    case ROTATE_270 -> resolvedState.rotate(net.minecraft.world.level.block.Rotation.COUNTERCLOCKWISE_90);
+                };
             }
 
             PlanPos position = plannedPosition.position();
             BlockPos localPos = new BlockPos(position.x(), position.y(), position.z());
-            if (!plannedPosition.stateMirrors().isEmpty()) {
+            if (plannedPosition.generated()) {
+                long wx = (long) start.getX() + localPos.getX(), wy = (long) start.getY() + localPos.getY(), wz = (long) start.getZ() + localPos.getZ();
+                if (wx < Integer.MIN_VALUE || wx > Integer.MAX_VALUE || wy < Integer.MIN_VALUE || wy > Integer.MAX_VALUE || wz < Integer.MIN_VALUE || wz > Integer.MAX_VALUE) continue;
                 BlockPos worldPos = start.offset(localPos);
+                if (!player.level().hasChunkAt(worldPos) || !player.level().getWorldBorder().isWithinBounds(worldPos)
+                        || player.level().isOutsideBuildHeight(worldPos)) continue;
                 if (!mode.isPosValid(player.level(), player, worldPos, resolvedState)) continue;
             }
             resolved.add(new StatePos(resolvedState, localPos));

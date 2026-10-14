@@ -142,6 +142,10 @@ public final class MultitoolRadialScreen extends Screen {
         }
 
         boolean liveMirrorTool = selectedTool() == MultitoolMode.BUILD || selectedTool() == MultitoolMode.EXCHANGING;
+        if (liveMirrorTool) {
+            addUpstream(false, rightY, "copypaste_opengui", Component.literal("Array / Radial modifiers"), false,
+                    null, () -> Minecraft.getInstance().setScreen(new ModifierScreen(this, stack)));
+        }
         boolean templateMirrorTool = RadialButtonPolicy.showMirrorButtons(effectiveMode)
                 && (selectedTool() == MultitoolMode.COPY_PASTE || selectedTool() == MultitoolMode.CUT_PASTE);
         if (liveMirrorTool || templateMirrorTool) {

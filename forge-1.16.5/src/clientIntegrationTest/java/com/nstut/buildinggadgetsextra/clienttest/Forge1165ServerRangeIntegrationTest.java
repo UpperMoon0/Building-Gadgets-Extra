@@ -50,6 +50,8 @@ public final class Forge1165ServerRangeIntegrationTest {
         if (!provisioned) {
             loginTicks++;
             if (loginTicks < PROVISION_DELAY_TICKS) return;
+            try { verifyModifiers(watchedPlayer); }
+            catch (RuntimeException failure) { finished = true; write("server-fail.txt", "legacy modifier regression: " + failure); return; }
             provision(watchedPlayer);
             provisioned = true;
             return;
@@ -69,6 +71,34 @@ public final class Forge1165ServerRangeIntegrationTest {
             write("server-fail.txt", "server never observed authoritative range="
                     + ClientRangeRoundTripScenario.TARGET_RANGE + "; current=" + GadgetUtils.getToolRange(held));
         }
+    }
+
+    private static void verifyModifiers(ServerPlayerEntity player) {
+        ItemStack stack=new ItemStack(ExtraRegistration.BUILDERS_MULTITOOL.get());
+        player.setItemInHand(Hand.MAIN_HAND,stack);
+        com.nstut.buildinggadgetsextra.item.MultitoolState.selectTool(stack,com.nstut.buildinggadgetsextra.common.MultitoolMode.BUILD);
+        int[] values={1,0,0,0,4,0,0,0};
+        if(!com.nstut.buildinggadgetsextra.network.ModifierHandler.apply(player,0,values)) throw new IllegalStateException("valid settings rejected");
+        if(com.nstut.buildinggadgetsextra.network.ModifierHandler.apply(player,0,new int[]{17,0,0,0,1,0,0,0})) throw new IllegalStateException("hostile settings accepted");
+        com.direwolf20.buildinggadgets.common.items.modes.AbstractMode mode=com.direwolf20.buildinggadgets.common.items.modes.BuildingModes.VERTICAL_COLUMN.getMode();
+        net.minecraft.util.math.BlockPos pivot=new net.minecraft.util.math.BlockPos(player.blockPosition().getX(),240,player.blockPosition().getZ());
+        net.minecraft.block.BlockState state=net.minecraft.block.Blocks.OAK_STAIRS.defaultBlockState().setValue(net.minecraft.block.StairsBlock.FACING,net.minecraft.util.Direction.EAST);
+        com.direwolf20.buildinggadgets.common.items.modes.AbstractMode.UseContext context=new com.direwolf20.buildinggadgets.common.items.modes.AbstractMode.UseContext(player.level,state,pivot,stack,net.minecraft.util.Direction.UP,false,false);
+        boolean previous=com.direwolf20.buildinggadgets.common.config.Config.GENERAL.allowOverwriteBlocks.get();
+        try {
+            com.direwolf20.buildinggadgets.common.config.Config.GENERAL.allowOverwriteBlocks.set(true);
+            java.util.List<net.minecraft.util.math.BlockPos> plan=com.nstut.buildinggadgetsextra.transform.LegacyLivePlan.apply(mode,context,player,java.util.Collections.singletonList(pivot.offset(2,0,0)));
+            if(plan.size()!=4) throw new IllegalStateException("radial count="+plan.size());
+            net.minecraft.util.math.BlockPos rotated=plan.stream().filter(pos->pos.equals(pivot.offset(0,0,2))).findFirst().orElseThrow(()->new IllegalStateException("missing rotated position"));
+            if(com.nstut.buildinggadgetsextra.transform.LegacyLivePlan.state(state,rotated).getValue(net.minecraft.block.StairsBlock.FACING)!=net.minecraft.util.Direction.SOUTH) throw new IllegalStateException("rotated state mismatch");
+            GadgetUtils.setAnchor(stack,plan);
+            java.util.List<net.minecraft.util.math.BlockPos> restored=GadgetUtils.getAnchor(stack).orElseThrow(()->new IllegalStateException("missing anchor"));
+            if(restored.size()!=4 || com.nstut.buildinggadgetsextra.transform.LegacyLivePlan.state(state,restored.get(1)).getValue(net.minecraft.block.StairsBlock.FACING)!=net.minecraft.util.Direction.SOUTH) throw new IllegalStateException("anchor lost state provenance");
+            com.nstut.buildinggadgetsextra.item.MultitoolState.selectTool(stack,com.nstut.buildinggadgetsextra.common.MultitoolMode.EXCHANGING);
+            if(com.nstut.buildinggadgetsextra.item.MultitoolState.getLiveModifiers(stack).enabled()) throw new IllegalStateException("profile state leaked");
+            com.nstut.buildinggadgetsextra.item.MultitoolState.selectTool(stack,com.nstut.buildinggadgetsextra.common.MultitoolMode.BUILD);
+            if(com.nstut.buildinggadgetsextra.item.MultitoolState.getLiveModifiers(stack).value(4)!=4) throw new IllegalStateException("profile settings lost");
+        } finally { com.direwolf20.buildinggadgets.common.config.Config.GENERAL.allowOverwriteBlocks.set(previous); }
     }
 
     private static void provision(ServerPlayerEntity player) {

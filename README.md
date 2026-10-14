@@ -154,4 +154,12 @@ Large BG2 copy previews are synchronized in bounded chunks rather than one overs
 
 On Forge 1.20.1, NeoForge 1.21.1, and NeoForge 26.1.2, select the Builder's Multitool Building or Exchanging profile and use **Horizontal Mirror** or **Vertical Mirror** in its radial menu. Each toggle stays with that profile. Preview and placement use the same mirrored candidates, with directional block states transformed per copy. Horizontal mirroring follows the facing axis; vertical mirroring uses the operation anchor. Existing candidates take precedence when copies overlap.
 
-Interactive plans are limited to 65,536 positions; an oversized or overflowing mirrored plan falls back to the original upstream operation. Forge 1.16.5 keeps template mirroring but does not expose live Build/Exchange mirroring. Update Extra on both server and clients together: 0.0.6 requires the matching live-mirror protocol.
+Interactive plans are limited to 65,536 positions. Since 0.0.7, an oversized or overflowing plan rejects the operation, and live mirroring is also available on Forge 1.16.5. Update Extra on both server and clients together for matching protocols.
+
+### Composable live modifiers (0.0.7)
+
+In the Builder's Multitool Building or Exchanging profile, open **Array / Radial modifiers** from the radial menu. Array repeats the operation with an X/Y/Z step; Radial Mirror repeats it around a vertical Y axis, using a pivot offset relative to the operation origin. Counts (1-16) include the original, so 1 disables a stage. Steps and pivots are bounded to -64..64. Existing Horizontal/Vertical Mirror toggles compose with these stages; click the order control to choose any of the six stage orders.
+
+Settings are independent per profile and saved on the item. Apply sends bounded parameters to the server. Reset restores the editor defaults; Apply saves them. Cancel discards edits. Native gadgets retain their existing behavior. Live modifiers are available on all four supported versions, including Forge 1.16.5.
+
+Radial geometry rounds to the nearest block. Directional states rotate to the nearest 90-degree facing because block states cannot represent arbitrary angles. Overlaps keep the first existing candidate and are charged once. Preview and placement share the same planner. Output above 65,536 positions or coordinate overflow rejects the entire plan; reduce the range or copy counts if the preview disappears. Normal material, FE, build-height, loaded-chunk and protection checks still apply.

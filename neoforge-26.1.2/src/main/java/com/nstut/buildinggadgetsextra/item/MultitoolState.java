@@ -37,6 +37,24 @@ public final class MultitoolState {
     private MultitoolState() {
     }
 
+    public static com.nstut.buildinggadgetsextra.common.planner.LiveModifiers getLiveModifiers(ItemStack stack) {
+        String key = "BGEModifiers_" + getActiveMode(stack).serializedName();
+        CompoundTag root = stack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag();
+        CompoundTag tag = root.getCompoundOrEmpty(key);
+        if (tag.isEmpty()) return com.nstut.buildinggadgetsextra.common.planner.LiveModifiers.NONE;
+        int[] values = new int[com.nstut.buildinggadgetsextra.common.planner.LiveModifiers.FIELDS];
+        for (int i = 0; i < values.length; i++) values[i] = tag.getIntOr("V" + i, 0);
+        try { return com.nstut.buildinggadgetsextra.common.planner.LiveModifiers.from(values); }
+        catch (IllegalArgumentException invalid) { return com.nstut.buildinggadgetsextra.common.planner.LiveModifiers.NONE; }
+    }
+
+    public static void setLiveModifiers(ItemStack stack, com.nstut.buildinggadgetsextra.common.planner.LiveModifiers modifiers) {
+        String key = "BGEModifiers_" + getActiveMode(stack).serializedName();
+        CompoundTag tag = new CompoundTag();
+        for (int i = 0; i < com.nstut.buildinggadgetsextra.common.planner.LiveModifiers.FIELDS; i++) tag.putInt("V" + i, modifiers.value(i));
+        CustomData.update(DataComponents.CUSTOM_DATA, stack, root -> root.put(key, tag));
+    }
+
     public static MultitoolMode getActiveMode(ItemStack stack) {
         return MultitoolMode.parse(stack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY)
                 .copyTag().getStringOr(ACTIVE_MODE, ""));

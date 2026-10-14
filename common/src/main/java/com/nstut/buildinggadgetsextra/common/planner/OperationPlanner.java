@@ -38,6 +38,59 @@ public final class OperationPlanner {
         return new ArrayList<PlannedPosition>(current.values());
     }
 
+    /** Compose the three stages in the user's order. Existing positions always win overlaps. */
+    public static List<PlannedPosition> compose(List<PlanPos> source, PlanPos anchor, MirrorAxis axis,
+                                               boolean horizontal, boolean vertical, LiveModifiers settings,
+                                               int maxPositions) {
+        if (settings == null) throw new IllegalArgumentException("missing modifier settings");
+        List<PlannedPosition> originals = mirrorCopies(source, anchor, axis, false, false, maxPositions);
+        LinkedHashMap<PlanPos, PlannedPosition> current = new LinkedHashMap<PlanPos, PlannedPosition>();
+        for (PlannedPosition entry : originals) current.put(entry.position(), entry);
+        int[][] orders = {{0,1,2}, {0,2,1}, {1,0,2}, {1,2,0}, {2,0,1}, {2,1,0}};
+        for (int stage : orders[settings.value(7)]) {
+            if (stage == 0) {
+                if (horizontal) {
+                    if (axis != MirrorAxis.X && axis != MirrorAxis.Z) throw new IllegalArgumentException("invalid horizontal axis");
+                    current = mirrorStage(current, anchor, axis, maxPositions);
+                }
+                if (vertical) current = mirrorStage(current, anchor, MirrorAxis.Y, maxPositions);
+            } else {
+                LinkedHashMap<PlanPos, PlannedPosition> output = new LinkedHashMap<PlanPos, PlannedPosition>(current);
+                int count = settings.value(stage == 1 ? 0 : 4);
+                for (int copy = 1; copy < count; copy++) {
+                    for (PlannedPosition entry : current.values()) {
+                        PlanPos pos = entry.position();
+                        int turns = 0;
+                        if (stage == 1) {
+                            pos = new PlanPos(checked((long) pos.x() + (long) copy * settings.value(1)),
+                                    checked((long) pos.y() + (long) copy * settings.value(2)),
+                                    checked((long) pos.z() + (long) copy * settings.value(3)));
+                        } else {
+                            long pivotX = (long) anchor.x() + settings.value(5);
+                            long pivotZ = (long) anchor.z() + settings.value(6);
+                            long dx = (long) pos.x() - pivotX, dz = (long) pos.z() - pivotZ;
+                            double angle = 2.0 * StrictMath.PI * copy / count;
+                            // Minecraft clockwise Y rotation: (x,z) -> (-z,x).
+                            double x = dx * StrictMath.cos(angle) - dz * StrictMath.sin(angle);
+                            double z = dx * StrictMath.sin(angle) + dz * StrictMath.cos(angle);
+                            pos = new PlanPos(checked(pivotX + StrictMath.round(x)), pos.y(),
+                                    checked(pivotZ + StrictMath.round(z)));
+                            turns = (int) StrictMath.floor(4.0 * copy / count + 0.5) % 4;
+                        }
+                        putBounded(output, pos, entry.copied(pos, turns), maxPositions);
+                    }
+                }
+                current = output;
+            }
+        }
+        return new ArrayList<PlannedPosition>(current.values());
+    }
+
+    private static int checked(long value) {
+        if (value < Integer.MIN_VALUE || value > Integer.MAX_VALUE) throw new IllegalArgumentException("modifier coordinate overflow");
+        return (int) value;
+    }
+
     private static LinkedHashMap<PlanPos, PlannedPosition> mirrorStage(
             LinkedHashMap<PlanPos, PlannedPosition> input,
             PlanPos anchor,
