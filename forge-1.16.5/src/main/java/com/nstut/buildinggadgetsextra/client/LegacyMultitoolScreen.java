@@ -36,13 +36,41 @@ import java.util.List;
 import java.util.function.BooleanSupplier;
 
 public final class LegacyMultitoolScreen extends Screen {
-    private static final int TOOL_RADIUS = 68, ACTION_RADIUS = 82, BACK_RADIUS = 28;
+    private static final int TOOL_RADIUS = 68, BACK_RADIUS = 28;
     private static final MultitoolMode[] LEGACY_TOOLS = {
             MultitoolMode.BUILD, MultitoolMode.EXCHANGING,
             MultitoolMode.COPY_PASTE, MultitoolMode.CUT_PASTE, MultitoolMode.DESTRUCTION
     };
     private static MultitoolMenuState.Page rememberedPage = MultitoolMenuState.Page.GENERAL;
     private ItemStack stack;
+    private com.nstut.buildinggadgetsextra.common.ProfileSettingsLayout settingsLayout;
+    private InlineModifiers inlineModifiers;
+    private int contextIcons, rangeEnd;
+    public int menuCenterX() { return settingsLayout == null ? width / 2 : settingsLayout.centerX; }
+    public int menuCenterY() { return height / 2; }
+    private int actionRadius() { return settingsLayout == null ? 82 : settingsLayout.radius; }
+    public InlineModifiers inlineModifiers() { return inlineModifiers; }
+    public void openActiveProfile() {
+        navigation.openTool(MultitoolState.getActiveMode(stack));
+        rebuildSettings();
+    }
+    private ItemStack authoritativeStack() {
+        return minecraft.player == null ? stack : AbstractGadget.getGadget(minecraft.player);
+    }
+    private void addContext(net.minecraft.client.gui.widget.Widget widget) {
+        if (settingsLayout != null) {
+            int columns = settingsLayout.panelWidth / 26;
+            widget.x=settingsLayout.panelX+(contextIcons%columns)*26; widget.y=8+(contextIcons/columns)*26;
+            contextIcons++;
+        }
+        addButton(widget);
+    }
+    private int contextRow() { return settingsLayout == null ? 0 : 8 + ((contextIcons + settingsLayout.panelWidth/26-1)/(settingsLayout.panelWidth/26))*26; }
+    private void addInline(net.minecraft.client.gui.widget.Widget widget) { addButton(widget); }
+    private void closeNow() { super.onClose(); }
+    @Override public void onClose() {
+        if(inlineModifiers != null) inlineModifiers.navigate(this::closeNow, true); else closeNow();
+    }
     private final MultitoolMenuState navigation;
     private int selectedAction;
     private MultitoolMode hoveredTool;
@@ -64,10 +92,16 @@ public final class LegacyMultitoolScreen extends Screen {
         if (minecraft.player == null) return;
         ItemStack held = AbstractGadget.getGadget(minecraft.player);
         if (!held.isEmpty()) this.stack = held;
+        if(inlineModifiers != null) inlineModifiers.tick();
     }
 
     private void rebuildSettings() {
+        InlineModifiers previous = inlineModifiers;
         buttons.clear(); children.clear(); rangeLabelY = -1;
+        inlineModifiers = null; settingsLayout = null; contextIcons = 0; rangeEnd = 0;
+        if (navigation.page() == MultitoolMenuState.Page.SUBMENU && (selectedTool() == MultitoolMode.BUILD || selectedTool() == MultitoolMode.EXCHANGING)) {
+            settingsLayout = new com.nstut.buildinggadgetsextra.common.ProfileSettingsLayout(width,height);
+        }
         if (navigation.page() != MultitoolMenuState.Page.SUBMENU) return;
         int[] left = {height / 2 - 104}, right = {height / 2 - 104};
         MultitoolMode tool = selectedTool();
@@ -83,17 +117,6 @@ public final class LegacyMultitoolScreen extends Screen {
             setting(true, left, "undo", "buildinggadgets.radialmenu.undo", false, () -> false, LegacyMultitoolPacket.UNDO);
         }
 
-        if (tool == MultitoolMode.BUILD || tool == MultitoolMode.EXCHANGING) {
-            addButton(new MirrorIconButton(width / 2 + 112, next(right), "modifiers",
-                    new TranslationTextComponent("buildinggadgetsextra.radialmenu.modifiers"),
-                    () -> minecraft.setScreen(new ModifierScreen(this, stack))));
-            addButton(new MirrorIconButton(width / 2 - 136, next(left), "mirror_horizontal",
-                    new TranslationTextComponent(ExtraConstants.LIVE_MIRROR_HORIZONTAL),
-                    () -> ExtraNetwork.sendToServer(new MirrorPacket(false))));
-            addButton(new MirrorIconButton(width / 2 - 136, next(left), "mirror_vertical",
-                    new TranslationTextComponent(ExtraConstants.LIVE_MIRROR_VERTICAL),
-                    () -> ExtraNetwork.sendToServer(new MirrorPacket(true))));
-        }
         if (tool == MultitoolMode.BUILD) {
             setting(true, left, "rotate", "buildinggadgets.radialmenu.rotate", false,
                     () -> false, LegacyMultitoolPacket.ROTATE);
@@ -129,20 +152,20 @@ public final class LegacyMultitoolScreen extends Screen {
                 setting(true, left, "rotate", "buildinggadgets.radialmenu.rotate", false, () -> false, LegacyMultitoolPacket.ROTATE);
             }
             if (RadialButtonPolicy.showMirrorButtons(mode)) {
-                addButton(new MirrorIconButton(width / 2 - 136, next(left), "mirror_horizontal",
+                addButton(new MirrorIconButton(menuCenterX() - 136, next(left), "mirror_horizontal",
                         new TranslationTextComponent(ExtraConstants.MIRROR_HORIZONTAL),
                         () -> ExtraNetwork.sendToServer(new MirrorPacket(false))));
-                addButton(new MirrorIconButton(width / 2 - 136, next(left), "mirror_vertical",
+                addButton(new MirrorIconButton(menuCenterX() - 136, next(left), "mirror_vertical",
                         new TranslationTextComponent(ExtraConstants.MIRROR_VERTICAL),
                         () -> ExtraNetwork.sendToServer(new MirrorPacket(true))));
             }
             RadialButtonPolicy.FileAction file = RadialButtonPolicy.fileAction(false, mode);
             if (file == RadialButtonPolicy.FileAction.SAVE) {
-                addButton(new MirrorIconButton(width / 2 + 112, next(right), "save",
+                addButton(new MirrorIconButton(menuCenterX() + 112, next(right), "save",
                         new TranslationTextComponent(ExtraConstants.SAVE_STRUCTURE),
                         ClientStructureFiles::chooseSave));
             } else if (file == RadialButtonPolicy.FileAction.LOAD) {
-                addButton(new MirrorIconButton(width / 2 + 112, next(right), "load",
+                addButton(new MirrorIconButton(menuCenterX() + 112, next(right), "load",
                         new TranslationTextComponent(ExtraConstants.LOAD_STRUCTURE),
                         ClientStructureFiles::chooseLoad));
             }
@@ -152,58 +175,65 @@ public final class LegacyMultitoolScreen extends Screen {
             boolean hasCutBuffer = stack.getOrCreateTag().getBoolean("cutBufferActive")
                     && GadgetCopyPaste.getSelectedRegion(stack).isPresent();
             if (!hasCutBuffer) {
-                addButton(new MirrorIconButton(width / 2 + 112, next(right), "cut", RadialIconLayout.MODERN_SETTING_ICON_SIZE,
+                addButton(new MirrorIconButton(menuCenterX() + 112, next(right), "cut", RadialIconLayout.MODERN_SETTING_ICON_SIZE,
                         new TranslationTextComponent(ExtraConstants.CUT_SELECTION),
                         () -> ExtraNetwork.sendToServer(new CutSelectionPacket())));
-                addButton(new MirrorIconButton(width / 2 + 112, next(right), "save",
+                addButton(new MirrorIconButton(menuCenterX() + 112, next(right), "save",
                         new TranslationTextComponent(ExtraConstants.SAVE_STRUCTURE),
                         ClientStructureFiles::chooseSave));
             } else {
                 clientSetting(false, right, "copypaste_opengui", "buildinggadgetsextra.radialmenu.configure_paste",
                         () -> minecraft.setScreen(createPasteGUI(stack)));
                 setting(true, left, "rotate", "buildinggadgets.radialmenu.rotate", false, () -> false, LegacyMultitoolPacket.ROTATE);
-                addButton(new MirrorIconButton(width / 2 - 136, next(left), "mirror_horizontal",
+                addButton(new MirrorIconButton(menuCenterX() - 136, next(left), "mirror_horizontal",
                         new TranslationTextComponent(ExtraConstants.MIRROR_HORIZONTAL),
                         () -> ExtraNetwork.sendToServer(new MirrorPacket(false))));
-                addButton(new MirrorIconButton(width / 2 - 136, next(left), "mirror_vertical",
+                addButton(new MirrorIconButton(menuCenterX() - 136, next(left), "mirror_vertical",
                         new TranslationTextComponent(ExtraConstants.MIRROR_VERTICAL),
                         () -> ExtraNetwork.sendToServer(new MirrorPacket(true))));
-                addButton(new MirrorIconButton(width / 2 + 112, next(right), "load",
+                addButton(new MirrorIconButton(menuCenterX() + 112, next(right), "load",
                         new TranslationTextComponent(ExtraConstants.LOAD_STRUCTURE),
                         ClientStructureFiles::chooseLoad));
             }
+        }
+        if(settingsLayout != null) {
+            inlineModifiers = new InlineModifiers(font, settingsLayout.panelX, settingsLayout.panelWidth,
+                    Math.max(rangeEnd,contextRow())+4, height-8, this::authoritativeStack, this::addInline);
+            inlineModifiers.restoreFrom(previous);
         }
     }
 
     private void setting(boolean leftSide, int[] y, String icon, String translation, boolean selectable,
                          BooleanSupplier selected, int operation) {
-        int x = leftSide ? width / 2 - 136 : width / 2 + 112;
-        addButton(new GuiIconActionable(x, next(y), icon, new TranslationTextComponent(translation), selectable, send -> {
+        int x = leftSide ? menuCenterX() - 136 : menuCenterX() + 112;
+        addContext(new GuiIconActionable(x, next(y), icon, new TranslationTextComponent(translation), selectable, send -> {
             if (send) ExtraNetwork.sendToServer(new LegacyMultitoolPacket(operation, 0));
             return selected.getAsBoolean();
         }));
     }
 
     private void clientSetting(boolean leftSide, int[] y, String icon, String translation, Runnable action) {
-        int x = leftSide ? width / 2 - 136 : width / 2 + 112;
-        addButton(new GuiIconActionable(x, next(y), icon, new TranslationTextComponent(translation), false, send -> {
+        int x = leftSide ? menuCenterX() - 136 : menuCenterX() + 112;
+        addContext(new GuiIconActionable(x, next(y), icon, new TranslationTextComponent(translation), false, send -> {
             if (send) action.run();
             return false;
         }));
     }
 
     private void addRange(int[] right) {
-        int y = next(right); rangeLabelY = y + 6;
-        addButton(new Button(width / 2 + 112, y, 18, 20, new StringTextComponent("-"),
+        int y = settingsLayout == null ? next(right) : contextRow(); rangeLabelY = y + 6;
+        rangeEnd=y+26;
+        int rangeX=settingsLayout == null ? menuCenterX()+112 : settingsLayout.panelX;
+        addButton(new Button(rangeX, y, 18, 20, new StringTextComponent("-"),
                 b -> ExtraNetwork.sendToServer(new LegacyMultitoolPacket(LegacyMultitoolPacket.RANGE, -1))));
-        addButton(new Button(width / 2 + 176, y, 18, 20, new StringTextComponent("+"),
+        addButton(new Button(rangeX + 64, y, 18, 20, new StringTextComponent("+"),
                 b -> ExtraNetwork.sendToServer(new LegacyMultitoolPacket(LegacyMultitoolPacket.RANGE, 1))));
     }
 
     private static int next(int[] value) { int result = value[0]; value[0] += 30; return result; }
 
     @Override public void render(MatrixStack matrices, int mouseX, int mouseY, float partialTick) {
-        int cx = width / 2, cy = height / 2;
+        int cx = menuCenterX(), cy = height / 2;
         double dx = mouseX - cx, dy = mouseY - cy;
         if (navigation.page() == MultitoolMenuState.Page.GENERAL) {
             hoveredTool = findTool(dx, dy); hoveredAction = -1; hoveredBack = false;
@@ -222,18 +252,20 @@ public final class LegacyMultitoolScreen extends Screen {
             fill(matrices, cx - BACK_RADIUS, cy - BACK_RADIUS, cx + BACK_RADIUS, cy + BACK_RADIUS, 0xCC20252A);
             outline(matrices, cx - BACK_RADIUS, cy - BACK_RADIUS, cx + BACK_RADIUS, cy + BACK_RADIUS, hoveredBack ? 0xFF3598FF : 0);
             drawCenteredString(matrices, font, new TranslationTextComponent("buildinggadgetsextra.multitool.back").getString(), cx, cy - 4, 0xFFFFFF);
-            drawCenteredString(matrices, font, new TranslationTextComponent(selectedTool().translationKey()).getString(), cx, cy - 122, selectedTool().accentColor());
+            drawCenteredString(matrices, font, new TranslationTextComponent(selectedTool().translationKey()).getString(), cx, cy - (settingsLayout == null ? 122 : actionRadius()+40), selectedTool().accentColor());
             for (int i = 0; i < actions.size(); i++) {
                 double angle = -Math.PI / 2 + i * Math.PI * 2 / actions.size();
-                drawAction(matrices, actions.get(i), cx + (int)(Math.cos(angle) * ACTION_RADIUS), cy + (int)(Math.sin(angle) * ACTION_RADIUS), i == selectedAction, i == hoveredAction);
+                drawAction(matrices, actions.get(i), cx + (int)(Math.cos(angle) * actionRadius()), cy + (int)(Math.sin(angle) * actionRadius()), i == selectedAction, i == hoveredAction);
             }
             if (!actions.isEmpty()) {
                 int label = hoveredAction >= 0 ? hoveredAction : Math.min(selectedAction, actions.size() - 1);
-                drawCenteredString(matrices, font, new TranslationTextComponent(actions.get(label).translation).getString(), cx, cy + 34, selectedTool().accentColor());
+                drawCenteredString(matrices, font, new TranslationTextComponent(actions.get(label).translation).getString(), cx, cy + (settingsLayout != null && actionRadius() < 82 ? actionRadius()+24 : 34), selectedTool().accentColor());
             }
         }
-        if (rangeLabelY >= 0) drawCenteredString(matrices, font, "Range: " + GadgetUtils.getToolRange(stack), width / 2 + 153, rangeLabelY, 0xFFFFFF);
+        if (rangeLabelY >= 0) drawCenteredString(matrices, font, "Range: " + GadgetUtils.getToolRange(stack), menuCenterX() + 153, rangeLabelY, 0xFFFFFF);
+        if(inlineModifiers != null) inlineModifiers.background(matrices);
         super.render(matrices, mouseX, mouseY, partialTick);
+        if(inlineModifiers != null) inlineModifiers.render(matrices);
     }
 
     private void drawTool(MatrixStack matrices, MultitoolMode mode, int x, int y, boolean hovered) {
@@ -269,8 +301,15 @@ public final class LegacyMultitoolScreen extends Screen {
     }
 
     @Override public boolean mouseClicked(double mouseX, double mouseY, int button) {
+        if(inlineModifiers!=null && inlineModifiers.needsCommitBeforeClick(mouseX,mouseY)) {
+            inlineModifiers.navigate(() -> mouseClicked(mouseX,mouseY,button),false); return true;
+        }
         if (super.mouseClicked(mouseX, mouseY, button)) return true;
-        double dx = mouseX-width/2.0, dy=mouseY-height/2.0;
+        if(inlineModifiers != null) { inlineModifiers.navigate(() -> handleWheel(mouseX, mouseY, button), false); return true; }
+        return handleWheel(mouseX, mouseY, button);
+    }
+    private boolean handleWheel(double mouseX, double mouseY, int button) {
+        double dx = mouseX-(double)menuCenterX(), dy=mouseY-height/2.0;
         if (navigation.page() == MultitoolMenuState.Page.GENERAL) {
             MultitoolMode mode = findTool(dx,dy); if (mode == null) return false;
             navigation.openTool(mode); rememberedPage=MultitoolMenuState.Page.SUBMENU;
@@ -294,7 +333,7 @@ public final class LegacyMultitoolScreen extends Screen {
     }
 
     private MultitoolMode findTool(double dx,double dy){double d=Math.sqrt(dx*dx+dy*dy);if(d<42||d>94)return null;int n=LEGACY_TOOLS.length;double s=Math.PI*2/n;int i=(int)Math.floor((angle(dx,dy)+s/2)/s)%n;return LEGACY_TOOLS[i];}
-    private int findAction(int n,double dx,double dy){double d=Math.sqrt(dx*dx+dy*dy);if(n==0||d<54||d>108)return-1;double s=Math.PI*2/n;return(int)Math.floor((angle(dx,dy)+s/2)/s)%n;}
+    private int findAction(int n,double dx,double dy){double d=Math.sqrt(dx*dx+dy*dy);if(n==0||d<(settingsLayout==null?54:actionRadius()-18)||d>(settingsLayout==null?108:actionRadius()+18))return-1;double s=Math.PI*2/n;return(int)Math.floor((angle(dx,dy)+s/2)/s)%n;}
     private static double angle(double dx,double dy){double a=Math.atan2(dy,dx)+Math.PI/2;return a<0?a+Math.PI*2:a;}
     private MultitoolMode selectedTool(){return navigation.selectedTool();}
 
@@ -316,4 +355,12 @@ public final class LegacyMultitoolScreen extends Screen {
         return result;
     }
     private static final class LegacyAction { final String translation, icon, namespace; LegacyAction(String translation, String icon, String namespace){this.translation=translation;this.icon=icon;this.namespace=namespace;} LegacyAction(String translation, String icon){this(translation, icon, "buildinggadgets");} }
+    @Override public boolean keyPressed(int key,int scan,int modifiers) {
+        if(key==257 && inlineModifiers!=null && inlineModifiers.enter()) return true;
+        return super.keyPressed(key,scan,modifiers);
+    }
+    @Override public boolean mouseScrolled(double x,double y,double delta) {
+        if(inlineModifiers!=null && inlineModifiers.contains(x,y)) { inlineModifiers.scroll(delta>0?-36:36); return true; }
+        return super.mouseScrolled(x,y,delta);
+    }
 }

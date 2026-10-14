@@ -56,6 +56,13 @@ class LiveModifiersTest {
         assertThrows(IllegalArgumentException.class,()->new LiveModifiers(1,0,0,0,1,0,0,6));
         assertThrows(IllegalArgumentException.class,()->LiveModifiers.from(new int[100]));
     }
+    @Test void disabledStagesRetainTheirConfiguredCopyCounts() {
+        LiveModifiers off=LiveModifiers.from(new int[]{1,3,0,-2,1,1,-1,0,7,12});
+        assertFalse(off.enabled()); assertEquals(7,off.value(8)); assertEquals(12,off.value(9));
+        assertEquals(3,off.value(1)); assertEquals(-1,off.value(6));
+        assertEquals(2,LiveModifiers.from(new int[]{1,0,0,0,1,0,0,0}).value(8));
+        assertThrows(IllegalArgumentException.class,()->LiveModifiers.from(new int[]{1,0,0,0,1,0,0,0,0,2}));
+    }
     private List<PlanPos> positions(List<PlannedPosition> plan) {
         List<PlanPos> result=new ArrayList<PlanPos>(); for(PlannedPosition entry:plan) result.add(entry.position()); return result;
     }

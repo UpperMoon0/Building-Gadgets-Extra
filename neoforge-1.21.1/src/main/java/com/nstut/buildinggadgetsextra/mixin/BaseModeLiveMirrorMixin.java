@@ -38,7 +38,10 @@ public abstract class BaseModeLiveMirrorMixin {
         boolean horizontal = MultitoolState.isLiveMirrorHorizontal(gadget);
         boolean vertical = MultitoolState.isLiveMirrorVertical(gadget);
         var settings = MultitoolState.getLiveModifiers(gadget);
-        if (!horizontal && !vertical && !settings.enabled()) return;
+        if (!horizontal && !vertical && !settings.enabled()) {
+            if(player.level().isClientSide()) com.nstut.buildinggadgetsextra.common.LivePlanFeedback.clear(tool.ordinal());
+            return;
+        }
 
         ArrayList<StatePos> source = cir.getReturnValue();
         if (source == null || source.isEmpty()) return;
@@ -54,10 +57,15 @@ public abstract class BaseModeLiveMirrorMixin {
             planned = OperationPlanner.compose(positions, PlanPos.ZERO, horizontalAxis,
                     horizontal, vertical, settings, ExtraConstants.MAX_LIVE_PLAN_POSITIONS);
         } catch (IllegalArgumentException rejectedPlan) {
+            if(player.level().isClientSide()) {
+                String reason=rejectedPlan instanceof OperationPlanner.PlanLimitExceededException?"Too many copies. Reduce range/count.":"Copies exceed coordinate bounds.";
+                if(com.nstut.buildinggadgetsextra.common.LivePlanFeedback.report(tool.ordinal(),reason)) player.displayClientMessage(net.minecraft.network.chat.Component.literal(reason),true);
+            }
             cir.setReturnValue(new ArrayList<>());
             return;
         }
 
+        if(player.level().isClientSide()) com.nstut.buildinggadgetsextra.common.LivePlanFeedback.clear(tool.ordinal());
         BaseMode mode = (BaseMode) (Object) this;
         ArrayList<StatePos> resolved = new ArrayList<>(planned.size());
         for (PlannedPosition plannedPosition : planned) {

@@ -30,7 +30,7 @@ class LiveMirrorContractTest {
             contains(plan, "TemplateTransforms.mirrorVerticalState", "legacy per-copy directional state");
             contains(source("mixin/LegacyBuildRenderMixin.java"), "LegacyLivePlan.state", "legacy matching preview states");
             contains(source("mixin/LegacyAnchorModifiersMixin.java"), "BGEAnchorTransforms", "anchored state provenance");
-            contains(read(legacyRadial), "LIVE_MIRROR_HORIZONTAL", "legacy live modifiers visible");
+            contains(source("client/InlineModifiers.java"), "isLiveMirrorHorizontal", "legacy live modifiers visible");
             return;
         }
 

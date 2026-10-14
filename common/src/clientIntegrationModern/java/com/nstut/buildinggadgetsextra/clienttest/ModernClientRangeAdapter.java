@@ -263,7 +263,7 @@ public final class ModernClientRangeAdapter implements ClientRangeRoundTripScena
     private void switchToTool(MultitoolMode tool) {
         Screen screen = radialScreen();
         // Center is Back in a submenu and harmless in the general page, so this normalizes navigation.
-        clicker.click(screen, screen.width / 2.0, screen.height / 2.0);
+        clicker.click(screen, ((MultitoolRadialScreen)screen).menuCenterX(), ((MultitoolRadialScreen)screen).menuCenterY());
         double angle = -Math.PI / 2.0 + tool.ordinal() * (Math.PI * 2.0 / MultitoolMode.values().length);
         clicker.click(screen,
                 screen.width / 2.0 + Math.cos(angle) * 68.0,

@@ -57,13 +57,20 @@ public final class LegacyLivePlan {
         if (!(stack.getItem() instanceof BuildersMultitool) || (tool!=MultitoolMode.BUILD && tool!=MultitoolMode.EXCHANGING)) return source;
         LiveModifiers settings=MultitoolState.getLiveModifiers(stack);
         boolean h=MultitoolState.isLiveMirrorHorizontal(stack), v=MultitoolState.isLiveMirrorVertical(stack);
-        if (!h && !v && !settings.enabled()) return source;
+        if (!h && !v && !settings.enabled()) { if(context.getWorld().isClientSide) com.nstut.buildinggadgetsextra.common.LivePlanFeedback.clear(tool.ordinal()); return source; }
         BlockPos anchor=mode.withOffset(context.getStartPos(),context.getHitSide(),context.isPlaceOnTop());
         List<PlanPos> positions=new ArrayList<PlanPos>();
         for(BlockPos pos:source) positions.add(new PlanPos(pos.getX()-anchor.getX(),pos.getY()-anchor.getY(),pos.getZ()-anchor.getZ()));
         final List<PlannedPosition> plan;
         try { plan=OperationPlanner.compose(positions,PlanPos.ZERO,player.getDirection().getAxis()==Direction.Axis.X?MirrorAxis.Z:MirrorAxis.X,h,v,settings,ExtraConstants.MAX_LIVE_PLAN_POSITIONS); }
-        catch(IllegalArgumentException invalid) { return Collections.emptyList(); }
+        catch(IllegalArgumentException invalid) {
+            if(context.getWorld().isClientSide) {
+                String reason=invalid instanceof OperationPlanner.PlanLimitExceededException?"Too many copies. Reduce range/count.":"Copies exceed coordinate bounds.";
+                if(com.nstut.buildinggadgetsextra.common.LivePlanFeedback.report(tool.ordinal(),reason)) player.displayClientMessage(new net.minecraft.util.text.StringTextComponent(reason),true);
+            }
+            return Collections.emptyList();
+        }
+        if(context.getWorld().isClientSide) com.nstut.buildinggadgetsextra.common.LivePlanFeedback.clear(tool.ordinal());
         List<BlockPos> result=new ArrayList<BlockPos>();
         for(PlannedPosition entry:plan) {
             long x=(long)anchor.getX()+entry.position().x(), y=(long)anchor.getY()+entry.position().y(), z=(long)anchor.getZ()+entry.position().z();

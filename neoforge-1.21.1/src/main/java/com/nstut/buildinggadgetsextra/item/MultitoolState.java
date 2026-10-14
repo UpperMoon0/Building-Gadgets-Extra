@@ -44,6 +44,8 @@ public final class MultitoolState {
         if (tag.isEmpty()) return com.nstut.buildinggadgetsextra.common.planner.LiveModifiers.NONE;
         int[] values = new int[com.nstut.buildinggadgetsextra.common.planner.LiveModifiers.FIELDS];
         for (int i = 0; i < values.length; i++) values[i] = tag.getInt("V" + i);
+        if (!tag.contains("V8")) values[8] = Math.max(2, values[0]);
+        if (!tag.contains("V9")) values[9] = Math.max(2, values[4]);
         try { return com.nstut.buildinggadgetsextra.common.planner.LiveModifiers.from(values); }
         catch (IllegalArgumentException invalid) { return com.nstut.buildinggadgetsextra.common.planner.LiveModifiers.NONE; }
     }
