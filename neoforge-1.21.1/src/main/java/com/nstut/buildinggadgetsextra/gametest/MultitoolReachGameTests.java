@@ -81,4 +81,40 @@ public final class MultitoolReachGameTests {
         }
         helper.succeed();
     }
+
+    @GameTest(template = "bge_empty", timeoutTicks = 40)
+    public static void configurableCopyVolumePreservesAirAndServerBounds(GameTestHelper helper) {
+        Player player = FakePlayerFactory.get(helper.getLevel(), new GameProfile(UUID.randomUUID(), "bge-copy-volume"));
+        int previous = ExtraConfig.MAX_COPY_VOLUME.get();
+        try {
+            ItemStack nativeCopy = new ItemStack(com.direwolf20.buildinggadgets2.setup.Registration.CopyPaste_Gadget.get());
+            ItemStack multitool = new ItemStack(ExtraRegistration.BUILDERS_MULTITOOL.get());
+            ((BuildersMultitool) multitool.getItem()).selectTool(multitool, MultitoolMode.COPY_PASTE);
+            for (ItemStack stack : new ItemStack[]{nativeCopy, multitool}) {
+                player.setItemInHand(InteractionHand.MAIN_HAND, stack);
+                // Above world height: a large all-air selection without loading extra chunks.
+                BlockPos start = new BlockPos(0, 10000, 0);
+                GadgetNBT.setCopyStartPos(stack, start);
+                GadgetNBT.setCopyEndPos(stack, start.offset(109, 99, 9));
+                com.direwolf20.buildinggadgets2.util.modes.Copy copy = new com.direwolf20.buildinggadgets2.util.modes.Copy();
+                ExtraConfig.MAX_COPY_VOLUME.set(100_000);
+                helper.assertTrue(copy.collectWorld(net.minecraft.core.Direction.UP, player, start,
+                        Blocks.AIR.defaultBlockState()).isEmpty(), "default cap must reject 110,000 air positions");
+                ExtraConfig.MAX_COPY_VOLUME.set(110_000);
+                var copied = copy.collectWorld(net.minecraft.core.Direction.UP, player, start, Blocks.AIR.defaultBlockState());
+                helper.assertTrue(copied.size() == 110_000, "configured cap must accept every position including air, got " + copied.size());
+                helper.assertTrue(copied.stream().allMatch(entry -> entry.state.isAir()), "air entries must be preserved");
+                helper.assertTrue(copied.stream().anyMatch(entry -> entry.pos.equals(BlockPos.ZERO))
+                        && copied.stream().anyMatch(entry -> entry.pos.equals(new BlockPos(109, 99, 9))),
+                        "relative selection bounds must be preserved");
+                ExtraConfig.MAX_COPY_VOLUME.set(109_999);
+                helper.assertTrue(copy.collectWorld(net.minecraft.core.Direction.UP, player, start,
+                        Blocks.AIR.defaultBlockState()).isEmpty(), "lowering the server cap must reject existing selections");
+            }
+        } finally {
+            ExtraConfig.MAX_COPY_VOLUME.set(previous);
+            player.setItemInHand(InteractionHand.MAIN_HAND, ItemStack.EMPTY);
+        }
+        helper.succeed();
+    }
 }

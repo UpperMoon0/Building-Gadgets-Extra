@@ -1,0 +1,1 @@
+Allow server owners to raise Copy/Paste selection and native structure import volume above 100,000 with `maxCopyVolume`, up to 1,000,000 positions. The default is unchanged and air still counts. Applies to native BG2 Copy/Paste gadgets and the Builder's Multitool; Forge 1.16.5 retains upstream world-copy controls. Transfer/NBT budgets and Cut/Paste limits remain unchanged.

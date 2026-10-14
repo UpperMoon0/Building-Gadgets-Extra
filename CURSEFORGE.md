@@ -27,7 +27,7 @@ Saved builds use Minecraft's standard `.nbt` structure format, so they can also 
 
 For multiplayer safety, external structure files can only be imported into the Copy Paste Gadget while it remains in Paste mode. Uploads stay bound to the initiating gadget/profile and are revalidated through final commit, so switching gadget, multitool profile, or mode aborts the pending import. Imported block-entity NBT is deliberately stripped, so inventories and other arbitrary block-entity contents from a local file are **not** restored onto a server. Building Gadgets 2 ports also sanitize imported block states through upstream validation.
 
-Imports are limited to a 100,000-position bounding volume, an 8 MiB compressed transfer, and a 64 MiB decoded-NBT budget. The volume includes air inside the declared dimensions. Concurrent transfers are also capped per player.
+By default, imports are limited to a 100,000-position bounding volume, an 8 MiB compressed transfer, and a 64 MiB decoded-NBT budget. The volume includes air inside the declared dimensions. Concurrent transfers are also capped per player.
 
 ### Builder's Multitool
 
@@ -47,3 +47,11 @@ Building Gadgets Extra works in singleplayer and multiplayer. For multiplayer, i
 - Minecraft 1.21.1 with NeoForge and Building Gadgets 2 1.3.9
 - Minecraft 1.20.1 with Forge and Building Gadgets 2 1.0.8
 - Minecraft 1.16.5 with Forge and Building Gadgets 3.8.4
+
+### Copying more than 100,000 positions
+
+Set `maxCopyVolume = 1000000` in the world's `serverconfig/buildinggadgetsextra-server.toml` to allow up to 1,000,000 positions. The default remains a 100,000-position bounding volume; air still counts because Building Gadgets stores every position in the selection. This setting applies to the native BG2 Copy/Paste gadget, the Builder's Multitool Copy/Paste profile, and Extra's native structure imports. It is a server/world setting, not a client option. Restart the server/world after editing it.
+
+The configurable range is 1–1,000,000. Larger copies use more memory and may pause copying or rendering. Existing compressed-transfer and decoded-NBT budgets, upstream axis limits, and Cut/Paste limits still apply. Sparse or air-only selections also consume the volume budget.
+
+Forge 1.16.5 already supports larger world copies through Building Gadgets' `Max Copy Dimensions` server setting (and its operator-controlled `OverrideCopySize` command); Extra's `maxCopyVolume` controls native structure imports on that version.

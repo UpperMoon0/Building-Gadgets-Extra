@@ -12,6 +12,7 @@
     "CopyGUIMultitoolMixin"
   ],
   "mixins": [
+    "CopyVolumeMixin",
     "VectorHelperMultitoolRangeMixin",
     "BuildToMeMultitoolRangeMixin",
     "StructurePaletteInvoker",
