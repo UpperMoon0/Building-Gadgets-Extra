@@ -113,7 +113,10 @@ public final class Forge1165ClientRangeIntegrationTest {
             Screen screen = minecraft().screen;
             if (!(screen instanceof LegacyMultitoolScreen)) throw new IllegalStateException("legacy range screen missing");
             // Real + Button created by LegacyMultitoolScreen.addRange for the Build profile.
-            screen.mouseClicked(screen.width / 2.0 + 185.0, screen.height / 2.0 + 26.0, 0);
+            Button plus = screen.children().stream().filter(child -> child instanceof Button)
+                    .map(child -> (Button) child).filter(button -> button.getMessage().getString().equals("+"))
+                    .findFirst().orElseThrow(() -> new IllegalStateException("legacy range + button missing"));
+            plus.onPress();
         }
 
         @Override
