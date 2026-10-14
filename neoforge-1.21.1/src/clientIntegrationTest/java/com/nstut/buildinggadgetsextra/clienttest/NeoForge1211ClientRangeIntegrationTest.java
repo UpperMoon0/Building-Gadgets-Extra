@@ -41,5 +41,6 @@ public final class NeoForge1211ClientRangeIntegrationTest {
             return;
         }
         SCENARIO.tick();
+        ADAPTER.tickCopyTransport();
     }
 }

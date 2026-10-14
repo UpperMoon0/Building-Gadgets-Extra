@@ -1,5 +1,6 @@
 package com.nstut.buildinggadgetsextra.clienttest;
 
+import com.direwolf20.buildinggadgets2.common.network.data.SendCopyDataPayload;
 import com.nstut.buildinggadgetsextra.BuildingGadgetsExtra;
 import net.minecraft.server.level.ServerPlayer;
 import net.neoforged.bus.api.SubscribeEvent;
@@ -15,7 +16,10 @@ public final class NeoForge1211ServerRangeIntegrationTest {
     public static void onPlayerLogin(PlayerEvent.PlayerLoggedInEvent event) {
         if (!Boolean.getBoolean(ClientRangeRoundTripScenario.ENABLE_PROPERTY)) return;
         if (!(event.getEntity() instanceof ServerPlayer)) return;
-        ModernServerRangeObserver.setupAndWatch((ServerPlayer) event.getEntity());
+        ModernServerRangeObserver.setupAndWatch((ServerPlayer) event.getEntity(),
+                player -> player.connection.send(new SendCopyDataPayload(
+                        ModernCopyTransportFixture.GADGET_UUID, ModernCopyTransportFixture.COPY_UUID,
+                        ModernCopyTransportFixture.millionBlockTemplate())));
     }
 
     @SubscribeEvent

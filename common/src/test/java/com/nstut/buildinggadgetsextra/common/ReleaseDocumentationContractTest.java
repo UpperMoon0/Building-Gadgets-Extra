@@ -43,12 +43,13 @@ class ReleaseDocumentationContractTest {
             contains(document, "100,000-position bounding volume");
             contains(document, "Paste mode");
         }
+        contains(changelog, "## " + properties.getProperty("mod_version"));
         contains(readme, "mod_version");
         contains(readme, "publishes all four builds to CurseForge");
         contains(readme, "No manual tag creation is required");
         contains(curseforge, "64 MiB decoded-NBT budget");
-        contains(changelog, "Releases now trigger automatically when `mod_version` changes on `main`");
-        contains(changelog, "published to CurseForge project 1614988");
+        contains(read(root.resolve("changelog/0.0.4.md")), "Releases now trigger automatically when `mod_version` changes on `main`");
+        contains(read(root.resolve("changelog/0.0.4.md")), "published to CurseForge project 1614988");
     }
 
     private static Path repositoryRoot() {

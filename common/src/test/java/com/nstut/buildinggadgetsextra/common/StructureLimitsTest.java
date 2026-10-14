@@ -38,6 +38,20 @@ class StructureLimitsTest {
     }
 
     @Test
+    void supportsLargerDenseTemplatesOnlyWithinTheServerLimit() {
+        assertEquals(110_000L, StructureLimits.checkedVolume(110, 100, 10, 110_000));
+        assertEquals(-1L, StructureLimits.checkedVolume(110, 100, 10, 109_999));
+        assertEquals(1_000_000L, StructureLimits.checkedVolume(100, 100, 100, 1_000_000));
+        assertEquals(-1L, StructureLimits.checkedVolume(100, 100, 101, 1_000_000));
+        assertEquals(-1L, StructureLimits.checkedVolume(1, 1, 1, 1_000_001));
+        assertEquals(-1L, StructureLimits.checkedVolume(1, 1, 1, 0));
+        assertEquals(-1L, StructureLimits.checkedVolume(Integer.MAX_VALUE, Integer.MAX_VALUE, Integer.MAX_VALUE, 1_000_000));
+        assertTrue(StructureLimits.validPaletteEntryCount(110_000, 110_000L, 110_000));
+        assertFalse(StructureLimits.validPaletteEntryCount(1, 110_000L, 100_000));
+        assertFalse(StructureLimits.validPaletteEntryCount(110_001, 110_000L, 1_000_000));
+    }
+
+    @Test
     void validatesPalettePositionsAgainstDeclaredDimensions() {
         assertTrue(StructureLimits.isWithinBounds(0, 0, 0, 2, 3, 4));
         assertTrue(StructureLimits.isWithinBounds(1, 2, 3, 2, 3, 4));

@@ -8,9 +8,7 @@ import net.minecraftforge.network.PacketDistributor;
 import net.minecraftforge.network.simple.SimpleChannel;
 
 public final class ExtraNetwork {
-    // 0.0.5 gives MirrorPacket contextual live-modifier semantics for the Multitool.
-    // Reject mixed 0.0.4/0.0.5 peers rather than let an old server treat a live-mirror click as template mutation.
-    private static final String VERSION = "4";
+    private static final String VERSION = "5";
     private static final SimpleChannel CHANNEL = NetworkRegistry.newSimpleChannel(
             ResourceLocation.fromNamespaceAndPath(ExtraConstants.MOD_ID, "main"),
             () -> VERSION, VERSION::equals, VERSION::equals);
@@ -32,6 +30,8 @@ public final class ExtraNetwork {
                 MultitoolCutPacket::encode, MultitoolCutPacket::decode, MultitoolCutPacket::handle);
         CHANNEL.registerMessage(6, MultitoolRangePacket.class,
                 MultitoolRangePacket::encode, MultitoolRangePacket::decode, MultitoolRangePacket::handle);
+        CHANNEL.registerMessage(7, CopyDataPacket.class, CopyDataPacket::encode, CopyDataPacket::decode,
+                CopyDataPacket::handle, java.util.Optional.of(net.minecraftforge.network.NetworkDirection.PLAY_TO_CLIENT));
     }
 
     public static void sendToServer(MirrorPacket packet) { CHANNEL.sendToServer(packet); }
@@ -40,6 +40,9 @@ public final class ExtraNetwork {
     public static void sendToServer(MultitoolSelectionPacket packet) { CHANNEL.sendToServer(packet); }
     public static void sendToServer(MultitoolCutPacket packet) { CHANNEL.sendToServer(packet); }
     public static void sendToServer(MultitoolRangePacket packet) { CHANNEL.sendToServer(packet); }
+    public static void sendToPlayer(ServerPlayer player, CopyDataPacket packet) {
+        CHANNEL.send(PacketDistributor.PLAYER.with(() -> player), packet);
+    }
     public static void sendToPlayer(ServerPlayer player, StructureDownloadPacket packet) {
         CHANNEL.send(PacketDistributor.PLAYER.with(() -> player), packet);
     }

@@ -34,6 +34,7 @@ public final class ExtraConstants {
 
     // Keep imported structures in the same rough envelope as native BG/BG2 copy operations.
     public static final long MAX_STRUCTURE_BLOCKS = 100_000L;
+    public static final int HARD_MAX_COPY_VOLUME = 1_000_000;
     public static final long MAX_STRUCTURE_NBT_BYTES = 64L * 1024L * 1024L;
     public static final int STRUCTURE_CHUNK_SIZE = 32 * 1024;
     public static final int MAX_STRUCTURE_FILE_BYTES = 8 * 1024 * 1024;

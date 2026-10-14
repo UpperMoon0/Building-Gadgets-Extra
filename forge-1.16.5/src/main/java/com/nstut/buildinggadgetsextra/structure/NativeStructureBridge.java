@@ -16,6 +16,7 @@ import com.google.common.collect.ImmutableSet;
 import com.nstut.buildinggadgetsextra.common.ExtraConstants;
 import com.nstut.buildinggadgetsextra.common.MultitoolMode;
 import com.nstut.buildinggadgetsextra.common.StructureLimits;
+import com.nstut.buildinggadgetsextra.setup.ExtraConfig;
 import com.nstut.buildinggadgetsextra.item.BuildersMultitool;
 import com.nstut.buildinggadgetsextra.item.MultitoolState;
 import com.nstut.buildinggadgetsextra.mixin.TemplateAccessor;
@@ -131,14 +132,14 @@ public final class NativeStructureBridge {
         int sizeX = template.getSize().getX();
         int sizeY = template.getSize().getY();
         int sizeZ = template.getSize().getZ();
-        long volume = StructureLimits.checkedVolume(sizeX, sizeY, sizeZ);
+        long volume = StructureLimits.checkedVolume(sizeX, sizeY, sizeZ, ExtraConfig.maxCopyVolume());
         if (volume < 0) {
             message(player, ExtraConstants.STRUCTURE_TOO_LARGE, name);
             return;
         }
 
         List<Template.BlockInfo> paletteBlocks = a.buildingGadgetsExtra$getPalettes().get(0).blocks();
-        if (!StructureLimits.validPaletteEntryCount(paletteBlocks.size(), volume)) {
+        if (!StructureLimits.validPaletteEntryCount(paletteBlocks.size(), volume, ExtraConfig.maxCopyVolume())) {
             message(player, ExtraConstants.STRUCTURE_TOO_LARGE, name);
             return;
         }
