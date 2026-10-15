@@ -29,6 +29,7 @@ public final class ModifierScreenRoundTrip {
                         +" screenCurrent="+(screen!=null && Minecraft.getInstance().screen==screen));
             }
             if(phase==0) {
+                Minecraft.getInstance().options.pauseOnLostFocus=false;
                 if(MultitoolState.getActiveMode(stack)!=com.nstut.buildinggadgetsextra.common.MultitoolMode.BUILD) return false;
                 Minecraft.getInstance().options.guiScale().set(4); Minecraft.getInstance().resizeDisplay();
                 screen=new MultitoolRadialScreen(stack); Minecraft.getInstance().setScreen(screen); screen.openActiveProfile(); ToolSettingsPanelChecks.run(screen.uiRuntime()); screen.openActiveProfile(); panel=screen.inlineModifiers();
@@ -105,11 +106,43 @@ public final class ModifierScreenRoundTrip {
             }
             if(phase==25) {
                 if(!profileReady(stack,MultitoolMode.BUILD)) return false;
+                selectProfile(MultitoolMode.CUT_PASTE);phase=26;return false;
+            }
+            if(phase==26) {
+                if(!toolProfileReady(stack,MultitoolMode.CUT_PASTE,"copy")) return false;
+                capture("cut-settings.png");selectProfile(MultitoolMode.COPY_PASTE);phase=27;return false;
+            }
+            if(phase==27) {
+                if(!toolProfileReady(stack,MultitoolMode.COPY_PASTE,"copy")) return false;
+                press(findButton(screen.uiRuntime().root(),"Paste"));phase=28;return false;
+            }
+            if(phase==28) {
+                if(!com.direwolf20.buildinggadgets2.util.GadgetNBT.getMode(stack).getId().getPath().equals("paste")) return false;
+                screen.toolSettings().field(0).setValue("3");
+                if(!screen.toolSettings().flush()) throw new IllegalStateException("paste offset rejected");
+                phase=29;return false;
+            }
+            if(phase==29) {
+                if(com.direwolf20.buildinggadgets2.util.GadgetNBT.getRelativePaste(stack).getX()!=3) return false;
+                capture("paste-settings.png");screen.toolSettings().field(0).setValue("0");screen.toolSettings().flush();
+                press(findButton(screen.uiRuntime().root(),"Copy"));phase=30;return false;
+            }
+            if(phase==30) {
+                if(com.direwolf20.buildinggadgets2.util.GadgetNBT.getRelativePaste(stack).getX()!=0 || !com.direwolf20.buildinggadgets2.util.GadgetNBT.getMode(stack).getId().getPath().equals("copy")) return false;
+                selectProfile(MultitoolMode.BUILD);phase=31;return false;
+            }
+            if(phase==31) {
+                if(!profileReady(stack,MultitoolMode.BUILD)) return false;
                 Minecraft.getInstance().setScreen(null); phase=5;
             }
             return true;
 
         } catch(RuntimeException failure) { throw new IllegalStateException("inline editor fixture phase="+phase,failure); }
+    }
+    private boolean toolProfileReady(ItemStack stack,MultitoolMode mode,String kind) {
+        if(MultitoolState.getActiveMode(stack)!=mode || !(Minecraft.getInstance().screen instanceof MultitoolRadialScreen)) return false;
+        screen=(MultitoolRadialScreen)Minecraft.getInstance().screen;panel=screen.inlineModifiers();
+        return screen.toolSettings()!=null && screen.toolSettings().kind().equals(kind);
     }
     private boolean profileReady(ItemStack stack,MultitoolMode mode) {
         if(MultitoolState.getActiveMode(stack)!=mode) return false;
@@ -121,7 +154,7 @@ public final class ModifierScreenRoundTrip {
         return panel!=null && panel.panel.profile()==mode.ordinal();
     }
     private void selectProfile(MultitoolMode mode) {
-        panel.tick(); // Consume the authoritative acknowledgement before Back navigation.
+        if(panel!=null) panel.tick(); // Consume the authoritative acknowledgement before Back navigation.
         press(findButton(screen.uiRuntime().root(),"Back"));
         double angle=-Math.PI/2+mode.ordinal()*(Math.PI*2/MultitoolMode.values().length);
         double x=screen.menuCenterX()+Math.cos(angle)*68, y=screen.menuCenterY()+Math.sin(angle)*68;

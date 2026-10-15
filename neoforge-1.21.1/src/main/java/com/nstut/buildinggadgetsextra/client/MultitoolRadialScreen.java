@@ -230,24 +230,31 @@ public final class MultitoolRadialScreen extends com.nstut.openui.minecraft.UiSc
         profileControls.icon(icon.getNamespace(),icon.getPath(),source,label.getString(),()->false,()->navigate(action));
     }
 
+    private boolean currentProfile(Object connection,MultitoolMode profile) {
+        return connection!=null && minecraft.player!=null && minecraft.getConnection()==connection
+                && authoritativeStack().getItem() instanceof BuildersMultitool
+                && MultitoolState.getActiveMode(authoritativeStack())==profile;
+    }
+
     private com.nstut.buildinggadgetsextra.client.ui.ToolSettingsPanel createToolSettings(String kind) {
-        ItemStack held=authoritativeStack(); final Object connection=minecraft.getConnection();
+        ItemStack held=authoritativeStack(); final Object connection=minecraft.getConnection(); final MultitoolMode profile=selectedTool();
         if(kind.equals("destruction")) {
             int[] initial=new int[5];String[] names={"left","right","up","down","depth"};
             for(int i=0;i<5;i++) initial[i]=GadgetNBT.getToolValue(held,names[i]);
             return new com.nstut.buildinggadgetsextra.client.ui.ToolSettingsPanel(kind,initial,0,ExtraConfig.multitoolDestructionSide(),
                 v->com.nstut.buildinggadgetsextra.common.MultitoolRangePolicy.validDestruction(v[0],v[1],v[2],v[3],v[4],ExtraConfig.multitoolDestructionSide(),ExtraConfig.multitoolDestructionSpan()),
-                v->{if(minecraft.getConnection()==connection) PacketDistributor.sendToServer(new DestructionRangesPayload(v[0],v[1],v[2],v[3],v[4]));});
+                v->{if(currentProfile(connection,profile)) PacketDistributor.sendToServer(new DestructionRangesPayload(v[0],v[1],v[2],v[3],v[4]));});
         }
         net.minecraft.core.BlockPos start=kind.equals("paste")?GadgetNBT.getRelativePaste(held):GadgetNBT.getCopyStartPos(held);
         net.minecraft.core.BlockPos end=GadgetNBT.getCopyEndPos(held);
         int[] initial=kind.equals("paste")?new int[]{start.getX(),start.getY(),start.getZ()}:new int[]{start.getX(),start.getY(),start.getZ(),end.getX(),end.getY(),end.getZ()};
         com.nstut.buildinggadgetsextra.client.ui.ToolSettingsPanel result=new com.nstut.buildinggadgetsextra.client.ui.ToolSettingsPanel(kind,initial,kind.equals("paste")?-16:-30000000,kind.equals("paste")?16:30000000,v->true,v->{
-            if(minecraft.getConnection()!=connection) return;
+            if(!currentProfile(connection,profile)) return;
             if(kind.equals("paste")) PacketDistributor.sendToServer(new RelativePastePayload(new net.minecraft.core.BlockPos(v[0],v[1],v[2])));
             else PacketDistributor.sendToServer(new CopyCoordsPayload(new net.minecraft.core.BlockPos(v[0],v[1],v[2]),new net.minecraft.core.BlockPos(v[3],v[4],v[5])));
         });
         if(kind.equals("copy")) result.clearTo(new int[]{GadgetNBT.nullPos.getX(),GadgetNBT.nullPos.getY(),GadgetNBT.nullPos.getZ(),GadgetNBT.nullPos.getX(),GadgetNBT.nullPos.getY(),GadgetNBT.nullPos.getZ()});
+        if(kind.equals("copy") && (start.equals(GadgetNBT.nullPos) || end.equals(GadgetNBT.nullPos))) result.emptySelection();
         return result;
     }
 
@@ -493,6 +500,8 @@ public final class MultitoolRadialScreen extends com.nstut.openui.minecraft.UiSc
 
     @Override protected com.nstut.openui.api.UIComponent buildUI() {
         if(settingsLayout==null) return com.nstut.openui.api.Ui.column();
+        if(MultitoolState.getActiveMode(authoritativeStack()) != selectedTool()) return com.nstut.openui.api.Ui.column(
+                new com.nstut.openui.api.TextWidget("Waiting for profile sync..."));
         com.nstut.openui.api.Radial wheel=new com.nstut.openui.api.Radial(settingsLayout.radius,36);
         for(BaseMode action:actionsFor(selectedTool())) {
             com.nstut.openui.api.ButtonWidget button=new com.nstut.openui.api.ButtonWidget(Component.translatable(action.i18n())).radius(2)

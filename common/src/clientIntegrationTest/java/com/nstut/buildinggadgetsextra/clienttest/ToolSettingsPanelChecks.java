@@ -14,10 +14,16 @@ public final class ToolSettingsPanelChecks {
         require(copy.field(0).getValue().equals("0") && copy.field(3).getValue().equals("2"),"relative coordinate conversion");
         copy.field(0).setValue("1");require(copy.flush(),"relative coordinate commit");
         require(Arrays.equals(sent[0],new int[]{11,64,20,12,66,22}),"relative edit changed selection extent or wrong origin");
+        copy.field(1).setValue("3000");require(!copy.flush(),"copy Y packing overflow accepted");
         copy.field(1).setValue("-");require(!copy.flush(),"invalid copy draft accepted");int before=sends[0];
         ToolSettingsPanel restored=new ToolSettingsPanel("copy",new int[6],-30000000,30000000,v->true,v->{sent[0]=v;sends[0]++;});
         restored.restoreFrom(copy);runtime.setRoot(restored.content());require(restored.field(1).getValue().equals("-"),"resize lost invalid coordinate draft");
         require(sends[0]==before,"restoring draft sent a packet");
+        ToolSettingsPanel empty=new ToolSettingsPanel("copy",new int[]{-999,-999,-999,-999,-999,-999},-30000000,30000000,v->true,v->{sent[0]=v;sends[0]++;}).emptySelection();
+        runtime.setRoot(empty.content());before=sends[0];
+        require(empty.field(0).getValue().isEmpty() && empty.flush(),"empty selection leaked internal coordinates or blocked Back");
+        require(before==sends[0],"empty selection sent unsolicited coordinates");
+        empty.field(0).setValue("1");require(!empty.flush(),"partially entered selection accepted");
         ToolSettingsPanel paste=new ToolSettingsPanel("paste",new int[3],-16,16,v->true,v->{sent[0]=v;sends[0]++;});
         runtime.setRoot(paste.content());
         paste.field(0).setValue("17");require(!paste.flush(),"paste bounds bypassed");

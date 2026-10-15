@@ -57,7 +57,8 @@ public final class ModifierPanel {
     }
     public static ButtonWidget button(String label,Runnable action) { return new ButtonWidget(label).radius(2).height(24).onPress(action); }
     public static ButtonWidget icon(String name,String label,Runnable action) {
-        ButtonWidget button=button(label,action).content(IconWidget.texture(ExtraConstants.MOD_ID,"textures/gui/setting/"+name+".png",name.equals("array") || name.equals("radial")?16:44,name.equals("array") || name.equals("radial")?16:44).size(16));
+        int sourceSize=name.equals("array") || name.equals("radial")?16:44;
+        ButtonWidget button=button(label,action).content(IconWidget.texture(ExtraConstants.MOD_ID,"textures/gui/setting/"+name+".png",sourceSize,sourceSize).size(16));
         button.width(24); button.tooltip(label); return button;
     }
     public void onReveal(Consumer<UIComponent> reveal) { this.reveal=reveal; }

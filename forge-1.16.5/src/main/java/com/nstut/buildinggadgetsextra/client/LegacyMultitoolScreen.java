@@ -13,6 +13,7 @@ import com.nstut.buildinggadgetsextra.common.MultitoolMode;
 import com.nstut.buildinggadgetsextra.common.RadialButtonPolicy;
 import com.nstut.buildinggadgetsextra.common.RadialIconLayout;
 import com.nstut.buildinggadgetsextra.item.MultitoolState;
+import com.nstut.buildinggadgetsextra.item.BuildersMultitool;
 import com.nstut.buildinggadgetsextra.network.CutSelectionPacket;
 import com.nstut.buildinggadgetsextra.network.ExtraNetwork;
 import com.nstut.buildinggadgetsextra.network.LegacyMultitoolPacket;
@@ -206,24 +207,32 @@ public final class LegacyMultitoolScreen extends com.nstut.openui.minecraft.UiSc
         }
     }
 
+    private boolean currentProfile(Object connection,MultitoolMode profile) {
+        return connection!=null && minecraft.player!=null && minecraft.getConnection()==connection
+                && authoritativeStack().getItem() instanceof BuildersMultitool
+                && MultitoolState.getActiveMode(authoritativeStack())==profile;
+    }
+
     private com.nstut.buildinggadgetsextra.client.ui.ToolSettingsPanel createToolSettings(String kind) {
-        ItemStack held=authoritativeStack();final Object connection=minecraft.getConnection();
+        ItemStack held=authoritativeStack();final Object connection=minecraft.getConnection(); final MultitoolMode profile=selectedTool();
         if(kind.equals("destruction")) {
             int[] initial=new int[5];String[] names={"left","right","up","down","depth"};
             for(int i=0;i<5;i++) initial[i]=GadgetDestruction.getToolValue(held,names[i]);
             return new com.nstut.buildinggadgetsextra.client.ui.ToolSettingsPanel(kind,initial,0,com.nstut.buildinggadgetsextra.setup.ExtraConfig.multitoolDestructionSide(),
                 v->com.nstut.buildinggadgetsextra.common.MultitoolRangePolicy.validDestruction(v[0],v[1],v[2],v[3],v[4],com.nstut.buildinggadgetsextra.setup.ExtraConfig.multitoolDestructionSide(),com.nstut.buildinggadgetsextra.setup.ExtraConfig.multitoolDestructionSpan()),
-                v->{if(minecraft.getConnection()==connection) com.direwolf20.buildinggadgets.common.network.PacketHandler.sendToServer(new com.direwolf20.buildinggadgets.common.network.packets.PacketDestructionGUI(v[0],v[1],v[2],v[3],v[4]));});
+                v->{if(currentProfile(connection,profile)) com.direwolf20.buildinggadgets.common.network.PacketHandler.sendToServer(new com.direwolf20.buildinggadgets.common.network.packets.PacketDestructionGUI(v[0],v[1],v[2],v[3],v[4]));});
         }
-        net.minecraft.util.math.BlockPos start=kind.equals("paste")?GadgetCopyPaste.getRelativeVector(held):GadgetCopyPaste.getLowerRegionBound(held);
-        net.minecraft.util.math.BlockPos end=GadgetCopyPaste.getUpperRegionBound(held);
+        com.direwolf20.buildinggadgets.common.tainted.building.Region region=GadgetCopyPaste.getSelectedRegion(held).orElse(com.direwolf20.buildinggadgets.common.tainted.building.Region.singleZero());
+        net.minecraft.util.math.BlockPos start=kind.equals("paste")?GadgetCopyPaste.getRelativeVector(held):region.getMin();
+        net.minecraft.util.math.BlockPos end=region.getMax();
         int[] initial=kind.equals("paste")?new int[]{start.getX(),start.getY(),start.getZ()}:new int[]{start.getX(),start.getY(),start.getZ(),end.getX(),end.getY(),end.getZ()};
         com.nstut.buildinggadgetsextra.client.ui.ToolSettingsPanel result=new com.nstut.buildinggadgetsextra.client.ui.ToolSettingsPanel(kind,initial,kind.equals("paste")?-16:-30000000,kind.equals("paste")?16:30000000,v->true,v->{
-            if(minecraft.getConnection()!=connection) return;
+            if(!currentProfile(connection,profile)) return;
             if(kind.equals("paste")) com.direwolf20.buildinggadgets.common.network.PacketHandler.sendToServer(new com.direwolf20.buildinggadgets.common.network.packets.PacketPasteGUI(v[0],v[1],v[2]));
             else com.direwolf20.buildinggadgets.common.network.PacketHandler.sendToServer(new com.direwolf20.buildinggadgets.common.network.packets.PacketCopyCoords(new net.minecraft.util.math.BlockPos(v[0],v[1],v[2]),new net.minecraft.util.math.BlockPos(v[3],v[4],v[5])));
         });
         if(kind.equals("copy") && !com.direwolf20.buildinggadgets.common.config.Config.GENERAL.allowAbsoluteCoords.get()) result.relativeOnly();
+        if(kind.equals("copy") && !GadgetCopyPaste.getSelectedRegion(held).isPresent()) result.emptySelection();
         return result;
     }
 
