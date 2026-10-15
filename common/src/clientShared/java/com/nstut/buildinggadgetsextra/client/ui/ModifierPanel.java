@@ -42,7 +42,7 @@ public final class ModifierPanel {
         for(int i=0;i<fields.length;i++) {
             final int index=i;
             text[i]=Signals.of(Integer.toString(fieldValue(i)));
-            fields[i]=new TextField(text[i]).numeric().maxLength(4).onCommit(value->commit(index));
+            fields[i]=new TextField(text[i]).maxLength(4).onCommit(value->commit(index));
             fields[i].radius(2); fields[i].height(24); fields[i].tooltip(NAMES[i]);
         }
         mirrorH=button("Horizontal",()->{if(flush()) mirror.accept(false);});

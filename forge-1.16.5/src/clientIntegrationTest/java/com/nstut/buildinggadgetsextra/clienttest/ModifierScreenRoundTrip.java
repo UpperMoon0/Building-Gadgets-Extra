@@ -72,7 +72,10 @@ public final class ModifierScreenRoundTrip {
         } catch(RuntimeException failure) { throw new IllegalStateException("inline editor fixture phase="+phase,failure); }
     }
     private void verifyDraftResize() {
-        TextField input=panel.panel.field(1); input.setValue("-");
+        TextField input=panel.panel.field(1);
+        input.setValue("abc");
+        if(panel.flush()) throw new IllegalStateException("nonnumeric draft silently accepted");
+        input.setValue("-");
         if(panel.flush()) throw new IllegalStateException("invalid draft accepted");
         int w=screen.width,h=screen.height;
         screen.resize(Minecraft.getInstance(),320,240); panel=screen.inlineModifiers();

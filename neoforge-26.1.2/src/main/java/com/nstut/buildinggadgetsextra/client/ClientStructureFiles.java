@@ -84,6 +84,7 @@ public final class ClientStructureFiles {
     }
 
     public static void chooseLoad() {
+        final Object requestConnection=Minecraft.getInstance().getConnection();
         final long requestGeneration=generation;
         dialogThread(() -> {
             try {
@@ -93,7 +94,7 @@ public final class ClientStructureFiles {
                             Component.translatable(ExtraConstants.DIALOG_OPEN_STRUCTURE).getString(),
                             root().resolve("structure.nbt").toString(), filters(stack),
                             Component.translatable(ExtraConstants.DIALOG_NBT_FILES).getString(), false);
-                    if (result != null && requestGeneration==generation) upload(Path.of(result));
+                    if (result != null && requestGeneration==generation) upload(Path.of(result),requestConnection);
                 }
             } catch (Exception error) {
                 message(ExtraConstants.STRUCTURE_LOAD_FAILED, "structure");
@@ -127,8 +128,7 @@ public final class ClientStructureFiles {
         }
     }
 
-    private static void upload(Path file) {
-        final Object uploadConnection=Minecraft.getInstance().getConnection();
+    private static void upload(Path file, Object uploadConnection) {
         String name = transferName(file);
         try {
             UUID id = UUID.randomUUID();
