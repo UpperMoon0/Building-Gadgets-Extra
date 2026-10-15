@@ -13,6 +13,7 @@ import net.minecraft.world.item.ItemStack;
 /** Real inline controls, field commits, stage resets and authoritative inventory echo. */
 public final class ModifierScreenRoundTrip {
     private int phase;
+    private int reportedPhase=-1, diagnosticTicks;
     private boolean preparedCapture;
     private int captureTicks;
     private MultitoolRadialScreen screen;
@@ -20,6 +21,13 @@ public final class ModifierScreenRoundTrip {
     public boolean tick(ItemStack stack) {
         try {
             LiveModifiers current=MultitoolState.getLiveModifiers(stack);
+            if(reportedPhase!=phase || ++diagnosticTicks>=100) {
+                reportedPhase=phase; diagnosticTicks=0;
+                InlineModifiers visible=screen==null?null:screen.inlineModifiers();
+                System.out.println("[BGE modifier fixture] phase="+phase+" mode="+MultitoolState.getActiveMode(stack)
+                        +" spacingX="+current.value(1)+" visibleProfile="+(visible==null?-1:visible.panel.profile())
+                        +" screenCurrent="+(screen!=null && Minecraft.getInstance().screen==screen));
+            }
             if(phase==0) {
                 if(MultitoolState.getActiveMode(stack)!=com.nstut.buildinggadgetsextra.common.MultitoolMode.BUILD) return false;
 
