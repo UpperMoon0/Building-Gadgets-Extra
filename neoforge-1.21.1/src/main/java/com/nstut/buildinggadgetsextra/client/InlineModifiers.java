@@ -8,12 +8,18 @@ import java.util.function.*;
 public final class InlineModifiers {
     public final ModifierPanel panel;
     public InlineModifiers(Supplier<ItemStack> held) {
+        final Object openedConnection=net.minecraft.client.Minecraft.getInstance().getConnection();
         final int profile=MultitoolState.getActiveMode(held.get()).ordinal();
         panel=new ModifierPanel(()->MultitoolState.getActiveMode(held.get()).ordinal(),
                 ()->MultitoolState.getLiveModifiers(held.get()),
                 ()->MultitoolState.isLiveMirrorHorizontal(held.get()), ()->MultitoolState.isLiveMirrorVertical(held.get()),
-                settings->net.neoforged.neoforge.network.PacketDistributor.sendToServer(new com.nstut.buildinggadgetsextra.network.ModifierPayload(profile,settings)),
-                vertical->net.neoforged.neoforge.network.PacketDistributor.sendToServer(new com.nstut.buildinggadgetsextra.network.MirrorPayload(vertical)));
+                settings->{ if(currentSession(openedConnection)) net.neoforged.neoforge.network.PacketDistributor.sendToServer(new com.nstut.buildinggadgetsextra.network.ModifierPayload(profile,settings)); },
+                vertical->{ if(currentSession(openedConnection)) net.neoforged.neoforge.network.PacketDistributor.sendToServer(new com.nstut.buildinggadgetsextra.network.MirrorPayload(vertical)); });
+    }
+    private static boolean currentSession(Object openedConnection) {
+        // Closing a screen clears focus; blur commits must not outlive the connection that opened it.
+        net.minecraft.client.Minecraft client=net.minecraft.client.Minecraft.getInstance();
+        return openedConnection!=null && client.player!=null && client.getConnection()==openedConnection;
     }
     public void restoreFrom(InlineModifiers previous) { if(previous!=null) panel.restoreFrom(previous.panel); }
     public void expand(int stage) { panel.expand(stage); }
