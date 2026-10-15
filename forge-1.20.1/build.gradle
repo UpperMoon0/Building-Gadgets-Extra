@@ -204,3 +204,22 @@ sourceSets.main.java.srcDir file("../common/src/clientShared/java")
 dependencies {
     implementation "com.nstut:openui-mc-forge-1.20.1:0.0.13:dev-shadow"
 }
+
+// A headless Forge early-display timeout opens an interactive y/n prompt before tests can boot.
+// Let Minecraft create its normal graphics window in the integration runs instead.
+tasks.configureEach { task ->
+    if (task.name in ['runClientIntegrationTest', 'runDedicatedClientIntegrationTest']) {
+        task.doFirst {
+            def runFolder=task.name=='runClientIntegrationTest' ? 'run-client-integration' : 'run-client-integration-dedicated'
+            def config=file("${runFolder}/config/fml.toml")
+            config.parentFile.mkdirs()
+            def text=config.isFile() ? config.getText('UTF-8') : ''
+            if (text =~ /(?m)^earlyWindowControl\s*=/) {
+                text=text.replaceAll(/(?m)^earlyWindowControl\s*=.*$/, 'earlyWindowControl = false')
+            } else {
+                text += '\nearlyWindowControl = false\n'
+            }
+            config.setText(text,'UTF-8')
+        }
+    }
+}

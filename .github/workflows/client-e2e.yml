@@ -135,7 +135,7 @@ jobs:
           fi
 
           set +e
-          xvfb-run -a ./gradlew '${{ matrix.integration_client_task }}' --no-daemon --no-configuration-cache > "$CLIENT_LOG" 2>&1
+          timeout --kill-after=30s 10m xvfb-run -a ./gradlew '${{ matrix.integration_client_task }}' --no-daemon --no-configuration-cache > "$CLIENT_LOG" 2>&1
           CLIENT_STATUS=$?
           set -e
           cat "$CLIENT_LOG"
