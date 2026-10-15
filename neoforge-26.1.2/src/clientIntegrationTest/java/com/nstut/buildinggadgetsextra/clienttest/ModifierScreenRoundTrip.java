@@ -23,6 +23,7 @@ public final class ModifierScreenRoundTrip {
                 if(MultitoolState.getActiveMode(stack)!=com.nstut.buildinggadgetsextra.common.MultitoolMode.BUILD) return false;
 
                 screen=new MultitoolRadialScreen(stack); Minecraft.getInstance().setScreen(screen); screen.openActiveProfile(); panel=screen.inlineModifiers();
+                if(screen.uiRuntime()==null) throw new IllegalStateException("OpenUI screen runtime was not initialized");
                 if(panel==null) throw new IllegalStateException("inline Build settings missing");
                 captureTicks=0; phase=8; return false;
             }

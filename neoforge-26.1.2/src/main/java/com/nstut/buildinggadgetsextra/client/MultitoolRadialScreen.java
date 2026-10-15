@@ -86,6 +86,7 @@ public final class MultitoolRadialScreen extends com.nstut.openui.minecraft.UiSc
     @Override
     protected void init() {
         rebuildContextButtons();
+        super.init();
     }
 
     @Override
