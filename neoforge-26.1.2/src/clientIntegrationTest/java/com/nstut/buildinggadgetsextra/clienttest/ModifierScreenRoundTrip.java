@@ -112,8 +112,8 @@ public final class ModifierScreenRoundTrip {
         press(findButton(screen.uiRuntime().root(),"Back"));
         double angle=-Math.PI/2+mode.ordinal()*(Math.PI*2/MultitoolMode.values().length);
         double x=screen.menuCenterX()+Math.cos(angle)*68, y=screen.menuCenterY()+Math.sin(angle)*68;
-        if(!screen.mouseClicked(x,y,0)) throw new IllegalStateException("general profile wheel unreachable");
-        screen.mouseReleased(x,y,0);
+        if(!screen.mouseClicked(new net.minecraft.client.input.MouseButtonEvent(x,y,new net.minecraft.client.input.MouseButtonInfo(0,0)),false)) throw new IllegalStateException("general profile wheel unreachable");
+        screen.mouseReleased(new net.minecraft.client.input.MouseButtonEvent(x,y,new net.minecraft.client.input.MouseButtonInfo(0,0)));
         if(screen.inlineModifiers()!=null) throw new IllegalStateException("profile controls exposed before server sync");
     }
     private void verifyDraftResize() {
