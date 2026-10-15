@@ -19,6 +19,26 @@ class LiveMirrorContractTest {
     private final boolean legacyCut = Boolean.parseBoolean(requiredProperty("bge.legacyCut"));
 
     @Test
+    void screenInitializationDoesNotMountControlsIntoRetiringRuntime() throws Exception {
+        String screen=source("client/"+(legacyCut?"LegacyMultitoolScreen.java":"MultitoolRadialScreen.java"));
+        int init=screen.indexOf("protected void init()");
+        int end=screen.indexOf("}",init);
+        String body=screen.substring(init,end);
+        contains(body,"populateContextButtons()", "prepare fresh controls before runtime replacement");
+        assertFalse(body.contains("rebuildSettings()") || body.contains("rebuildContextButtons()"), label("must not mount into retiring runtime"));
+    }
+
+    @Test
+    void modernProfileControlsWaitForAuthoritativeSelection() throws Exception {
+        if (legacyCut) return; // The legacy selector updates its local profile before rebuilding.
+        String radial=source("client/MultitoolRadialScreen.java");
+        contains(radial,"MultitoolState.getActiveMode(authoritativeStack()) == selectedTool()", "authoritative profile gate");
+        contains(radial,"settingsLayout != null && !profileReady()", "deferred profile controls");
+        contains(radial,"(inlineModifiers == null) == profileReady()", "rebuild after inventory echo");
+        contains(radial,"Waiting for profile sync", "visible pending profile state");
+    }
+
+    @Test
     void liveMirrorIsOnlyExposedWherePerPositionStateTransformsAreSafe() throws Exception {
         Path mixin = module.resolve("src/main/java/com/nstut/buildinggadgetsextra/mixin/BaseModeLiveMirrorMixin.java");
         Path modernRadial = module.resolve("src/main/java/com/nstut/buildinggadgetsextra/client/MultitoolRadialScreen.java");

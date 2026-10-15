@@ -85,18 +85,24 @@ public final class MultitoolRadialScreen extends com.nstut.openui.minecraft.UiSc
 
     @Override
     protected void init() {
-        rebuildContextButtons();
+        // UiScreen replaces the runtime; do not mount fresh controls into the retiring one.
+        populateContextButtons();
         super.init();
     }
 
     @Override
     public void tick() {
         super.tick();
+        if (settingsLayout != null && (inlineModifiers == null) == profileReady()) rebuildContextButtons();
         if(inlineModifiers != null) inlineModifiers.tick(); profileControls.tick();
         if (minecraft.player != null) {
             ItemStack held = BaseGadget.getGadget(minecraft.player);
             if (!held.isEmpty()) this.stack = held;
         }
+    }
+
+    private boolean profileReady() {
+        return MultitoolState.getActiveMode(authoritativeStack()) == selectedTool();
     }
 
     private void rebuildContextButtons() { populateContextButtons(); rebuildUI(); }
@@ -110,6 +116,9 @@ public final class MultitoolRadialScreen extends com.nstut.openui.minecraft.UiSc
             settingsLayout = new com.nstut.buildinggadgetsextra.common.ProfileSettingsLayout(width,height);
         }
         if (navigation.page() != MultitoolMenuState.Page.SUBMENU) return;
+        // Selection packets are asynchronous. Never capture the previous profile's
+        // settings or expose controls until the server's inventory echo arrives.
+        if (settingsLayout != null && !profileReady()) return;
 
         int[] leftY = {height / 2 - 104};
         int[] rightY = {height / 2 - 104};
@@ -458,7 +467,9 @@ public final class MultitoolRadialScreen extends com.nstut.openui.minecraft.UiSc
 
 
     @Override protected com.nstut.openui.api.UIComponent buildUI() {
-        if(settingsLayout==null || inlineModifiers==null) return com.nstut.openui.api.Ui.column();
+        if(settingsLayout==null) return com.nstut.openui.api.Ui.column();
+        if(inlineModifiers==null) return com.nstut.openui.api.Ui.column(
+                new com.nstut.openui.api.TextWidget("Waiting for profile sync..."));
         com.nstut.openui.api.Radial wheel=new com.nstut.openui.api.Radial(settingsLayout.radius,36);
         for(BaseMode action:actionsFor(selectedTool())) {
             com.nstut.openui.api.ButtonWidget button=new com.nstut.openui.api.ButtonWidget(Component.translatable(action.i18n())).radius(2)

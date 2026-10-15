@@ -81,7 +81,7 @@ public final class LegacyMultitoolScreen extends com.nstut.openui.minecraft.UiSc
         selectedAction = MultitoolState.getProfile(stack, selectedTool());
     }
 
-    @Override protected void init() { rebuildSettings(); super.init(); }
+    @Override protected void init() { populateContextButtons(); super.init(); }
 
     @Override public void tick() {
         if (minecraft.player == null) return;
