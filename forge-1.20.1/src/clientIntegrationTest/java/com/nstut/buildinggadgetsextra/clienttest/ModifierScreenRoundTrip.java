@@ -22,13 +22,25 @@ public final class ModifierScreenRoundTrip {
             if(phase==0) {
                 if(MultitoolState.getActiveMode(stack)!=com.nstut.buildinggadgetsextra.common.MultitoolMode.BUILD) return false;
                 Minecraft.getInstance().options.guiScale().set(4); Minecraft.getInstance().resizeDisplay();
-                screen=new MultitoolRadialScreen(stack); Minecraft.getInstance().setScreen(screen); screen.openActiveProfile(); panel=screen.inlineModifiers();
+                screen=new MultitoolRadialScreen(stack); Minecraft.getInstance().setScreen(screen); screen.openActiveProfile(); ToolSettingsPanelChecks.run(screen.uiRuntime()); screen.openActiveProfile(); panel=screen.inlineModifiers();
                 if(screen.uiRuntime()==null) throw new IllegalStateException("OpenUI screen runtime was not initialized");
                 if(panel==null) throw new IllegalStateException("inline Build settings missing");
                 captureTicks=0; phase=8; return false;
             }
             if(phase==8) {
                 if(++captureTicks<20) return false;
+                Minecraft.getInstance().getWindow().toggleFullScreen(); captureTicks=0;phase=9;return false;
+            }
+            if(phase==9) {
+                if(++captureTicks<20) return false;
+                verifyVisibleResize();capture("inline-fullscreen.png");
+                Minecraft.getInstance().getWindow().toggleFullScreen();captureTicks=0;phase=10;return false;
+            }
+            if(phase==10) {
+                if(++captureTicks<20) return false;
+                verifyVisibleResize();
+                ButtonWidget undo=findButton(screen.uiRuntime().root(),"Undo");
+                if(undo==null || undo.parent().child(undo.parent().childCount()-1)!=undo) throw new IllegalStateException("Undo must be the rightmost action");
                 capture("inline-collapsed-scale4.png");
                 press(panel.panel.toggles[0]); panel.expand(0);
                 edit(0,"2"); edit(1,"3"); edit(3,"-2"); phase=1; return false;
@@ -70,6 +82,17 @@ public final class ModifierScreenRoundTrip {
             }
             return true;
         } catch(RuntimeException failure) { throw new IllegalStateException("inline editor fixture phase="+phase,failure); }
+    }
+    private void verifyVisibleResize() {
+        int w=screen.width,h=screen.height;
+        for(int[] size:new int[][]{{320,240},{w,h},{640,360},{w,h}}) {
+            screen.resize(Minecraft.getInstance(),size[0],size[1]); panel=screen.inlineModifiers();
+            screen.uiRuntime().root().layoutTree(Minecraft.getInstance().font,0,0,screen.width,screen.height);
+            ButtonWidget array=panel.panel.toggles[0];
+            if(array.getWidth()<=0 || array.getHeight()<=0 || array.getY()>=screen.height-20)
+                throw new IllegalStateException("settings hidden after resize: "+size[0]+"x"+size[1]+" Array="+array.getX()+","+array.getY()+","+array.getWidth()+","+array.getHeight());
+        }
+        capture("inline-after-resize.png");
     }
     private void verifyDraftResize() {
         TextField input=panel.panel.field(1);
@@ -115,6 +138,11 @@ public final class ModifierScreenRoundTrip {
         graphics.drawManaged(()->screen.render(graphics,0,0,0)); graphics.flush();
         modelView.popPose(); com.mojang.blaze3d.systems.RenderSystem.applyModelViewMatrix();
         com.mojang.blaze3d.systems.RenderSystem.setProjectionMatrix(previous,com.mojang.blaze3d.vertex.VertexSorting.ORTHOGRAPHIC_Z);
+    }
+    public static void captureCurrent(String name) {
+        ModifierScreenRoundTrip fixture=new ModifierScreenRoundTrip();
+        fixture.screen=(MultitoolRadialScreen)Minecraft.getInstance().screen;
+        fixture.capture(name);
     }
     private void capture(String name) {
         renderFrame();

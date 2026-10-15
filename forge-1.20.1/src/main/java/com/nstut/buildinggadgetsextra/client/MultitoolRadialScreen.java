@@ -1,8 +1,6 @@
 package com.nstut.buildinggadgetsextra.client;
 
 import com.direwolf20.buildinggadgets2.api.gadgets.GadgetModes;
-import com.direwolf20.buildinggadgets2.client.screen.CopyGUI;
-import com.direwolf20.buildinggadgets2.client.screen.DestructionGUI;
 import com.direwolf20.buildinggadgets2.client.screen.MaterialListGUI;
 import com.direwolf20.buildinggadgets2.client.screen.widgets.GuiIconActionable;
 import com.direwolf20.buildinggadgets2.client.screen.widgets.IncrementalSliderWidget;
@@ -22,7 +20,6 @@ import com.nstut.buildinggadgetsextra.network.MirrorPacket;
 import com.nstut.buildinggadgetsextra.network.MultitoolCutPacket;
 import com.nstut.buildinggadgetsextra.network.ExtraNetwork;
 import com.nstut.buildinggadgetsextra.network.MultitoolSelectionPacket;
-import com.direwolf20.buildinggadgets2.client.screen.PasteGUI;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
@@ -32,7 +29,6 @@ import net.minecraft.world.item.ItemStack;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.lang.reflect.Constructor;
 
 public final class MultitoolRadialScreen extends com.nstut.openui.minecraft.UiScreen {
     private static final int TOOL_RADIUS = 68;
@@ -43,6 +39,9 @@ public final class MultitoolRadialScreen extends com.nstut.openui.minecraft.UiSc
     private final ItemStack stack;
     private com.nstut.buildinggadgetsextra.common.ProfileSettingsLayout settingsLayout;
     private InlineModifiers inlineModifiers;
+    private com.nstut.buildinggadgetsextra.client.ui.ToolSettingsPanel toolSettings;
+    private MultitoolMode settingsProfile;
+    public com.nstut.buildinggadgetsextra.client.ui.ToolSettingsPanel toolSettings() { return toolSettings; }
     private final com.nstut.buildinggadgetsextra.client.ui.ProfileControls profileControls=new com.nstut.buildinggadgetsextra.client.ui.ProfileControls();
     private com.nstut.openui.api.UIComponent profileRange;
 
@@ -85,18 +84,21 @@ public final class MultitoolRadialScreen extends com.nstut.openui.minecraft.UiSc
 
     @Override
     protected void init() {
-        rebuildContextButtons();
+        populateContextButtons();
         super.init();
     }
 
     private void rebuildContextButtons() { populateContextButtons(); rebuildUI(); }
     private void populateContextButtons() {
+        com.nstut.buildinggadgetsextra.client.ui.ToolSettingsPanel previousSettings=toolSettings;
+        MultitoolMode previousProfile=settingsProfile;
+        toolSettings=null; settingsProfile=selectedTool();
         profileControls.clear(); profileRange=null;
 
         InlineModifiers previous = inlineModifiers;
         clearWidgets();
         inlineModifiers = null; settingsLayout = null;
-        if (navigation.page() == MultitoolMenuState.Page.SUBMENU && (selectedTool() == MultitoolMode.BUILD || selectedTool() == MultitoolMode.EXCHANGING)) {
+        if (navigation.page() == MultitoolMenuState.Page.SUBMENU) {
             settingsLayout = new com.nstut.buildinggadgetsextra.common.ProfileSettingsLayout(width,height);
         }
         if (navigation.page() != MultitoolMenuState.Page.SUBMENU) return;
@@ -105,9 +107,13 @@ public final class MultitoolRadialScreen extends com.nstut.openui.minecraft.UiSc
         int[] rightY = {height / 2 - 104};
 
         if (selectedTool() == MultitoolMode.DESTRUCTION) {
-            addUpstream(false, rightY, "copypaste_opengui",
-                    Component.translatable("buildinggadgetsextra.multitool.configure_destruction"), false,
-                    null, () -> Minecraft.getInstance().setScreen(new DestructionGUI(stack, false)));
+            toolSettings=createToolSettings("destruction");
+            if(previousProfile==settingsProfile) toolSettings.restoreFrom(previousSettings);
+            addUpstream(false,rightY,"anchor",Component.translatable("buildinggadgets2.radialmenu.anchor"),true,null,()->PacketHandler.sendToServer(new PacketAnchor()));
+            addUpstream(false,rightY,"affecttiles",Component.translatable("buildinggadgets2.screen.affecttiles"),true,"affecttiles",null);
+            addUpstream(false,rightY,"raytrace_fluid",Component.translatable("buildinggadgets2.radialmenu.raytracefluids"),true,"raytracefluid",null);
+            addRenderTypeButton(leftY);
+            addUpstream(false,rightY,"undo",Component.translatable("buildinggadgets2.radialmenu.undo"),false,null,()->PacketHandler.sendToServer(new PacketUndo()));
             return;
         }
 
@@ -158,9 +164,8 @@ public final class MultitoolRadialScreen extends com.nstut.openui.minecraft.UiSc
         if (selectedTool() == MultitoolMode.COPY_PASTE || cutTool) {
             addUpstream(false, rightY, "paste_replace", Component.translatable("buildinggadgets2.screen.paste_replace"), true,
                     "pastereplace", null);
-            addUpstream(false, rightY, "copypaste_opengui", Component.translatable("buildinggadgets2.radialmenu.copypastemenu"), false,
-                    null, () -> Minecraft.getInstance().setScreen("paste".equals(effectiveMode)
-                            ? createPasteGUI(stack) : new CopyGUI(stack)));
+            toolSettings=createToolSettings("paste".equals(effectiveMode)?"paste":"copy");
+            if(previousProfile==settingsProfile) toolSettings.restoreFrom(previousSettings);
             if (RadialButtonPolicy.showRotateButton(effectiveMode)) {
                 addUpstream(true, leftY, "rotate", Component.translatable("buildinggadgets2.radialmenu.rotate"), false,
                         null, () -> PacketHandler.sendToServer(new PacketRotate()));
@@ -177,38 +182,66 @@ public final class MultitoolRadialScreen extends com.nstut.openui.minecraft.UiSc
         boolean templateMirrorTool = RadialButtonPolicy.showMirrorButtons(effectiveMode)
                 && (selectedTool() == MultitoolMode.COPY_PASTE || selectedTool() == MultitoolMode.CUT_PASTE);
         if (templateMirrorTool) {
-            addRenderableWidget(new MirrorIconButton(menuCenterX() - 136, next(leftY),
+            addAddonIcon(
                     MirrorIconButton.addonSettingIcon("mirror_horizontal"), RadialIconLayout.SOURCE_TEXTURE_SIZE,
                     Component.translatable(liveMirrorTool
                             ? ExtraConstants.LIVE_MIRROR_HORIZONTAL : ExtraConstants.MIRROR_HORIZONTAL),
-                    () -> ExtraNetwork.sendToServer(new MirrorPacket(false))));
-            addRenderableWidget(new MirrorIconButton(menuCenterX() - 136, next(leftY),
+                    () -> ExtraNetwork.sendToServer(new MirrorPacket(false)));
+            addAddonIcon(
                     MirrorIconButton.addonSettingIcon("mirror_vertical"), RadialIconLayout.SOURCE_TEXTURE_SIZE,
                     Component.translatable(liveMirrorTool
                             ? ExtraConstants.LIVE_MIRROR_VERTICAL : ExtraConstants.MIRROR_VERTICAL),
-                    () -> ExtraNetwork.sendToServer(new MirrorPacket(true))));
+                    () -> ExtraNetwork.sendToServer(new MirrorPacket(true)));
         }
 
         RadialButtonPolicy.FileAction fileAction = RadialButtonPolicy.fileAction(cutTool, effectiveMode);
         if (fileAction != RadialButtonPolicy.FileAction.NONE) {
             boolean load = fileAction == RadialButtonPolicy.FileAction.LOAD;
             ResourceLocation fileIcon = MirrorIconButton.addonSettingIcon(load ? "load" : "save");
-            addRenderableWidget(new MirrorIconButton(menuCenterX() + 112, next(rightY), fileIcon,
+            addAddonIcon(fileIcon,
                     RadialIconLayout.SOURCE_TEXTURE_SIZE,
                     Component.translatable(load ? ExtraConstants.LOAD_STRUCTURE : ExtraConstants.SAVE_STRUCTURE),
-                    load ? ClientStructureFiles::chooseLoad : ClientStructureFiles::chooseSave));
+                    load ? ClientStructureFiles::chooseLoad : ClientStructureFiles::chooseSave);
         }
 
         if (cutTool && !hasCutBuffer) {
-            addRenderableWidget(new MirrorIconButton(menuCenterX() + 112, next(rightY),
+            addAddonIcon(
                     MirrorIconButton.upstreamSettingIcon("cut"), RadialIconLayout.MODERN_SETTING_ICON_SIZE,
                     Component.translatable("buildinggadgets2.radialmenu.cut"),
-                    () -> ExtraNetwork.sendToServer(new MultitoolCutPacket())));
+                    () -> ExtraNetwork.sendToServer(new MultitoolCutPacket()));
         }
-        if(settingsLayout != null) {
+        if(selectedTool() == MultitoolMode.BUILD || selectedTool() == MultitoolMode.EXCHANGING) {
             inlineModifiers = new InlineModifiers(this::authoritativeStack);
             inlineModifiers.restoreFrom(previous);
         }
+    }
+
+    private void addAddonIcon(String name,Component label,Runnable action) { addAddonIcon(MirrorIconButton.addonSettingIcon(name),44,label,action); }
+    private void addAddonIcon(String name,int source,Component label,Runnable action) { addAddonIcon(MirrorIconButton.upstreamSettingIcon(name),source,label,action); }
+
+    private void addAddonIcon(ResourceLocation icon,int source,Component label,Runnable action) {
+        profileControls.icon(icon.getNamespace(),icon.getPath(),source,label.getString(),()->false,()->navigate(action));
+    }
+
+    private com.nstut.buildinggadgetsextra.client.ui.ToolSettingsPanel createToolSettings(String kind) {
+        ItemStack held=authoritativeStack(); final Object connection=minecraft.getConnection();
+        if(kind.equals("destruction")) {
+            int[] initial=new int[5];String[] names={"left","right","up","down","depth"};
+            for(int i=0;i<5;i++) initial[i]=GadgetNBT.getToolValue(held,names[i]);
+            return new com.nstut.buildinggadgetsextra.client.ui.ToolSettingsPanel(kind,initial,0,ExtraConfig.multitoolDestructionSide(),
+                v->com.nstut.buildinggadgetsextra.common.MultitoolRangePolicy.validDestruction(v[0],v[1],v[2],v[3],v[4],ExtraConfig.multitoolDestructionSide(),ExtraConfig.multitoolDestructionSpan()),
+                v->{if(minecraft.getConnection()==connection) PacketHandler.sendToServer(new PacketDestructionRanges(v[0],v[1],v[2],v[3],v[4]));});
+        }
+        net.minecraft.core.BlockPos start=kind.equals("paste")?GadgetNBT.getRelativePaste(held):GadgetNBT.getCopyStartPos(held);
+        net.minecraft.core.BlockPos end=GadgetNBT.getCopyEndPos(held);
+        int[] initial=kind.equals("paste")?new int[]{start.getX(),start.getY(),start.getZ()}:new int[]{start.getX(),start.getY(),start.getZ(),end.getX(),end.getY(),end.getZ()};
+        com.nstut.buildinggadgetsextra.client.ui.ToolSettingsPanel result=new com.nstut.buildinggadgetsextra.client.ui.ToolSettingsPanel(kind,initial,kind.equals("paste")?-16:-30000000,kind.equals("paste")?16:30000000,v->true,v->{
+            if(minecraft.getConnection()!=connection) return;
+            if(kind.equals("paste")) PacketHandler.sendToServer(new PacketRelativePaste(v[0],v[1],v[2]));
+            else PacketHandler.sendToServer(new PacketCopyCoords(new net.minecraft.core.BlockPos(v[0],v[1],v[2]),new net.minecraft.core.BlockPos(v[3],v[4],v[5])));
+        });
+        if(kind.equals("copy")) result.clearTo(new int[]{GadgetNBT.nullPos.getX(),GadgetNBT.nullPos.getY(),GadgetNBT.nullPos.getZ(),GadgetNBT.nullPos.getX(),GadgetNBT.nullPos.getY(),GadgetNBT.nullPos.getZ()});
+        return result;
     }
 
     private void addUpstream(boolean left, int[] y, String icon, Component tooltip, boolean selectable,
@@ -243,7 +276,7 @@ public final class MultitoolRadialScreen extends com.nstut.openui.minecraft.UiSc
     private GuiIconActionable contextIcon(int x,int y,String icon,net.minecraft.network.chat.Component tooltip,boolean selectable,java.util.function.Predicate<Boolean> action) {
         if(settingsLayout!=null) {
             profileControls.icon("buildinggadgets2","textures/gui/setting/"+icon+".png",15,tooltip.getString(),
-                    ()->selectable && action.test(false),()->{ if(inlineModifiers!=null) inlineModifiers.navigate(()->action.test(true),false); });
+                    ()->selectable && action.test(false),()->navigate(()->action.test(true)));
             return null;
         }
         return new GuiIconActionable(x,y,icon,tooltip,selectable,action);
@@ -261,7 +294,7 @@ public final class MultitoolRadialScreen extends com.nstut.openui.minecraft.UiSc
 
     @Override
     public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-        if(settingsLayout!=null && inlineModifiers!=null) { super.render(graphics,mouseX,mouseY,partialTick); return; }
+        if(settingsLayout!=null) { super.render(graphics,mouseX,mouseY,partialTick); return; }
         int cx = menuCenterX();
         int cy = height / 2;
         double dx = mouseX - cx;
@@ -453,21 +486,23 @@ public final class MultitoolRadialScreen extends com.nstut.openui.minecraft.UiSc
 
 
     @Override protected com.nstut.openui.api.UIComponent buildUI() {
-        if(settingsLayout==null || inlineModifiers==null) return com.nstut.openui.api.Ui.column();
+        if(settingsLayout==null) return com.nstut.openui.api.Ui.column();
         com.nstut.openui.api.Radial wheel=new com.nstut.openui.api.Radial(settingsLayout.radius,36);
         for(BaseMode action:actionsFor(selectedTool())) {
             com.nstut.openui.api.ButtonWidget button=new com.nstut.openui.api.ButtonWidget(Component.translatable(action.i18n())).radius(2)
                     .content(com.nstut.openui.controls.IconWidget.texture("buildinggadgets2","textures/gui/mode/"+action.getId().getPath()+".png",15,15).size(24))
-                    .onPress(()->inlineModifiers.navigate(()->{ selectedAction=action; sendSelection(); rebuildContextButtons(); },false));
+                    .onPress(()->navigate(()->{ selectedAction=action; sendSelection(); rebuildContextButtons(); }));
             button.setActive(action.equals(selectedAction)); button.tooltip(Component.translatable(action.i18n())); wheel.item(button);
         }
         String label=selectedAction==null?"":Component.translatable(selectedAction.i18n()).getString();
-        wheel.center(com.nstut.buildinggadgetsextra.client.ui.ModifierPanel.button("Back",()->inlineModifiers.navigate(()->{
+        wheel.center(com.nstut.buildinggadgetsextra.client.ui.ModifierPanel.button("Back",()->navigate(()->{
             navigation.back(); rememberedPage=MultitoolMenuState.Page.GENERAL; rebuildContextButtons();
-        },false)),settingsLayout.backRadius*2);
+        })),settingsLayout.backRadius*2);
         return profileControls.root(Component.translatable(selectedTool().translationKey()).getString(),
-                wheel,label,settingsLayout.panelWidth,profileRange,inlineModifiers.panel);
+                wheel,label,settingsLayout.panelWidth,profileRange,inlineModifiers==null?null:inlineModifiers.panel,toolSettings);
     }
+
+    private void navigate(Runnable action) { if(toolSettings!=null && !toolSettings.flush()) return; if(inlineModifiers!=null) inlineModifiers.navigate(action,false); else action.run(); }
 
     private MultitoolMode selectedTool() {
         return navigation.selectedTool();
@@ -495,16 +530,6 @@ public final class MultitoolRadialScreen extends com.nstut.openui.minecraft.UiSc
             case BUILD, EXCHANGING, DESTRUCTION -> RadialIconLayout.SOURCE_TEXTURE_SIZE;
             case COPY_PASTE, CUT_PASTE -> RadialIconLayout.MODERN_SETTING_ICON_SIZE;
         };
-    }
-
-    private static PasteGUI createPasteGUI(ItemStack stack) {
-        try {
-            Constructor<PasteGUI> ctor = PasteGUI.class.getDeclaredConstructor(ItemStack.class);
-            ctor.setAccessible(true);
-            return ctor.newInstance(stack);
-        } catch (ReflectiveOperationException e) {
-            throw new RuntimeException("Failed to create PasteGUI", e);
-        }
     }
 
     @Override

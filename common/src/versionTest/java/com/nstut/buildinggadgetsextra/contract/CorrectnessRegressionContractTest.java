@@ -120,7 +120,7 @@ class CorrectnessRegressionContractTest {
             contains(adapter, "mouseClicked", "legacy real-screen click path");
         } else {
             adapter = read(root.resolve("common/src/clientIntegrationModern/java/com/nstut/buildinggadgetsextra/clienttest/ModernClientRangeAdapter.java"));
-            contains(adapter, "IncrementalSliderWidget", "modern real range widget observation");
+            contains(adapter, "toolEditor(\"destruction\")", "shared inline destruction control observation");
             contains(adapter, "clicker.click", "version-adapted real-screen click path");
             String observer = read(root.resolve("common/src/clientIntegrationModern/java/com/nstut/buildinggadgetsextra/clienttest/ModernServerRangeObserver.java"));
             contains(observer, "authoritative server range", "independent authoritative-server observation");

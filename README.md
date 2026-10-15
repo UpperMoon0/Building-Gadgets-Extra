@@ -184,8 +184,12 @@ OpenUI artifact to Maven local. Use Java 21 for the older build tools and Java 2
 26.x; `JAVA21_HOME` / `JAVA25_HOME` can select those installations. The gadget jar
 contains neither dependency's classes. CI prepares the same pinned revisions.
 
-Build/Exchange use one shared OpenUI control tree for their wheel, native settings,
-range and inline modifiers. Minecraft adapters retain packet and item access only.
+All five multitool profiles use one shared OpenUI settings panel and wheel style.
+Build/Exchange include range and inline modifiers; Copy/Cut include selection coordinates,
+Paste includes offsets, and Destruction includes dimensions and Revert. Undo is the
+rightmost action. Copy coordinates switch between world and relative positions (legacy
+server configuration still controls absolute-coordinate editing). Numeric drafts survive
+resize and fullscreen changes. Minecraft adapters retain packet and item access only.
 PacketWeave handles chunking, bounded assembly, expiry and byte accounting; gadget
 identity, active-profile checks, response correlation and local save paths remain
 application policy.
