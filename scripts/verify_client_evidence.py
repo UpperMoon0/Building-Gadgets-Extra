@@ -5,12 +5,12 @@ import struct
 from pathlib import Path
 from uuid import UUID
 
-CLIENT_STEPS = {"empty_selection_disabled", "first_corner_disabled", "selection_received", "automatic_paste_menu",
+CLIENT_STEPS = {"empty_clear_selection_only", "typed_coordinates_selection_only", "clear_selection_only", "empty_selection_disabled", "first_corner_disabled", "selection_received", "automatic_paste_menu",
                 "resize_preserved_paste", "fullscreen_preserved_paste", "reopen_preserved_paste",
                 "profile_preserved_buffer", "preview_received", "world_move_received", "buffer_consumed", "returned_to_selection"}
-SERVER_STEPS = {"terrain_ready", "first_corner_received", "second_corner_received", "cut_accepted",
+SERVER_STEPS = {"typed_coordinates_selection_only", "clear_selection_only", "terrain_ready", "first_corner_received", "second_corner_received", "cut_accepted",
                 "source_removed", "destination_placed", "buffer_consumed", "returned_to_selection"}
-SCREENSHOTS = ("cut-first-corner.png", "cut-ready.png", "cut-paste-ready.png", "cut-after-paste.png")
+SCREENSHOTS = ("cut-typed-selection.png", "cut-first-corner.png", "cut-ready.png", "cut-paste-ready.png", "cut-after-paste.png")
 
 
 def verify(directory, mode, require_cut=False, require_screenshots=False, require_legacy_cut_state=False):

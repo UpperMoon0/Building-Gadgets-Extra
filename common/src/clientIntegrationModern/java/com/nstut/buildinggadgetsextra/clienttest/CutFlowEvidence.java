@@ -16,7 +16,7 @@ final class CutFlowEvidence {
             Files.deleteIfExists(directory().resolve(role+"-fail.txt"));
             Files.deleteIfExists(directory().resolve("cut-flow-"+role+".json"));
             Files.deleteIfExists(directory().resolve("cut-flow-"+role+"-fail.txt"));
-            if(role.equals("client")) for(String name:new String[]{"cut-first-corner.png","cut-ready.png","cut-paste-ready.png","cut-after-paste.png"})
+            if(role.equals("client")) for(String name:new String[]{"cut-typed-selection.png","cut-first-corner.png","cut-ready.png","cut-paste-ready.png","cut-after-paste.png"})
                 Files.deleteIfExists(directory().resolve(name));
         } catch(java.io.IOException e) { throw new IllegalStateException("Cannot reset cut flow evidence",e); }
     }

@@ -19,6 +19,26 @@ class CorrectnessRegressionContractTest {
     private final boolean legacyCut = Boolean.parseBoolean(requiredProperty("bge.legacyCut"));
 
     @Test
+    void modernCutCoordinatesUseASelectionOnlyProfileBoundPacket() throws Exception {
+        if (legacyCut) return;
+        String handler = source("network/MultitoolCutSelectionHandler.java");
+        contains(handler, "MultitoolMode.CUT_PASTE", "server Cut profile guard");
+        contains(handler, "GadgetNBT.hasCopyUUID(stack)", "pending contents guard");
+        contains(handler, "ServerTickHandler.gadgetWorking", "in-flight cut guard");
+        contains(handler, "GadgetNBT.setCopyStartPos(stack, start)", "selection update");
+        contains(handler, "GadgetNBT.setCopyEndPos(stack, end)", "selection update");
+        assertFalse(handler.contains("setCopyUUID"), label("selection edits must not create copy buffers"));
+        assertFalse(handler.contains("buildAndStore"), label("selection edits must not copy the world"));
+        String screen = source("client/MultitoolRadialScreen.java");
+        contains(screen, "else if(profile==MultitoolMode.CUT_PASTE)", "dedicated Cut coordinate route");
+        contains(screen, "new com.nstut.buildinggadgetsextra.network.MultitoolCutSelection", "selection-only packet");
+        contains(screen, "new " + ("forge".equals(loader) ? "PacketCopyCoords" : "CopyCoordsPayload"), "unchanged normal Copy route");
+        String scenario = read(module.getParent().resolve("common/src/clientIntegrationModern/java/com/nstut/buildinggadgetsextra/clienttest/CutPasteRoundTrip.java"));
+        for (String step : new String[]{"empty_clear_selection_only", "typed_coordinates_selection_only", "clear_selection_only"})
+            contains(scenario, step, "required real-client coordinate regression");
+    }
+
+    @Test
     void externalStructureImportsStayOnTheUntrustedCopyPastePath() throws Exception {
         String bridge = source("structure/NativeStructureBridge.java");
         contains(bridge, "StructureLimits.checkedVolume", "overflow-safe decoded structure volume validation");

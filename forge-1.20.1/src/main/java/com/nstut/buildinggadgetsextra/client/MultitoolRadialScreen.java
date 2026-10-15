@@ -264,6 +264,7 @@ public final class MultitoolRadialScreen extends com.nstut.openui.minecraft.UiSc
         com.nstut.buildinggadgetsextra.client.ui.ToolSettingsPanel result=new com.nstut.buildinggadgetsextra.client.ui.ToolSettingsPanel(kind,initial,kind.equals("paste")?-16:-30000000,kind.equals("paste")?16:30000000,v->true,v->{
             if(!currentProfile(connection,profile)) return;
             if(kind.equals("paste")) PacketHandler.sendToServer(new PacketRelativePaste(v[0],v[1],v[2]));
+            else if(profile==MultitoolMode.CUT_PASTE) ExtraNetwork.sendToServer(new com.nstut.buildinggadgetsextra.network.MultitoolCutSelectionPacket(new net.minecraft.core.BlockPos(v[0],v[1],v[2]),new net.minecraft.core.BlockPos(v[3],v[4],v[5])));
             else PacketHandler.sendToServer(new PacketCopyCoords(new net.minecraft.core.BlockPos(v[0],v[1],v[2]),new net.minecraft.core.BlockPos(v[3],v[4],v[5])));
         });
         if(kind.equals("copy")) result.clearTo(new int[]{GadgetNBT.nullPos.getX(),GadgetNBT.nullPos.getY(),GadgetNBT.nullPos.getZ(),GadgetNBT.nullPos.getX(),GadgetNBT.nullPos.getY(),GadgetNBT.nullPos.getZ()});

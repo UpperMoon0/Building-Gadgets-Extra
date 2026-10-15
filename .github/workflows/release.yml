@@ -178,7 +178,7 @@ jobs:
           [[ -f "$changelog_path" ]] \
             || { echo "Missing release changelog: $changelog_path" >&2; exit 1; }
 
-          relations='{"projects":[{"slug":"building-gadgets","type":"requiredDependency"}]}'
+          relations='{"projects":[{"slug":"building-gadgets","type":"requiredDependency"},{"slug":"packetweave","type":"requiredDependency"},{"slug":"openui-mc","type":"requiredDependency"}]}'
           targets=(
             "neoforge-26.1.2:NeoForge:26.1.2:Java 25:neoforge-26.1.2/build/libs/building-gadgets-extra-neoforge-26.1.2-${MOD_VERSION}.jar"
             "neoforge-1.21.1:NeoForge:1.21.1:Java 21:neoforge-1.21.1/build/libs/building-gadgets-extra-neoforge-1.21.1-${MOD_VERSION}.jar"

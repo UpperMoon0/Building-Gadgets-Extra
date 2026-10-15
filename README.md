@@ -194,6 +194,7 @@ OpenUI artifact to Maven local. Use Java 21 for the older build tools and Java 2
 contains neither dependency's classes. CI prepares the same pinned revisions.
 
 All five multitool profiles use one shared OpenUI settings panel and wheel style.
+Typed Cut coordinates and Clear selection only change the selected corners; press Cut selection to create the pending paste buffer. Normal Copy coordinates keep the upstream snapshot behavior.
 Build/Exchange include range and inline modifiers; Copy/Cut include selection coordinates,
 Paste includes offsets, and Destruction includes dimensions and Revert. Undo is the
 rightmost action. Copy coordinates switch between world and relative positions (legacy

@@ -37,6 +37,10 @@ The server setting `multitoolRangeMultiplier` defaults to 2.0 (allowed: 1.0-4.0)
 
 Creative players can use the multitool with an empty FE battery. Survival players still require and consume the configured energy for the corresponding gadget profile.
 
+## Dependencies
+
+Install [PacketWeave 0.1.3+](https://www.curseforge.com/minecraft/mc-mods/packetweave) on both server and client. Clients also require [OpenUI MC 0.0.13+](https://www.curseforge.com/minecraft/mc-mods/openui-mc). Use the matching Minecraft/loader build for each dependency, together with Building Gadgets or Building Gadgets 2 below.
+
 ## Multiplayer
 
 Building Gadgets Extra works in singleplayer and multiplayer. For multiplayer, install it on the server and on each player's client. Every player keeps their own saved-build collection on their computer, while gadget/template changes remain server-authoritative.

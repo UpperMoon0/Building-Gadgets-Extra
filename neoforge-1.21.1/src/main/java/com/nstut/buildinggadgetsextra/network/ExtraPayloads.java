@@ -8,12 +8,17 @@ public final class ExtraPayloads {
     }
 
     public static void register(RegisterPayloadHandlersEvent event) {
-        PayloadRegistrar registrar = event.registrar("7");
+        PayloadRegistrar registrar = event.registrar("8");
         registrar.playToClient(CopyDataPayload.TYPE, CopyDataPayload.STREAM_CODEC,
                 (payload, context) -> context.enqueueWork(() ->
                         com.nstut.buildinggadgetsextra.client.ClientCopyData.receive(payload)));
         registrar.playToServer(MultitoolSelectionPayload.TYPE, MultitoolSelectionPayload.STREAM_CODEC,
                 MultitoolSelectionHandler::handle);
+        registrar.playToServer(MultitoolCutSelectionPayload.TYPE, MultitoolCutSelectionPayload.STREAM_CODEC,
+                (payload, context) -> context.enqueueWork(() -> {
+                    if (context.player() instanceof net.minecraft.server.level.ServerPlayer player)
+                        MultitoolCutSelectionHandler.apply(player, payload.start(), payload.end());
+                }));
         registrar.playToServer(MultitoolCutPayload.TYPE, MultitoolCutPayload.STREAM_CODEC,
                 MultitoolCutHandler::handle);
         registrar.playToServer(ModifierPayload.TYPE, ModifierPayload.STREAM_CODEC,

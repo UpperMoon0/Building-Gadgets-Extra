@@ -23,7 +23,9 @@ class ReleaseDocumentationContractTest {
         contains(workflow, "test -s \"changelog/$MOD_VERSION.md\"");
         contains(workflow, "CURSEFORGE_API_TOKEN");
         contains(workflow, "CURSEFORGE_PROJECT_ID: '1614988'");
-        contains(workflow, "building-gadgets");
+        contains(workflow, "\"slug\":\"building-gadgets\",\"type\":\"requiredDependency\"");
+        contains(workflow, "\"slug\":\"packetweave\",\"type\":\"requiredDependency\"");
+        contains(workflow, "\"slug\":\"openui-mc\",\"type\":\"requiredDependency\"");
         contains(workflow, "body_path: changelog/${{ steps.version.outputs.value }}.md");
         contains(workflow, "duplicate");
     }

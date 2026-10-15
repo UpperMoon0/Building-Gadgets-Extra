@@ -13,7 +13,7 @@ import java.util.function.Consumer;
 
 /** The same real network/GUI lifecycle runs on integrated and dedicated servers on every BG2 port. */
 public final class CutPasteRoundTrip {
-    private enum Stage { START, TERRAIN, FIRST_CORNER, SECOND_CORNER, PASTE_MENU, FULLSCREEN, WINDOWED, REOPEN,
+    private enum Stage { START, EMPTY_CLEAR, TYPED_COORDINATES, CLEARED_SELECTION, TERRAIN, FIRST_CORNER, SECOND_CORNER, PASTE_MENU, FULLSCREEN, WINDOWED, REOPEN,
         BUILD_PROFILE, CUT_PROFILE, DESTINATION, PASTED, FINISHED }
     private Stage stage=Stage.START;
     private int ticks,settle;
@@ -36,7 +36,28 @@ public final class CutPasteRoundTrip {
                 case START:
                     CutFlowEvidence.start("client");gadget=GadgetNBT.getUUID(held());
                     require(!button("Cut selection").isEnabled(),"Cut enabled with no selection");
-                    steps.add("empty_selection_disabled");screen().onClose();next(Stage.TERRAIN);break;
+                    steps.add("empty_selection_disabled");click.accept(button("Clear selection"));next(Stage.EMPTY_CLEAR);break;
+                case EMPTY_CLEAR:
+                    if(!aimedAt(CutPasteServerScenario.SOURCE) || ++settle<20) break;
+                    selectionOnly();require(GadgetNBT.getCopyStartPos(held()).equals(GadgetNBT.nullPos)
+                            && GadgetNBT.getCopyEndPos(held()).equals(GadgetNBT.nullPos),"empty Clear changed selection");
+                    require(!button("Cut selection").isEnabled(),"empty Clear enabled Cut");steps.add("empty_clear_selection_only");
+                    BlockPos typed=CutPasteServerScenario.SOURCE;
+                    int[] coords={typed.getX(),typed.getY(),typed.getZ(),typed.getX(),typed.getY(),typed.getZ()};
+                    for(int i=0;i<coords.length;i++) screen().toolSettings().field(i).setValue(Integer.toString(coords[i]));
+                    require(screen().toolSettings().flush(),"typed Cut coordinates rejected");next(Stage.TYPED_COORDINATES);break;
+                case TYPED_COORDINATES:
+                    if(!GadgetNBT.getCopyStartPos(held()).equals(CutPasteServerScenario.SOURCE)
+                            || !GadgetNBT.getCopyEndPos(held()).equals(CutPasteServerScenario.SOURCE)) break;
+                    if(++settle<10) break;selectionOnly();require(button("Cut selection").isEnabled(),"typed coordinates did not enable Cut");
+                    steps.add("typed_coordinates_selection_only");capture.accept("cut-typed-selection.png");
+                    click.accept(button("Clear selection"));next(Stage.CLEARED_SELECTION);break;
+                case CLEARED_SELECTION:
+                    if(!GadgetNBT.getCopyStartPos(held()).equals(GadgetNBT.nullPos)
+                            || !GadgetNBT.getCopyEndPos(held()).equals(GadgetNBT.nullPos)) break;
+                    if(++settle<10) break;selectionOnly();require(!button("Cut selection").isEnabled(),"Clear left Cut enabled");
+                    for(int i=0;i<6;i++) require(screen().toolSettings().field(i).getValue().isEmpty(),"Clear retained a coordinate draft");
+                    steps.add("clear_selection_only");screen().onClose();next(Stage.TERRAIN);break;
                 case TERRAIN:
                     if(!aimedAt(CutPasteServerScenario.SOURCE)) break;
                     CutPasteNativeInput.aimDown();if(++settle<3) break;
@@ -121,6 +142,13 @@ public final class CutPasteRoundTrip {
         // The native general wheel uses the same entry path as a player choosing a profile.
         MultitoolRadialScreen s=screen();double angle=-Math.PI/2+tool.ordinal()*Math.PI*2/MultitoolMode.values().length;
         ModernClientRangeAdapter.clickGeneral(s,s.width/2.0+Math.cos(angle)*68,s.height/2.0+Math.sin(angle)*68);
+    }
+    private void selectionOnly() {
+        require(!GadgetNBT.hasCopyUUID(held()),"coordinate edit/Clear created a copy buffer without cutting");
+        require(GadgetNBT.getMode(held()).getId().getPath().equals("cut"),"coordinate edit/Clear activated Paste");
+        require(screen().toolSettings()!=null && screen().toolSettings().kind().equals("copy"),"selection controls disappeared");
+        require(mc().level.getBlockState(CutPasteServerScenario.SOURCE).is(net.minecraft.world.level.block.Blocks.STONE),"coordinate edit/Clear changed the world");
+        geometry();
     }
     private void pasteMenu() {
         require(screen().toolSettings()!=null && screen().toolSettings().kind().equals("paste"),"Paste controls disappeared");

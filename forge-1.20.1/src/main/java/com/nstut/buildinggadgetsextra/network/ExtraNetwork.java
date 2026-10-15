@@ -8,7 +8,7 @@ import net.minecraftforge.network.PacketDistributor;
 import net.minecraftforge.network.simple.SimpleChannel;
 
 public final class ExtraNetwork {
-    private static final String VERSION = "8";
+    private static final String VERSION = "9";
     private static final SimpleChannel CHANNEL = NetworkRegistry.newSimpleChannel(
             ResourceLocation.fromNamespaceAndPath(ExtraConstants.MOD_ID, "main"),
             () -> VERSION, VERSION::equals, VERSION::equals);
@@ -16,6 +16,9 @@ public final class ExtraNetwork {
     private ExtraNetwork() {}
 
     public static void register() {
+        CHANNEL.registerMessage(9, MultitoolCutSelectionPacket.class,
+                MultitoolCutSelectionPacket::encode, MultitoolCutSelectionPacket::decode,
+                MultitoolCutSelectionPacket::handle, java.util.Optional.of(net.minecraftforge.network.NetworkDirection.PLAY_TO_SERVER));
         CHANNEL.registerMessage(8, ModifierPacket.class, ModifierPacket::encode, ModifierPacket::decode, ModifierPacket::handle,
                 java.util.Optional.of(net.minecraftforge.network.NetworkDirection.PLAY_TO_SERVER));
         CHANNEL.registerMessage(0, MirrorPacket.class,
@@ -36,6 +39,7 @@ public final class ExtraNetwork {
                 CopyDataPacket::handle, java.util.Optional.of(net.minecraftforge.network.NetworkDirection.PLAY_TO_CLIENT));
     }
 
+    public static void sendToServer(MultitoolCutSelectionPacket packet) { CHANNEL.sendToServer(packet); }
     public static void sendToServer(ModifierPacket packet) { CHANNEL.sendToServer(packet); }
     public static void sendToServer(MirrorPacket packet) { CHANNEL.sendToServer(packet); }
     public static void sendToServer(StructureFilePacket packet) { CHANNEL.sendToServer(packet); }
