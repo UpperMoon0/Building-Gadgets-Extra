@@ -31,11 +31,13 @@ class LiveMirrorContractTest {
     @Test
     void modernProfileControlsWaitForAuthoritativeSelection() throws Exception {
         if (legacyCut) return; // The legacy selector updates its local profile before rebuilding.
-        String radial=source("client/MultitoolRadialScreen.java");
-        contains(radial,"MultitoolState.getActiveMode(authoritativeStack()) == selectedTool()", "authoritative profile gate");
-        contains(radial,"settingsLayout != null && !profileReady()", "deferred profile controls");
-        contains(radial,"(inlineModifiers == null) == profileReady()", "rebuild after inventory echo");
-        contains(radial,"Waiting for profile sync", "visible pending profile state");
+        contains(source("client/MultitoolRadialScreen.java"),
+                "MultitoolState.getActiveMode(authoritativeStack()) != selectedTool()", "resize respects pending profile selection");
+        String sync=source("mixin/MultitoolRadialScreenProfileSyncMixin.java");
+        contains(sync,"MultitoolState.getActiveMode(held) != navigation.selectedTool()", "authoritative profile gate");
+        contains(sync,"ci.cancel()", "deferred profile controls");
+        contains(sync,"new MultitoolRadialScreen(held)", "rebuild after inventory echo");
+        contains(sync,"minecraft.setScreen(", "replace visible screen after inventory echo");
     }
 
     @Test

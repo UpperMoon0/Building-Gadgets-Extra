@@ -113,6 +113,10 @@ public final class ModifierScreenRoundTrip {
     }
     private boolean profileReady(ItemStack stack,MultitoolMode mode) {
         if(MultitoolState.getActiveMode(stack)!=mode) return false;
+        // ProfileSyncMixin deliberately replaces the screen after the server echo.
+        // Continue driving the visible screen rather than the retired fixture reference.
+        if(!(Minecraft.getInstance().screen instanceof MultitoolRadialScreen)) return false;
+        screen=(MultitoolRadialScreen)Minecraft.getInstance().screen;
         panel=screen.inlineModifiers();
         return panel!=null && panel.panel.profile()==mode.ordinal();
     }
@@ -124,6 +128,8 @@ public final class ModifierScreenRoundTrip {
         if(!screen.mouseClicked(x,y,0)) throw new IllegalStateException("general profile wheel unreachable");
         screen.mouseReleased(x,y,0);
         if(screen.inlineModifiers()!=null) throw new IllegalStateException("profile controls exposed before server sync");
+        screen.resize(Minecraft.getInstance(),screen.width,screen.height);
+        if(screen.inlineModifiers()!=null) throw new IllegalStateException("resize exposed controls before profile sync");
     }
     private void verifyDraftResize() {
         TextField input=panel.panel.field(1);
