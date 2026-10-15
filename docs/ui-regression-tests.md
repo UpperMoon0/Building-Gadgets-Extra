@@ -14,7 +14,7 @@ The shared native client driver runs on Forge 1.20.1, NeoForge 1.21.1, and NeoFo
 6. Close the menu and wait for the actual preview cache to contain the matching cut UUID and expected block/state/relative position.
 7. Send Paste through the client connection. Require the world update, consumed buffer, empty selection controls, and disabled Cut button.
 
-The server only prepares isolated test terrain and positions the player. It does **not** seed selection coordinates, invoke Paste, or write client assertions. It independently records both corner interactions, accepted cut UUID, source removal, destination placement, consumed buffer, and return to selection. The resulting block remains in the disposable test world so client block-update verification cannot race fixture cleanup. The next run resets the fixture area.
+The server only prepares isolated test terrain and positions the player. It does **not** seed selection coordinates, invoke Paste, or write client assertions. It independently records both corner interactions, accepted cut UUID, source removal, destination placement, consumed buffer, and return to selection. The resulting block remains in the disposable test world so client block-update verification cannot race fixture cleanup. The next run resets the fixture area. Player restoration waits until the client has observed the block updates and leaves the Cut/Paste profile, so distant saved-world spawn positions cannot unload the fixture during validation.
 
 Each stage has a bounded timeout with its name, held mode, buffer state, corners, and player pose in diagnostics. Tests exercise actual fullscreen changes; synthetic layout checks supplement them.
 

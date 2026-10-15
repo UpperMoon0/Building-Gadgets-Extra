@@ -22,12 +22,19 @@ final class CutPasteServerScenario {
     private static float yaw,pitch;
     private static final List<String> steps=new ArrayList<>();
     static void reset() { phase=0;ticks=0;gadget=null;buffer=null;steps.clear();CutFlowEvidence.start("server"); }
-    static boolean complete() { return phase==5; }
+    static boolean complete() { return phase==6; }
     static void tick(ServerPlayer player) {
         if(complete()) return;
         ItemStack held=player.getMainHandItem();
         if(phase==0 && MultitoolState.getActiveMode(held)!=MultitoolMode.CUT_PASTE) return;
         if(++ticks>1200) fail("timeout phase="+phase);
+        // Keep both chunks loaded until the client has observed the move and leaves this profile.
+        // GameTest worlds can spawn millions of blocks away; restoring early loses the final updates.
+        if(phase==5) {
+            if(MultitoolState.getActiveMode(held)==MultitoolMode.CUT_PASTE) return;
+            player.connection.teleport(x,y,z,yaw,pitch);player.setGameMode(originalMode);
+            player.getAbilities().flying=originalFlying;player.onUpdateAbilities();phase=6;return;
+        }
         ServerLevel world=(ServerLevel)player.level();
         if(phase==0) {
             gadget=GadgetNBT.getUUID(held);originalMode=player.gameMode.getGameModeForPlayer();
@@ -70,7 +77,6 @@ final class CutPasteServerScenario {
             if(!world.isEmptyBlock(SOURCE)) fail("original block remains after Paste");
             if(!GadgetNBT.getMode(held).getId().getPath().equals("cut")) fail("Paste did not return to Cut");
             steps.add("destination_placed");steps.add("buffer_consumed");steps.add("returned_to_selection");
-            player.connection.teleport(x,y,z,yaw,pitch);player.setGameMode(originalMode);player.getAbilities().flying=originalFlying;player.onUpdateAbilities();
             CutFlowEvidence.pass("server",gadget,buffer,world.getServer().isDedicatedServer(),steps);phase=5;
         }
     }
