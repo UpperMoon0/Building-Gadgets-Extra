@@ -20,7 +20,6 @@ public final class ToolSettingsPanel {
     private int[] clearValues;
     private final VStack content=new VStack().gap(4);
     private final TextWidget status=new TextWidget("Saved").color(0xFFB8BEC8);
-    private final TextWidget summary=new TextWidget("").color(0xFFB8BEC8);
     private final ButtonWidget coordinates=ModifierPanel.button("Coordinates: World",this::switchCoordinates);
 
     public ToolSettingsPanel(String kind,int[] initial,int minimum,int maximum,Predicate<int[]> valid,Consumer<int[]> save) {
@@ -74,7 +73,7 @@ public final class ToolSettingsPanel {
             content.child(Ui.row(axis(0,"X"),axis(1,"Y"),axis(2,"Z")).gap(4));
         }
         content.child(ModifierPanel.button(kind.equals("destruction")?"Revert dimensions":kind.equals("copy")?"Clear selection":"Reset offset",this::reset));
-        if(kind.equals("destruction")) { updateSummary();content.child(summary); }
+        if(kind.equals("destruction")) updateSummary();
     }
     private UIComponent axis(int index,String label) {
         return Ui.column(new TextWidget(label).centered(),fields[index]).gap(3).flex();
@@ -112,7 +111,7 @@ public final class ToolSettingsPanel {
         for(int i=0;i<text.length;i++) text[i].set(noSelection?"":Integer.toString(relative?values[i]-values[i%3]:values[i]));
     }
     private void updateSummary() {
-        if(kind.equals("destruction")) summary.setText("Size: "+(1+values[0]+values[1])+" x "+(1+values[2]+values[3])+" x "+values[4]);
+        if(kind.equals("destruction") && !invalid) status.setText("Size: "+(1+values[0]+values[1])+" x "+(1+values[2]+values[3])+" x "+values[4]);
     }
     private void reset() {
         int[] reset=kind.equals("destruction")?original.clone():clearValues!=null?clearValues.clone():new int[values.length];

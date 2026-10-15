@@ -13,7 +13,8 @@ public final class ClientRangeRoundTripScenario {
     public static final int COPY_START_X_TARGET = 1;
     public static final int DESTRUCTION_LEFT_TARGET = 20;
     public static final int DESTRUCTION_DEPTH_TARGET = 20;
-    public static final int TIMEOUT_TICKS = 1200;
+    // Includes the fullscreen/render and five-profile editor prelude before the round trip.
+    public static final int TIMEOUT_TICKS = 2400;
 
     public interface Adapter {
         boolean hasReadyMultitool();
