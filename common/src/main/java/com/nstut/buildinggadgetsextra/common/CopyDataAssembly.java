@@ -1,59 +1,49 @@
 package com.nstut.buildinggadgetsextra.common;
 
-import java.util.Iterator;
-import java.util.LinkedHashMap;
+import com.nstut.packetweave.api.ContextualTransferRegistry;
+import com.nstut.packetweave.api.TransferId;
+import com.nstut.packetweave.api.TransferLimits;
+import java.time.Duration;
 import java.util.Map;
 import java.util.UUID;
 
-/** Clientbound template reassembly. Minecraft's main client thread owns each instance. */
+/** Client snapshot policy. PacketWeave owns assembly, expiry and byte budgets. */
 public final class CopyDataAssembly {
+    private static final UUID CONNECTION = new UUID(0, 0);
     private static final int MAX_PENDING = 4;
-    private final Map<UUID, Pending> pending = new LinkedHashMap<>();
+    private final ContextualTransferRegistry<Pending> pending = new ContextualTransferRegistry<>(
+            new TransferLimits(ExtraConstants.STRUCTURE_CHUNK_SIZE, ExtraConstants.MAX_STRUCTURE_FILE_BYTES,
+                    MAX_PENDING, MAX_PENDING, 4L * ExtraConstants.MAX_STRUCTURE_FILE_BYTES, Duration.ofSeconds(30)),
+            (id, operation) -> true);
 
     public byte[] accept(UUID transferId, UUID gadgetId, UUID copyId, int index, int total, byte[] data) {
-        pruneExpired();
         if (transferId == null || gadgetId == null || copyId == null) return null;
-        Pending transfer = pending.get(transferId);
+        TransferId key = new TransferId(ExtraConstants.MOD_ID, CONNECTION, transferId);
+        Pending transfer = pending.context(key);
         if (index == 0 && transfer == null) {
-            // A newer snapshot supersedes an incomplete old snapshot for the same gadget.
-            pending.values().removeIf(value -> value.gadgetId.equals(gadgetId));
-            if (pending.size() >= MAX_PENDING) {
-                Iterator<UUID> oldest = pending.keySet().iterator();
-                oldest.next();
-                oldest.remove();
+            // Only a first chunk can supersede a snapshot. Late tails cannot resurrect it.
+            for (Map.Entry<TransferId, Pending> entry : pending.contexts().entrySet()) {
+                if (entry.getValue().gadgetId.equals(gadgetId)) pending.cancel(entry.getKey());
             }
-            try {
-                transfer = new Pending(gadgetId, copyId, total);
-            } catch (IllegalArgumentException invalid) {
-                return null;
-            }
-            pending.put(transferId, transfer);
+            if (pending.activeSessions() >= MAX_PENDING) pending.cancel(pending.contexts().keySet().iterator().next());
+            transfer = new Pending(gadgetId, copyId, total);
+            if (!pending.beginBounded(key, total, ExtraConstants.MAX_STRUCTURE_FILE_BYTES, transfer)) return null;
         }
-        if (transfer == null) return null; // Never resurrect an abandoned transfer from a tail chunk.
-        if (!transfer.gadgetId.equals(gadgetId) || !transfer.copyId.equals(copyId) || transfer.total != total
-                || !transfer.chunks.accept(index, data)) {
-            pending.remove(transferId);
+        if (transfer == null) return null;
+        if (!transfer.gadgetId.equals(gadgetId) || !transfer.copyId.equals(copyId) || transfer.total != total) {
+            pending.cancel(key);
             return null;
         }
-        if (!transfer.chunks.isComplete()) return null;
-        pending.remove(transferId);
-        return transfer.chunks.join();
+        if (!pending.accept(key, index, data)) return null;
+        return pending.complete(key);
     }
-
-    public void pruneExpired() { pending.values().removeIf(value -> value.chunks.isExpired()); }
-
+    public void pruneExpired() { pending.reapExpired(); }
     public void clear() { pending.clear(); }
-
     private static final class Pending {
-        final UUID gadgetId;
-        final UUID copyId;
+        final UUID gadgetId, copyId;
         final int total;
-        final ChunkAccumulator chunks;
         Pending(UUID gadgetId, UUID copyId, int total) {
-            this.gadgetId = gadgetId;
-            this.copyId = copyId;
-            this.total = total;
-            this.chunks = new ChunkAccumulator(total);
+            this.gadgetId = gadgetId; this.copyId = copyId; this.total = total;
         }
     }
 }

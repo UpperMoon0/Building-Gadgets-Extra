@@ -25,13 +25,14 @@ Building Gadgets Extra is a Forge and NeoForge addon for [Building Gadgets](http
 | 1.20.1 | Forge 47.4.21 | Building Gadgets 2 1.0.8 | 17 |
 | 1.16.5 | Forge 36.2.42 | Building Gadgets 3.8.4 | 8 |
 
-The mod must be installed on the server and on every connecting client.
+The mod and [PacketWeave 0.1.3+](https://github.com/UpperMoon0/PacketWeave) must be installed on the server and every connecting client. Clients also require [OpenUI MC 0.0.13+](https://github.com/UpperMoon0/OpenUI-MC). Use the matching Minecraft/loader artifact for each dependency.
 
 ## Installation
 
 1. Install the Forge or NeoForge version listed for your Minecraft version above.
 2. Install the matching Building Gadgets version.
-3. Place the matching `building-gadgets-extra-<loader>-<minecraft>-<version>.jar` in the `mods` folder on both the client and server.
+3. Install PacketWeave on both sides and OpenUI MC on the client.
+4. Place the matching `building-gadgets-extra-<loader>-<minecraft>-<version>.jar` in the `mods` folder on both the client and server.
 
 ## Usage
 
@@ -167,3 +168,24 @@ Array repeats with signed X/Y/Z spacing in blocks. Radial repeats around the ver
 Valid numeric edits save on Enter or leaving the field. Toggles save immediately. The server confirms the active profile's settings; there is no extra Apply/Cancel screen. Invalid fields show a specific error. Scrolling and resizing preserve edits; settings do not overlap the operation wheel at smaller GUI sizes. Build and Exchange settings are independent. Copy/Paste, Cut/Paste, Destruction and native gadgets keep their existing workflows.
 
 Radial geometry rounds to blocks and directional states rotate to the nearest supported quarter turn. Overlaps keep the first candidate and are charged once. Preview and placement share the common planner. Plans above 65,536 positions or coordinate overflow are rejected with feedback; normal inventory, FE, world and protection rules still apply. All four versions support live modifiers; update clients and servers together.
+
+## Building with pinned dependencies
+
+Clone with `git clone --recurse-submodules` (or initialize an existing clone with
+`git submodule update --init --recursive`). Before building a native target, run:
+
+```
+python scripts/prepare_dependencies.py --target forge-1.20.1
+```
+
+Supported target names are `forge-1.16.5`, `forge-1.20.1`, `neoforge-1.21.1` and
+`neoforge-26.1.2`. The script builds standalone PacketWeave and publishes the pinned
+OpenUI artifact to Maven local. Use Java 21 for the older build tools and Java 25 for
+26.x; `JAVA21_HOME` / `JAVA25_HOME` can select those installations. The gadget jar
+contains neither dependency's classes. CI prepares the same pinned revisions.
+
+Build/Exchange use one shared OpenUI control tree for their wheel, native settings,
+range and inline modifiers. Minecraft adapters retain packet and item access only.
+PacketWeave handles chunking, bounded assembly, expiry and byte accounting; gadget
+identity, active-profile checks, response correlation and local save paths remain
+application policy.

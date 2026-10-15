@@ -8,7 +8,7 @@ public final class ExtraPayloads {
     }
 
     public static void register(RegisterPayloadHandlersEvent event) {
-        PayloadRegistrar registrar = event.registrar("6");
+        PayloadRegistrar registrar = event.registrar("7");
         registrar.playToClient(CopyDataPayload.TYPE, CopyDataPayload.STREAM_CODEC,
                 (payload, context) -> context.enqueueWork(() ->
                         com.nstut.buildinggadgetsextra.client.ClientCopyData.receive(payload)));

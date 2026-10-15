@@ -27,6 +27,7 @@ public final class MultitoolClientEvents {
 
     @SubscribeEvent(priority = EventPriority.HIGHEST)
     public static void onClientTick(ClientTickEvent.Post event) {
+        ClientStructureFiles.tick();
         Minecraft minecraft = Minecraft.getInstance();
         if (minecraft.player == null || minecraft.screen != null) return;
         ItemStack stack = BaseGadget.getGadget(minecraft.player);

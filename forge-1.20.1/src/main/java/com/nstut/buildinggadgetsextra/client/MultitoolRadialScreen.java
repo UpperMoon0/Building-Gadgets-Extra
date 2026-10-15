@@ -34,7 +34,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.lang.reflect.Constructor;
 
-public final class MultitoolRadialScreen extends Screen {
+public final class MultitoolRadialScreen extends com.nstut.openui.minecraft.UiScreen {
     private static final int TOOL_RADIUS = 68;
     private static final int ACTION_RADIUS = 82;
     private static final int BACK_RADIUS = 28;
@@ -43,7 +43,9 @@ public final class MultitoolRadialScreen extends Screen {
     private final ItemStack stack;
     private com.nstut.buildinggadgetsextra.common.ProfileSettingsLayout settingsLayout;
     private InlineModifiers inlineModifiers;
-    private int contextIcons, rangeEnd;
+    private final com.nstut.buildinggadgetsextra.client.ui.ProfileControls profileControls=new com.nstut.buildinggadgetsextra.client.ui.ProfileControls();
+    private com.nstut.openui.api.UIComponent profileRange;
+
     public int menuCenterX() { return settingsLayout == null ? width / 2 : settingsLayout.centerX; }
     public int menuCenterY() { return height / 2; }
     private int backRadius() { return settingsLayout==null?BACK_RADIUS:settingsLayout.backRadius; }
@@ -57,15 +59,8 @@ public final class MultitoolRadialScreen extends Screen {
         return minecraft.player == null ? stack : com.direwolf20.buildinggadgets2.common.items.BaseGadget.getGadget(minecraft.player);
     }
     private void addContext(net.minecraft.client.gui.components.AbstractWidget widget) {
-        if (settingsLayout != null) {
-            int columns = settingsLayout.panelWidth / 28;
-            widget.setX(settingsLayout.panelX+(contextIcons%columns)*28); widget.setY(28+(contextIcons/columns)*28);
-            contextIcons++;
-        }
-        addRenderableWidget(widget);
+        if(widget!=null) addRenderableWidget(widget);
     }
-    private int contextRow() { return settingsLayout == null ? 0 : 28 + ((contextIcons + settingsLayout.panelWidth/28-1)/(settingsLayout.panelWidth/28))*28; }
-    private void addInline(net.minecraft.client.gui.components.AbstractWidget widget) { addRenderableWidget(widget); }
     private void closeNow() { super.onClose(); }
     @Override public void onClose() {
         if(inlineModifiers != null) inlineModifiers.navigate(this::closeNow, true); else closeNow();
@@ -86,17 +81,21 @@ public final class MultitoolRadialScreen extends Screen {
         this.selectedAction = rememberedAction(selectedTool());
     }
 
-    @Override public void tick() { super.tick(); if(inlineModifiers != null) inlineModifiers.tick(); }
+    @Override public void tick() { super.tick(); if(inlineModifiers != null) inlineModifiers.tick(); profileControls.tick(); }
 
     @Override
     protected void init() {
         rebuildContextButtons();
+        super.init();
     }
 
-    private void rebuildContextButtons() {
+    private void rebuildContextButtons() { populateContextButtons(); rebuildUI(); }
+    private void populateContextButtons() {
+        profileControls.clear(); profileRange=null;
+
         InlineModifiers previous = inlineModifiers;
         clearWidgets();
-        inlineModifiers = null; settingsLayout = null; contextIcons = 0; rangeEnd = 0;
+        inlineModifiers = null; settingsLayout = null;
         if (navigation.page() == MultitoolMenuState.Page.SUBMENU && (selectedTool() == MultitoolMode.BUILD || selectedTool() == MultitoolMode.EXCHANGING)) {
             settingsLayout = new com.nstut.buildinggadgetsextra.common.ProfileSettingsLayout(width,height);
         }
@@ -152,11 +151,8 @@ public final class MultitoolRadialScreen extends Screen {
         }
 
         if (selectedTool() == MultitoolMode.BUILD || selectedTool() == MultitoolMode.EXCHANGING) {
-            IncrementalSliderWidget range = new ProfileRangeSlider(settingsLayout.panelX+29, contextRow()+4,
-                    settingsLayout.panelWidth-58, ExtraConfig.multitoolMaxRange(), GadgetNBT.getToolRange(authoritativeStack()), slider ->
-                    PacketHandler.sendToServer(new PacketRangeChange(slider.getValueInt())));
-            range.getComponents().forEach(this::addRenderableWidget);
-            rangeEnd = contextRow() + 32;
+            profileRange=com.nstut.buildinggadgetsextra.client.ui.ProfileControls.range(GadgetNBT.getToolRange(authoritativeStack()),
+                    ExtraConfig.multitoolMaxRange(),next->PacketHandler.sendToServer(new PacketRangeChange(next)));
         }
 
         if (selectedTool() == MultitoolMode.COPY_PASTE || cutTool) {
@@ -210,8 +206,7 @@ public final class MultitoolRadialScreen extends Screen {
                     () -> ExtraNetwork.sendToServer(new MultitoolCutPacket())));
         }
         if(settingsLayout != null) {
-            inlineModifiers = new InlineModifiers(font, settingsLayout.panelX, settingsLayout.panelWidth,
-                    Math.max(rangeEnd,contextRow())+4, height-8, this::authoritativeStack, this::addInline);
+            inlineModifiers = new InlineModifiers(this::authoritativeStack);
             inlineModifiers.restoreFrom(previous);
         }
     }
@@ -237,7 +232,7 @@ public final class MultitoolRadialScreen extends Screen {
                 Component.translatable(current[0].getLang()), false, send -> {
             if (send) {
                 current[0] = current[0].next();
-                holder[0].setMessage(Component.translatable(current[0].getLang()));
+                if(holder[0]!=null) holder[0].setMessage(Component.translatable(current[0].getLang()));
                 PacketHandler.sendToServer(new PacketRenderChange(current[0].getPosition()));
             }
             return false;
@@ -246,7 +241,12 @@ public final class MultitoolRadialScreen extends Screen {
     }
 
     private GuiIconActionable contextIcon(int x,int y,String icon,net.minecraft.network.chat.Component tooltip,boolean selectable,java.util.function.Predicate<Boolean> action) {
-        return settingsLayout==null?new GuiIconActionable(x,y,icon,tooltip,selectable,action):new ProfileIconButton(x,y,icon,tooltip,selectable,action);
+        if(settingsLayout!=null) {
+            profileControls.icon("buildinggadgets2","textures/gui/setting/"+icon+".png",15,tooltip.getString(),
+                    ()->selectable && action.test(false),()->{ if(inlineModifiers!=null) inlineModifiers.navigate(()->action.test(true),false); });
+            return null;
+        }
+        return new GuiIconActionable(x,y,icon,tooltip,selectable,action);
     }
     private static int next(int[] y) {
         int result = y[0];
@@ -261,6 +261,7 @@ public final class MultitoolRadialScreen extends Screen {
 
     @Override
     public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
+        if(settingsLayout!=null && inlineModifiers!=null) { super.render(graphics,mouseX,mouseY,partialTick); return; }
         int cx = menuCenterX();
         int cy = height / 2;
         double dx = mouseX - cx;
@@ -278,9 +279,7 @@ public final class MultitoolRadialScreen extends Screen {
             hoveredBack = Math.sqrt(dx * dx + dy * dy) <= backRadius();
             renderSubmenu(graphics, cx, cy, actions);
         }
-        if(inlineModifiers != null) inlineModifiers.background(graphics);
         super.render(graphics, mouseX, mouseY, partialTick);
-        if(inlineModifiers != null) inlineModifiers.render(graphics);
         graphics.flush();
     }
 
@@ -305,9 +304,9 @@ public final class MultitoolRadialScreen extends Screen {
     private void renderSubmenu(GuiGraphics graphics, int cx, int cy, List<BaseMode> actions) {
         graphics.drawCenteredString(font, Component.translatable(selectedTool().translationKey()),
                 cx, cy - (settingsLayout == null ? 122 : actionRadius()+40), selectedTool().accentColor());
-        graphics.fill(cx - backRadius(), cy - backRadius(), cx + backRadius(), cy + backRadius(), settingsLayout==null?0xCC20252A:com.nstut.buildinggadgetsextra.common.ProfileUiStyle.CONTROL);
+        graphics.fill(cx - backRadius(), cy - backRadius(), cx + backRadius(), cy + backRadius(), 0xCC20252A);
         drawOutline(graphics, cx - backRadius(), cy - backRadius(), cx + backRadius(), cy + backRadius(),
-                hoveredBack ? 0xFF3598FF : settingsLayout==null?0:com.nstut.buildinggadgetsextra.common.ProfileUiStyle.BORDER);
+                hoveredBack ? 0xFF3598FF : 0);
         graphics.flush();
         graphics.drawCenteredString(font, Component.translatable("buildinggadgetsextra.multitool.back"),
                 cx, cy - 4, 0xFFFFFF);
@@ -330,8 +329,8 @@ public final class MultitoolRadialScreen extends Screen {
     private void renderToolButton(GuiGraphics graphics, MultitoolMode tool, int x, int y, boolean selected, boolean hovered) {
         int half = RadialIconLayout.MULTITOOL_MODE_BUTTON_SIZE / 2;
         int iconSize = RadialIconLayout.MULTITOOL_MODE_ICON_SIZE;
-        graphics.fill(x - half, y - half, x + half, y + half, settingsLayout==null?0xAA394149:com.nstut.buildinggadgetsextra.common.ProfileUiStyle.CONTROL);
-        drawOutline(graphics, x - half, y - half, x + half, y + half, hovered ? 0xFF3598FF : selected ? 0xFF00E640 : settingsLayout==null?0:com.nstut.buildinggadgetsextra.common.ProfileUiStyle.BORDER);
+        graphics.fill(x - half, y - half, x + half, y + half, 0xAA394149);
+        drawOutline(graphics, x - half, y - half, x + half, y + half, hovered ? 0xFF3598FF : selected ? 0xFF00E640 : 0);
         ResourceLocation icon = ResourceLocation.fromNamespaceAndPath(actionIconNamespace(tool), actionIconPath(tool));
         int sourceSize = actionIconSourceSize(tool);
         // Explicit source rectangle prevents the 15x15 action textures from tiling.
@@ -343,8 +342,8 @@ public final class MultitoolRadialScreen extends Screen {
     private void renderActionButton(GuiGraphics graphics, BaseMode action, int x, int y, boolean selected, boolean hovered) {
         int half = RadialIconLayout.MULTITOOL_MODE_BUTTON_SIZE / 2;
         int iconSize = RadialIconLayout.MULTITOOL_MODE_ICON_SIZE;
-        graphics.fill(x - half, y - half, x + half, y + half, settingsLayout==null?0xAA394149:com.nstut.buildinggadgetsextra.common.ProfileUiStyle.CONTROL);
-        drawOutline(graphics, x - half, y - half, x + half, y + half, hovered ? 0xFF3598FF : selected ? 0xFF00E640 : settingsLayout==null?0:com.nstut.buildinggadgetsextra.common.ProfileUiStyle.BORDER);
+        graphics.fill(x - half, y - half, x + half, y + half, 0xAA394149);
+        drawOutline(graphics, x - half, y - half, x + half, y + half, hovered ? 0xFF3598FF : selected ? 0xFF00E640 : 0);
         ResourceLocation icon = ResourceLocation.fromNamespaceAndPath("buildinggadgets2",
                 "textures/gui/mode/" + action.getId().getPath() + ".png");
         graphics.flush();
@@ -371,6 +370,7 @@ public final class MultitoolRadialScreen extends Screen {
         return handleWheel(mouseX, mouseY, button);
     }
     private boolean handleWheel(double mouseX, double mouseY, int button) {
+        if(settingsLayout!=null) return false;
         double dx = mouseX - (double)menuCenterX();
         double dy = mouseY - height / 2.0;
 
@@ -421,7 +421,6 @@ public final class MultitoolRadialScreen extends Screen {
     }
 
     private BaseMode findAction(List<BaseMode> actions, double dx, double dy) {
-        if(settingsLayout!=null) { int index=settingsLayout.actionAt(actions.size(),dx,dy); return index<0?null:actions.get(index); }
         double distance = Math.sqrt(dx * dx + dy * dy);
         if (distance < (settingsLayout == null ? 54 : actionRadius()-18) || distance > (settingsLayout == null ? 108 : actionRadius()+18) || actions.isEmpty()) return null;
         double angle = normalizedAngle(dx, dy);
@@ -450,6 +449,24 @@ public final class MultitoolRadialScreen extends Screen {
     private static List<BaseMode> actionsFor(MultitoolMode tool) {
         if (tool == MultitoolMode.DESTRUCTION || tool == MultitoolMode.CUT_PASTE) return List.of();
         return new ArrayList<>(GadgetModes.INSTANCE.getModesForGadget(BuildersMultitool.target(tool)));
+    }
+
+
+    @Override protected com.nstut.openui.api.UIComponent buildUI() {
+        if(settingsLayout==null || inlineModifiers==null) return com.nstut.openui.api.Ui.column();
+        com.nstut.openui.api.Radial wheel=new com.nstut.openui.api.Radial(settingsLayout.radius,36);
+        for(BaseMode action:actionsFor(selectedTool())) {
+            com.nstut.openui.api.ButtonWidget button=new com.nstut.openui.api.ButtonWidget(Component.translatable(action.i18n())).radius(2)
+                    .content(com.nstut.openui.controls.IconWidget.texture("buildinggadgets2","textures/gui/mode/"+action.getId().getPath()+".png",15,15).size(24))
+                    .onPress(()->inlineModifiers.navigate(()->{ selectedAction=action; sendSelection(); rebuildContextButtons(); },false));
+            button.setActive(action.equals(selectedAction)); button.tooltip(Component.translatable(action.i18n())); wheel.item(button);
+        }
+        String label=selectedAction==null?"":Component.translatable(selectedAction.i18n()).getString();
+        wheel.center(com.nstut.buildinggadgetsextra.client.ui.ModifierPanel.button("Back",()->inlineModifiers.navigate(()->{
+            navigation.back(); rememberedPage=MultitoolMenuState.Page.GENERAL; rebuildContextButtons();
+        },false)),settingsLayout.backRadius*2);
+        return profileControls.root(Component.translatable(selectedTool().translationKey()).getString(),
+                wheel,label,settingsLayout.panelWidth,profileRange,inlineModifiers.panel);
     }
 
     private MultitoolMode selectedTool() {
@@ -499,7 +516,6 @@ public final class MultitoolRadialScreen extends Screen {
         return super.keyPressed(key,scan,modifiers);
     }
     @Override public boolean mouseScrolled(double x,double y,double delta) {
-        if(inlineModifiers!=null && inlineModifiers.contains(x,y)) { inlineModifiers.scroll(delta>0?-36:36); return true; }
         return super.mouseScrolled(x,y,delta);
     }
 }

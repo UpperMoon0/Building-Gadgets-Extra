@@ -5,8 +5,9 @@ import com.direwolf20.buildinggadgets2.common.items.GadgetCopyPaste;
 import com.direwolf20.buildinggadgets2.common.items.GadgetCutPaste;
 import com.direwolf20.buildinggadgets2.util.GadgetNBT;
 import com.direwolf20.buildinggadgets2.util.modes.Paste;
-import com.nstut.buildinggadgetsextra.common.ChunkAccumulator;
-import com.nstut.buildinggadgetsextra.common.UploadTransferRegistry;
+import com.nstut.packetweave.api.ContextualTransferRegistry;
+import com.nstut.packetweave.api.TransferId;
+import com.nstut.buildinggadgetsextra.common.StructureTransfers;
 import com.nstut.buildinggadgetsextra.common.ExtraConstants;
 import com.nstut.buildinggadgetsextra.common.MultitoolMode;
 import com.nstut.buildinggadgetsextra.common.StructureFileName;
@@ -29,8 +30,8 @@ import java.util.function.Supplier;
 
 @Mod.EventBusSubscriber(modid = ExtraConstants.MOD_ID, bus = Mod.EventBusSubscriber.Bus.FORGE)
 public record StructureUploadPacket(UUID id, String name, int index, int total, byte[] data) {
-    private static final UploadTransferRegistry<TransferState> TRANSFERS =
-            new UploadTransferRegistry<>(transfer -> transfer.chunks);
+    private static final ContextualTransferRegistry<TransferState> TRANSFERS =
+            new ContextualTransferRegistry<>(StructureTransfers.limits(), (id, operation) -> true);
 
     public static void encode(StructureUploadPacket packet, FriendlyByteBuf buffer) {
         buffer.writeUUID(packet.id);
@@ -51,36 +52,34 @@ public record StructureUploadPacket(UUID id, String name, int index, int total, 
             ServerPlayer player = context.getSender();
             if (player == null || !StructureFileName.isValid(packet.name)) return;
 
-            TRANSFERS.pruneExpired();
-            String prefix = player.getUUID() + ":";
-            String key = prefix + packet.id;
-            TransferState transfer = TRANSFERS.get(key);
+            TRANSFERS.reapExpired();
+            TransferId key = new TransferId(ExtraConstants.MOD_ID,player.getUUID(),packet.id);
+            TransferState transfer = TRANSFERS.context(key);
             if (transfer == null) {
-                transfer = TransferState.capture(player, packet.total);
+                transfer = TransferState.capture(player, packet.total, packet.name);
                 if (transfer == null) return;
-                if (!TRANSFERS.put(key, transfer)) return;
+                if (!TRANSFERS.beginBounded(key, packet.total, ExtraConstants.MAX_STRUCTURE_FILE_BYTES, transfer)) return;
             }
 
-            if (!transfer.matches(player)) {
-                TRANSFERS.remove(key);
+            if (!transfer.matches(player) || transfer.totalChunks!=packet.total || !transfer.name.equals(packet.name)) {
+                TRANSFERS.cancel(key);
                 return;
             }
 
             try {
                 if (!TRANSFERS.accept(key, packet.index, packet.data)) {
-                    TRANSFERS.remove(key);
+                    TRANSFERS.cancel(key);
                     return;
                 }
-                if (transfer.chunks.isComplete()) {
-                    byte[] bytes = transfer.chunks.join();
-                    TRANSFERS.remove(key);
+                byte[] bytes = TRANSFERS.complete(key);
+                if (bytes != null) {
                     if (transfer.matches(player)) {
                         NativeStructureBridge.importStructure(player,
                                 StructureFileName.normalize(packet.name), bytes);
                     }
                 }
             } catch (IllegalArgumentException error) {
-                TRANSFERS.remove(key);
+                TRANSFERS.cancel(key);
             }
         });
         context.setPacketHandled(true);
@@ -89,12 +88,12 @@ public record StructureUploadPacket(UUID id, String name, int index, int total, 
     @SubscribeEvent
     public static void onServerTick(TickEvent.ServerTickEvent event) {
         if (event.phase != TickEvent.Phase.END) return;
-        TRANSFERS.pruneExpired();
+        TRANSFERS.reapExpired();
     }
 
     @SubscribeEvent
     public static void onPlayerLogout(PlayerEvent.PlayerLoggedOutEvent event) {
-        TRANSFERS.removePlayer(event.getEntity().getUUID());
+        TRANSFERS.cancelOwner(event.getEntity().getUUID());
     }
 
     @SubscribeEvent
@@ -103,17 +102,18 @@ public record StructureUploadPacket(UUID id, String name, int index, int total, 
     }
 
     private static final class TransferState {
-        private final ChunkAccumulator chunks;
+        private final int totalChunks;
+        private final String name;
         private final UUID gadgetId;
         private final MultitoolMode profile;
 
-        private TransferState(ChunkAccumulator chunks, UUID gadgetId, MultitoolMode profile) {
-            this.chunks = chunks;
+        private TransferState(int totalChunks, String name, UUID gadgetId, MultitoolMode profile) {
+            this.totalChunks = totalChunks; this.name = name;
             this.gadgetId = gadgetId;
             this.profile = profile;
         }
 
-        private static TransferState capture(ServerPlayer player, int total) {
+        private static TransferState capture(ServerPlayer player, int total, String name) {
             ItemStack stack = BaseGadget.getGadget(player);
             if (stack.getItem() instanceof GadgetCutPaste || !(stack.getItem() instanceof GadgetCopyPaste)) return null;
             MultitoolMode profile = null;
@@ -123,7 +123,7 @@ public record StructureUploadPacket(UUID id, String name, int index, int total, 
             }
             if (!(GadgetNBT.getMode(stack) instanceof Paste)) return null;
             try {
-                return new TransferState(new ChunkAccumulator(total), GadgetNBT.getUUID(stack), profile);
+                return new TransferState(total, name, GadgetNBT.getUUID(stack), profile);
             } catch (IllegalArgumentException error) {
                 return null;
             }

@@ -38,3 +38,17 @@ reason="Building Gadgets Extra extends the Building Gadgets 2 copy/paste gadgets
 versionRange="${building_gadgets_version_range}"
 ordering="AFTER"
 side="BOTH"
+
+[[dependencies.${mod_id}]]
+modId="packetweave"
+type="required"
+versionRange="[0.1.3,)"
+ordering="AFTER"
+side="BOTH"
+
+[[dependencies.${mod_id}]]
+modId="openui_mc"
+type="required"
+versionRange="[0.0.13,)"
+ordering="AFTER"
+side="CLIENT"

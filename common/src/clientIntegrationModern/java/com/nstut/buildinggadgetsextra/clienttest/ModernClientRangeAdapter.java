@@ -112,8 +112,9 @@ public final class ModernClientRangeAdapter implements ClientRangeRoundTripScena
 
     @Override
     public int visibleScreenRange() {
-        IncrementalSliderWidget slider = rangeSliderOrNull();
-        return slider == null ? -1 : slider.getValueInt();
+        com.nstut.openui.api.UIComponent root=profileRoot();
+        com.nstut.openui.api.TextWidget label=findRange(root);
+        return label==null?-1:Integer.parseInt(label.getText().getString().substring("Range: ".length()));
     }
 
     @Override
@@ -124,10 +125,10 @@ public final class ModernClientRangeAdapter implements ClientRangeRoundTripScena
 
     @Override
     public void clickRangePlus() {
-        Screen screen = radialScreen();
-        IncrementalSliderWidget slider = rangeSliderOrNull();
-        if (slider == null) throw new IllegalStateException("range slider missing");
-        clickSliderPlus(screen, slider);
+        MultitoolRadialScreen screen=(MultitoolRadialScreen)radialScreen();
+        com.nstut.openui.api.ButtonWidget plus=findPlus(profileRoot());
+        if(plus==null) throw new IllegalStateException("OpenUI range step missing");
+        clicker.click(screen,plus.getX()+plus.getWidth()/2.0,plus.getY()+plus.getHeight()/2.0);
     }
 
     @Override
@@ -270,12 +271,20 @@ public final class ModernClientRangeAdapter implements ClientRangeRoundTripScena
                 screen.height / 2.0 + Math.sin(angle) * 68.0);
     }
 
-    private IncrementalSliderWidget rangeSliderOrNull() {
-        Screen screen = minecraft().screen;
-        if (!(screen instanceof MultitoolRadialScreen)) return null;
-        for (GuiEventListener child : screen.children()) {
-            if (child instanceof IncrementalSliderWidget) return (IncrementalSliderWidget) child;
-        }
+    private com.nstut.openui.api.UIComponent profileRoot() {
+        if(!(minecraft().screen instanceof MultitoolRadialScreen screen) || screen.uiRuntime()==null) return null;
+        return screen.uiRuntime().root();
+    }
+    private com.nstut.openui.api.TextWidget findRange(com.nstut.openui.api.UIComponent root) {
+        if(root==null) return null;
+        if(root instanceof com.nstut.openui.api.TextWidget text && text.getText().getString().startsWith("Range: ")) return text;
+        for(com.nstut.openui.api.UIComponent child:root.children()) { com.nstut.openui.api.TextWidget found=findRange(child); if(found!=null) return found; }
+        return null;
+    }
+    private com.nstut.openui.api.ButtonWidget findPlus(com.nstut.openui.api.UIComponent root) {
+        if(root==null) return null;
+        if(root instanceof com.nstut.openui.api.ButtonWidget button && button.getLabel().getString().equals("+")) return button;
+        for(com.nstut.openui.api.UIComponent child:root.children()) { com.nstut.openui.api.ButtonWidget found=findPlus(child); if(found!=null) return found; }
         return null;
     }
 

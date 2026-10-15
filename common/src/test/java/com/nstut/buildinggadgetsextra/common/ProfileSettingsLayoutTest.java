@@ -13,12 +13,4 @@ class ProfileSettingsLayoutTest {
             assertTrue(l.centerY+l.radius+18<=height);
         }
     }
-    @Test void squareActionCornersAndGapsUseTheirVisibleBounds() {
-        ProfileSettingsLayout l=new ProfileSettingsLayout(480,270);
-        assertEquals(1,l.actionAt(8,22,-22));
-        assertEquals(0,l.actionAt(8,0,-54));
-        assertEquals(-1,l.actionAt(8,0,0));
-        assertEquals(-1,l.actionAt(8,0,-30));
-        assertEquals(-1,l.actionAt(8,0,-80));
-    }
 }

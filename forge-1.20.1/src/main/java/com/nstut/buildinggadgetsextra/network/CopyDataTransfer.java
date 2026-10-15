@@ -5,7 +5,6 @@ import com.nstut.buildinggadgetsextra.common.ExtraConstants;
 import net.minecraft.nbt.*;
 import net.minecraft.server.level.ServerPlayer;
 import java.io.*;
-import java.util.Arrays;
 import java.util.UUID;
 
 /** Bounded, template-specific transport; vanilla and unrelated NBT quotas stay unchanged. */
@@ -67,11 +66,12 @@ public final class CopyDataTransfer {
             return;
         }
         UUID transferId = UUID.randomUUID();
-        int total = (bytes.length + ExtraConstants.STRUCTURE_CHUNK_SIZE - 1) / ExtraConstants.STRUCTURE_CHUNK_SIZE;
-        for (int index = 0; index < total; index++) {
-            int offset = index * ExtraConstants.STRUCTURE_CHUNK_SIZE;
-            ExtraNetwork.sendToPlayer(player, new CopyDataPacket(transferId, gadgetId, copyId, index, total,
-                    Arrays.copyOfRange(bytes, offset, Math.min(bytes.length, offset + ExtraConstants.STRUCTURE_CHUNK_SIZE))));
+        try {
+            com.nstut.packetweave.api.ChunkedTransfer.send(bytes, ExtraConstants.STRUCTURE_CHUNK_SIZE,
+                    (index, total, chunk) -> ExtraNetwork.sendToPlayer(player,
+                            new CopyDataPacket(transferId, gadgetId, copyId, index, total, chunk)));
+        } catch (IOException | IllegalArgumentException error) {
+            player.displayClientMessage(net.minecraft.network.chat.Component.literal("Copy preview transfer failed."), false);
         }
     }
 }

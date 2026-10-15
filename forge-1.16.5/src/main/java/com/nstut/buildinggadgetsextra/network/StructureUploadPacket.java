@@ -2,8 +2,9 @@ package com.nstut.buildinggadgetsextra.network;
 
 import com.direwolf20.buildinggadgets.common.items.AbstractGadget;
 import com.direwolf20.buildinggadgets.common.items.GadgetCopyPaste;
-import com.nstut.buildinggadgetsextra.common.ChunkAccumulator;
-import com.nstut.buildinggadgetsextra.common.UploadTransferRegistry;
+import com.nstut.packetweave.api.ContextualTransferRegistry;
+import com.nstut.packetweave.api.TransferId;
+import com.nstut.buildinggadgetsextra.common.StructureTransfers;
 import com.nstut.buildinggadgetsextra.common.ExtraConstants;
 import com.nstut.buildinggadgetsextra.common.MultitoolMode;
 import com.nstut.buildinggadgetsextra.common.StructureFileName;
@@ -26,8 +27,8 @@ import java.util.function.Supplier;
 
 @Mod.EventBusSubscriber(modid = ExtraConstants.MOD_ID, bus = Mod.EventBusSubscriber.Bus.FORGE)
 public final class StructureUploadPacket {
-    private static final UploadTransferRegistry<TransferState> TRANSFERS =
-            new UploadTransferRegistry<>(transfer -> transfer.chunks);
+    private static final ContextualTransferRegistry<TransferState> TRANSFERS =
+            new ContextualTransferRegistry<>(StructureTransfers.limits(), (id, operation) -> true);
 
     final UUID id;
     final String name;
@@ -62,36 +63,34 @@ public final class StructureUploadPacket {
             ServerPlayerEntity player = context.getSender();
             if (player == null || !StructureFileName.isValid(packet.name)) return;
 
-            TRANSFERS.pruneExpired();
-            String prefix = player.getUUID() + ":";
-            String key = prefix + packet.id;
-            TransferState transfer = TRANSFERS.get(key);
+            TRANSFERS.reapExpired();
+            TransferId key = new TransferId(ExtraConstants.MOD_ID,player.getUUID(),packet.id);
+            TransferState transfer = TRANSFERS.context(key);
             if (transfer == null) {
-                transfer = TransferState.capture(player, packet.total);
+                transfer = TransferState.capture(player, packet.total, packet.name);
                 if (transfer == null) return;
-                if (!TRANSFERS.put(key, transfer)) return;
+                if (!TRANSFERS.beginBounded(key, packet.total, ExtraConstants.MAX_STRUCTURE_FILE_BYTES, transfer)) return;
             }
 
-            if (!transfer.matches(player)) {
-                TRANSFERS.remove(key);
+            if (!transfer.matches(player) || transfer.totalChunks!=packet.total || !transfer.name.equals(packet.name)) {
+                TRANSFERS.cancel(key);
                 return;
             }
 
             try {
                 if (!TRANSFERS.accept(key, packet.index, packet.data)) {
-                    TRANSFERS.remove(key);
+                    TRANSFERS.cancel(key);
                     return;
                 }
-                if (transfer.chunks.isComplete()) {
-                    byte[] bytes = transfer.chunks.join();
-                    TRANSFERS.remove(key);
+                byte[] bytes = TRANSFERS.complete(key);
+                if (bytes != null) {
                     if (transfer.matches(player)) {
                         NativeStructureBridge.importStructure(player,
                                 StructureFileName.normalize(packet.name), bytes);
                     }
                 }
             } catch (IllegalArgumentException error) {
-                TRANSFERS.remove(key);
+                TRANSFERS.cancel(key);
             }
         });
         context.setPacketHandled(true);
@@ -100,12 +99,12 @@ public final class StructureUploadPacket {
     @SubscribeEvent
     public static void onServerTick(TickEvent.ServerTickEvent event) {
         if (event.phase != TickEvent.Phase.END) return;
-        TRANSFERS.pruneExpired();
+        TRANSFERS.reapExpired();
     }
 
     @SubscribeEvent
     public static void onPlayerLogout(PlayerEvent.PlayerLoggedOutEvent event) {
-        TRANSFERS.removePlayer(event.getPlayer().getUUID());
+        TRANSFERS.cancelOwner(event.getPlayer().getUUID());
     }
 
     @SubscribeEvent
@@ -114,24 +113,25 @@ public final class StructureUploadPacket {
     }
 
     private static final class TransferState {
-        private final ChunkAccumulator chunks;
+        private final int totalChunks;
+        private final String name;
         private final UUID gadgetId;
         private final boolean multitool;
 
-        private TransferState(ChunkAccumulator chunks, UUID gadgetId, boolean multitool) {
-            this.chunks = chunks;
+        private TransferState(int totalChunks, String name, UUID gadgetId, boolean multitool) {
+            this.totalChunks = totalChunks; this.name = name;
             this.gadgetId = gadgetId;
             this.multitool = multitool;
         }
 
-        private static TransferState capture(ServerPlayerEntity player, int total) {
+        private static TransferState capture(ServerPlayerEntity player, int total, String name) {
             ItemStack stack = AbstractGadget.getGadget(player);
             if (!(stack.getItem() instanceof GadgetCopyPaste)) return null;
             boolean isMultitool = stack.getItem() instanceof BuildersMultitool;
             if (isMultitool && MultitoolState.getActiveMode(stack) != MultitoolMode.COPY_PASTE) return null;
             if (GadgetCopyPaste.getToolMode(stack) != GadgetCopyPaste.ToolMode.PASTE) return null;
             try {
-                return new TransferState(new ChunkAccumulator(total),
+                return new TransferState(total, name,
                         ((AbstractGadget) stack.getItem()).getUUID(stack), isMultitool);
             } catch (IllegalArgumentException error) {
                 return null;

@@ -23,3 +23,5 @@ tasks.named('test', Test).configure {
         showStackTraces = true
     }
 }
+
+dependencies { compileOnly project(':packetweave-api'); testImplementation project(':packetweave-api') }

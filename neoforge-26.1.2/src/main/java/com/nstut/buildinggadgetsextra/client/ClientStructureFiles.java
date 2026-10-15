@@ -1,6 +1,8 @@
 package com.nstut.buildinggadgetsextra.client;
 
-import com.nstut.buildinggadgetsextra.common.ChunkAccumulator;
+import com.nstut.buildinggadgetsextra.common.StructureDownloads;
+import com.nstut.packetweave.api.ChunkedTransfer;
+import java.time.Duration;
 import com.nstut.buildinggadgetsextra.common.ExtraConstants;
 import com.nstut.buildinggadgetsextra.common.PendingSaveTarget;
 import com.nstut.buildinggadgetsextra.network.StructureDownloadPayload;
@@ -15,7 +17,6 @@ import org.lwjgl.util.tinyfd.TinyFileDialogs;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
@@ -24,10 +25,22 @@ import java.util.UUID;
 public final class ClientStructureFiles {
     // Packet receive always runs on the Minecraft client thread. Keep this map
     // strictly client-thread-owned; the native file-dialog thread never touches it.
-    private static final Map<UUID, ChunkAccumulator> DOWNLOADS = new HashMap<>();
+    private static final StructureDownloads DOWNLOADS = new StructureDownloads();
     private static final Map<UUID, PendingSaveTarget> SAVE_DESTINATIONS = new HashMap<>();
 
     private ClientStructureFiles() {}
+    private static volatile Object connection;
+    private static volatile long generation;
+    public static void tick() {
+        Object current=Minecraft.getInstance().getConnection();
+        if(current!=connection) {
+            connection=current; generation++;
+            DOWNLOADS.clear();
+            synchronized(SAVE_DESTINATIONS) { SAVE_DESTINATIONS.clear(); }
+        }
+        pruneDownloads(); pruneSaveDestinations();
+    }
+
 
     public static Path root() {
         return Minecraft.getInstance().gameDirectory.toPath()
@@ -35,6 +48,7 @@ public final class ClientStructureFiles {
     }
 
     public static void chooseSave() {
+        final long requestGeneration=generation;
         dialogThread(() -> {
             try {
                 Files.createDirectories(root());
@@ -58,8 +72,10 @@ public final class ClientStructureFiles {
                         }
                         SAVE_DESTINATIONS.put(requestId, new PendingSaveTarget(path));
                     }
-                    Minecraft.getInstance().execute(() ->
-                            ClientPacketDistributor.sendToServer(new StructureFilePayload(false, name, requestId)));
+                    Minecraft.getInstance().execute(() -> {
+                        if(requestGeneration==generation && connection!=null) ClientPacketDistributor.sendToServer(new StructureFilePayload(false, name, requestId));
+                        else removeDestination(requestId);
+                    });
                 }
             } catch (Exception error) {
                 message(ExtraConstants.STRUCTURE_SAVE_FAILED, "structure");
@@ -68,6 +84,7 @@ public final class ClientStructureFiles {
     }
 
     public static void chooseLoad() {
+        final long requestGeneration=generation;
         dialogThread(() -> {
             try {
                 Files.createDirectories(root());
@@ -76,7 +93,7 @@ public final class ClientStructureFiles {
                             Component.translatable(ExtraConstants.DIALOG_OPEN_STRUCTURE).getString(),
                             root().resolve("structure.nbt").toString(), filters(stack),
                             Component.translatable(ExtraConstants.DIALOG_NBT_FILES).getString(), false);
-                    if (result != null) upload(Path.of(result));
+                    if (result != null && requestGeneration==generation) upload(Path.of(result));
                 }
             } catch (Exception error) {
                 message(ExtraConstants.STRUCTURE_LOAD_FAILED, "structure");
@@ -88,55 +105,46 @@ public final class ClientStructureFiles {
         pruneDownloads();
         pruneSaveDestinations();
         if (!hasDestination(payload.transferId())) {
-            DOWNLOADS.remove(payload.transferId());
+            DOWNLOADS.cancel(payload.transferId());
             return;
         }
         try {
-            ChunkAccumulator transfer = DOWNLOADS.computeIfAbsent(payload.transferId(),
-                    ignored -> new ChunkAccumulator(payload.total()));
-            if (!transfer.accept(payload.index(), payload.data())) {
-                DOWNLOADS.remove(payload.transferId());
-                removeDestination(payload.transferId());
+            byte[] bytes = DOWNLOADS.accept(payload.transferId(), payload.name(), payload.index(), payload.total(), payload.data());
+            if (bytes == null) {
+                if (!DOWNLOADS.active(payload.transferId())) removeDestination(payload.transferId());
                 return;
             }
-            if (!transfer.isComplete()) return;
-            DOWNLOADS.remove(payload.transferId());
 
             Path file = removeDestination(payload.transferId());
             if (file == null) return;
             Files.createDirectories(file.toAbsolutePath().getParent());
-            Files.write(file, transfer.join());
+            Files.write(file, bytes);
             message(ExtraConstants.STRUCTURE_SAVED, file.getFileName().toString());
         } catch (Exception error) {
-            DOWNLOADS.remove(payload.transferId());
+            DOWNLOADS.cancel(payload.transferId());
             removeDestination(payload.transferId());
             message(ExtraConstants.STRUCTURE_SAVE_FAILED, payload.name());
         }
     }
 
     private static void upload(Path file) {
+        final Object uploadConnection=Minecraft.getInstance().getConnection();
         String name = transferName(file);
         try {
-            if (Files.size(file) > ExtraConstants.MAX_STRUCTURE_FILE_BYTES) throw new IllegalArgumentException();
-            byte[] bytes = Files.readAllBytes(file);
             UUID id = UUID.randomUUID();
-            int total = Math.max(1, (bytes.length + ExtraConstants.STRUCTURE_CHUNK_SIZE - 1)
-                    / ExtraConstants.STRUCTURE_CHUNK_SIZE);
-            Minecraft.getInstance().execute(() -> {
-                for (int index = 0; index < total; index++) {
-                    int start = index * ExtraConstants.STRUCTURE_CHUNK_SIZE;
-                    int end = Math.min(bytes.length, start + ExtraConstants.STRUCTURE_CHUNK_SIZE);
-                    ClientPacketDistributor.sendToServer(new StructureUploadPayload(
-                            id, name, index, total, Arrays.copyOfRange(bytes, start, end)));
-                }
-            });
+            ChunkedTransfer.streamFileBatched(file, ExtraConstants.STRUCTURE_CHUNK_SIZE,
+                    ExtraConstants.MAX_STRUCTURE_FILE_BYTES, 4, Minecraft.getInstance()::execute, Duration.ofSeconds(30),
+                    (index, total, bytes) -> {
+                        if(uploadConnection==null || Minecraft.getInstance().getConnection()!=uploadConnection) throw new java.io.IOException("Disconnected");
+                        ClientPacketDistributor.sendToServer(new StructureUploadPayload(id, name, index, total, bytes));
+                    });
         } catch (Exception error) {
             message(ExtraConstants.STRUCTURE_LOAD_FAILED, file.getFileName().toString());
         }
     }
 
     private static void pruneDownloads() {
-        DOWNLOADS.entrySet().removeIf(entry -> entry.getValue().isExpired());
+        DOWNLOADS.reapExpired();
     }
 
     private static void pruneSaveDestinations() {
