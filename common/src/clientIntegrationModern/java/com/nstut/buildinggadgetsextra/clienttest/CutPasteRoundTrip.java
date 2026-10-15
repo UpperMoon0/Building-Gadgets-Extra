@@ -13,7 +13,7 @@ import java.util.function.Consumer;
 
 /** The same real network/GUI lifecycle runs on integrated and dedicated servers on every BG2 port. */
 public final class CutPasteRoundTrip {
-    private enum Stage { START, EMPTY_CLEAR, TYPED_COORDINATES, CLEARED_SELECTION, TERRAIN, FIRST_CORNER, SECOND_CORNER, PASTE_MENU, FULLSCREEN, WINDOWED, REOPEN,
+    private enum Stage { START, CLEAR_READY, EMPTY_CLEAR, TYPED_COORDINATES, CLEARED_SELECTION, TERRAIN, FIRST_CORNER, SECOND_CORNER, PASTE_MENU, FULLSCREEN, WINDOWED, REOPEN,
         BUILD_PROFILE, CUT_PROFILE, DESTINATION, PASTED, FINISHED }
     private Stage stage=Stage.START;
     private int ticks,settle;
@@ -36,7 +36,13 @@ public final class CutPasteRoundTrip {
                 case START:
                     CutFlowEvidence.start("client");gadget=GadgetNBT.getUUID(held());
                     require(!button("Cut selection").isEnabled(),"Cut enabled with no selection");
-                    steps.add("empty_selection_disabled");click.accept(button("Clear selection"));next(Stage.EMPTY_CLEAR);break;
+                    steps.add("empty_selection_disabled");next(Stage.CLEAR_READY);break;
+                case CLEAR_READY:
+                    // Teleport acknowledgement can arrive before its chunk, especially in an integrated world.
+                    // Observe the fixture first so the following unchanged-world assertion has a real baseline.
+                    if(!aimedAt(CutPasteServerScenario.SOURCE)
+                            || !mc().level.getBlockState(CutPasteServerScenario.SOURCE).is(net.minecraft.world.level.block.Blocks.STONE)) break;
+                    steps.add("terrain_received");click.accept(button("Clear selection"));next(Stage.EMPTY_CLEAR);break;
                 case EMPTY_CLEAR:
                     if(!aimedAt(CutPasteServerScenario.SOURCE) || ++settle<20) break;
                     selectionOnly();require(GadgetNBT.getCopyStartPos(held()).equals(GadgetNBT.nullPos)

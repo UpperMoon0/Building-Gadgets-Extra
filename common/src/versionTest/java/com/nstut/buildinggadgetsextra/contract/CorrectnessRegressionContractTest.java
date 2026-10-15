@@ -34,7 +34,7 @@ class CorrectnessRegressionContractTest {
         contains(screen, "new com.nstut.buildinggadgetsextra.network.MultitoolCutSelection", "selection-only packet");
         contains(screen, "new " + ("forge".equals(loader) ? "PacketCopyCoords" : "CopyCoordsPayload"), "unchanged normal Copy route");
         String scenario = read(module.getParent().resolve("common/src/clientIntegrationModern/java/com/nstut/buildinggadgetsextra/clienttest/CutPasteRoundTrip.java"));
-        for (String step : new String[]{"empty_clear_selection_only", "typed_coordinates_selection_only", "clear_selection_only"})
+        for (String step : new String[]{"terrain_received", "empty_clear_selection_only", "typed_coordinates_selection_only", "clear_selection_only"})
             contains(scenario, step, "required real-client coordinate regression");
     }
 

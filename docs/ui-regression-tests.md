@@ -6,7 +6,7 @@ UI acceptance requires a complete player workflow and independent authoritative 
 
 The shared native client driver runs on Forge 1.20.1, NeoForge 1.21.1, and NeoForge 26.1.2. It uses the same scenario against integrated and dedicated servers; there is no single-player-only early return.
 
-1. Confirm Cut is disabled without a selection. Click Clear on that empty selection and verify no copy UUID appears. Type both corners through the inline fields, commit, and require selection controls, enabled Cut, no copy UUID and an unchanged source block. Clear the populated selection and require blank fields, disabled Cut and no copy UUID before continuing.
+1. Confirm Cut is disabled without a selection. Wait for the client to receive the fixture stone block, then click Clear on that empty selection and verify no copy UUID appears. Type both corners through the inline fields, commit, and require selection controls, enabled Cut, no copy UUID and an unchanged source block. Clear the populated selection and require blank fields, disabled Cut and no copy UUID before continuing.
 2. Send a normal item-use interaction through the client connection. Confirm the first corner arrives and Cut is still disabled.
 3. Send a Shift item-use interaction. Confirm both corners arrive and the actual Cut button becomes usable.
 4. Click Cut through the mounted OpenUI screen. Require the open menu to change to Paste without reopening or reselecting the profile.
