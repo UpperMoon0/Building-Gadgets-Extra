@@ -84,6 +84,7 @@ public final class MultitoolRadialScreen extends com.nstut.openui.minecraft.UiSc
 
     @Override
     protected void init() {
+        // UiScreen replaces the runtime; do not mount fresh controls into the retiring one.
         populateContextButtons();
         super.init();
     }
@@ -112,6 +113,8 @@ public final class MultitoolRadialScreen extends com.nstut.openui.minecraft.UiSc
             settingsLayout = new com.nstut.buildinggadgetsextra.common.ProfileSettingsLayout(width,height);
         }
         if (navigation.page() != MultitoolMenuState.Page.SUBMENU) return;
+        // Resize initializes directly while the profile-sync mixin may be awaiting an echo.
+        if (MultitoolState.getActiveMode(authoritativeStack()) != selectedTool()) return;
 
         int[] leftY = {height / 2 - 104};
         int[] rightY = {height / 2 - 104};

@@ -2,6 +2,7 @@ package com.nstut.buildinggadgetsextra.clienttest;
 import com.nstut.buildinggadgetsextra.client.InlineModifiers;
 import com.nstut.buildinggadgetsextra.client.MultitoolRadialScreen;
 import com.nstut.buildinggadgetsextra.common.planner.LiveModifiers;
+import com.nstut.buildinggadgetsextra.common.MultitoolMode;
 import com.nstut.buildinggadgetsextra.item.MultitoolState;
 import net.minecraft.client.Minecraft;
 import com.nstut.openui.controls.TextField;
@@ -12,6 +13,7 @@ import net.minecraft.world.item.ItemStack;
 /** Real inline controls, field commits, stage resets and authoritative inventory echo. */
 public final class ModifierScreenRoundTrip {
     private int phase;
+    private int reportedPhase=-1, diagnosticTicks;
     private boolean preparedCapture;
     private int captureTicks;
     private MultitoolRadialScreen screen;
@@ -19,6 +21,13 @@ public final class ModifierScreenRoundTrip {
     public boolean tick(ItemStack stack) {
         try {
             LiveModifiers current=MultitoolState.getLiveModifiers(stack);
+            if(reportedPhase!=phase || ++diagnosticTicks>=100) {
+                reportedPhase=phase; diagnosticTicks=0;
+                InlineModifiers visible=screen==null?null:screen.inlineModifiers();
+                System.out.println("[BGE modifier fixture] phase="+phase+" mode="+MultitoolState.getActiveMode(stack)
+                        +" spacingX="+current.value(1)+" visibleProfile="+(visible==null?-1:visible.panel.profile())
+                        +" screenCurrent="+(screen!=null && Minecraft.getInstance().screen==screen));
+            }
             if(phase==0) {
                 if(MultitoolState.getActiveMode(stack)!=com.nstut.buildinggadgetsextra.common.MultitoolMode.BUILD) return false;
                 Minecraft.getInstance().options.guiScale().set(4); Minecraft.getInstance().resizeDisplay();
@@ -78,6 +87,36 @@ public final class ModifierScreenRoundTrip {
             }
             if(phase==4) {
                 if(current.enabled() || current.value(8)!=2 || current.value(9)!=2) return false;
+                selectProfile(MultitoolMode.EXCHANGING); phase=20; return false;
+            }
+            if(phase==20) {
+                if(!profileReady(stack,MultitoolMode.EXCHANGING)) return false;
+                if(!panel.panel.field(1).getValue().equals(Integer.toString(current.value(1))))
+                    throw new IllegalStateException("profile navigation retained the previous profile draft");
+                edit(1,"7"); phase=21; return false;
+            }
+            if(phase==21) {
+                if(current.value(1)!=7) return false;
+                selectProfile(MultitoolMode.BUILD); phase=22; return false;
+            }
+            if(phase==22) {
+                if(!profileReady(stack,MultitoolMode.BUILD)) return false;
+                if(current.value(1)!=LiveModifiers.NONE.value(1) || !panel.panel.field(1).getValue().equals(Integer.toString(current.value(1))))
+                    throw new IllegalStateException("exchange edit contaminated the Build profile");
+                selectProfile(MultitoolMode.EXCHANGING); phase=23; return false;
+            }
+            if(phase==23) {
+                if(!profileReady(stack,MultitoolMode.EXCHANGING)) return false;
+                if(current.value(1)!=7 || !panel.panel.field(1).getValue().equals("7"))
+                    throw new IllegalStateException("return navigation lost the Exchange draft");
+                panel.expand(0); press(findButton(panel.panel.content(),"Reset Array")); phase=24; return false;
+            }
+            if(phase==24) {
+                if(current.value(1)!=LiveModifiers.NONE.value(1)) return false;
+                selectProfile(MultitoolMode.BUILD); phase=25; return false;
+            }
+            if(phase==25) {
+                if(!profileReady(stack,MultitoolMode.BUILD)) return false;
                 Minecraft.getInstance().setScreen(null); phase=5;
             }
             return true;
@@ -94,6 +133,26 @@ public final class ModifierScreenRoundTrip {
         }
         capture("inline-after-resize.png");
     }
+    private boolean profileReady(ItemStack stack,MultitoolMode mode) {
+        if(MultitoolState.getActiveMode(stack)!=mode) return false;
+        // ProfileSyncMixin deliberately replaces the screen after the server echo.
+        // Continue driving the visible screen rather than the retired fixture reference.
+        if(!(Minecraft.getInstance().screen instanceof MultitoolRadialScreen)) return false;
+        screen=(MultitoolRadialScreen)Minecraft.getInstance().screen;
+        panel=screen.inlineModifiers();
+        return panel!=null && panel.panel.profile()==mode.ordinal();
+    }
+    private void selectProfile(MultitoolMode mode) {
+        panel.tick(); // Consume the authoritative acknowledgement before Back navigation.
+        press(findButton(screen.uiRuntime().root(),"Back"));
+        double angle=-Math.PI/2+mode.ordinal()*(Math.PI*2/MultitoolMode.values().length);
+        double x=screen.menuCenterX()+Math.cos(angle)*68, y=screen.menuCenterY()+Math.sin(angle)*68;
+        if(!screen.mouseClicked(x,y,0)) throw new IllegalStateException("general profile wheel unreachable");
+        screen.mouseReleased(x,y,0);
+        if(screen.inlineModifiers()!=null) throw new IllegalStateException("profile controls exposed before server sync");
+        screen.resize(Minecraft.getInstance(),screen.width,screen.height);
+        if(screen.inlineModifiers()!=null) throw new IllegalStateException("resize exposed controls before profile sync");
+    }
     private void verifyDraftResize() {
         TextField input=panel.panel.field(1);
         input.setValue("abc");
@@ -102,10 +161,30 @@ public final class ModifierScreenRoundTrip {
         if(panel.flush()) throw new IllegalStateException("invalid draft accepted");
         int w=screen.width,h=screen.height;
         screen.resize(Minecraft.getInstance(),320,240); panel=screen.inlineModifiers();
+        verifyVisibleControlsAfterResize();
         if(!panel.panel.field(1).getValue().equals("-")) throw new IllegalStateException("resize lost numeric draft");
         screen.resize(Minecraft.getInstance(),w,h); panel=screen.inlineModifiers();
+        verifyVisibleControlsAfterResize();
         panel.panel.field(1).setValue("3");
         if(!panel.flush()) throw new IllegalStateException("valid draft rejected after resize");
+    }
+    private void verifyVisibleControlsAfterResize() {
+        if(findButton(screen.uiRuntime().root(),"Reset Array")==null)
+            throw new IllegalStateException("resize disposed the visible modifier tree");
+        if(!containsRangeSlider(screen.uiRuntime().root()))
+            throw new IllegalStateException("resize disposed the visible range controls");
+        if(!containsComponent(screen.uiRuntime().root(),panel.panel.field(1)))
+            throw new IllegalStateException("resize detached the retained text field");
+    }
+    private boolean containsRangeSlider(UIComponent root) {
+        if(root instanceof com.nstut.openui.controls.Slider) return true;
+        for(UIComponent child:root.children()) if(containsRangeSlider(child)) return true;
+        return false;
+    }
+    private boolean containsComponent(UIComponent root,UIComponent target) {
+        if(root==target) return true;
+        for(UIComponent child:root.children()) if(containsComponent(child,target)) return true;
+        return false;
     }
     private void edit(int index,String value) {
         TextField input=panel.panel.field(index); panel.revealField(index); input.requestFocus(); panel.tick(); input.setValue(value);

@@ -79,10 +79,30 @@ public final class ModifierScreenRoundTrip {
         if(panel.flush()) throw new IllegalStateException("invalid draft accepted");
         int w=screen.width,h=screen.height;
         screen.resize(Minecraft.getInstance(),320,240); panel=screen.inlineModifiers();
+        verifyVisibleControlsAfterResize();
         if(!panel.panel.field(1).getValue().equals("-")) throw new IllegalStateException("resize lost numeric draft");
         screen.resize(Minecraft.getInstance(),w,h); panel=screen.inlineModifiers();
+        verifyVisibleControlsAfterResize();
         panel.panel.field(1).setValue("3");
         if(!panel.flush()) throw new IllegalStateException("valid draft rejected after resize");
+    }
+    private void verifyVisibleControlsAfterResize() {
+        if(findButton(screen.uiRuntime().root(),"Reset Array")==null)
+            throw new IllegalStateException("resize disposed the visible modifier tree");
+        if(!containsRangeSlider(screen.uiRuntime().root()))
+            throw new IllegalStateException("resize disposed the visible range controls");
+        if(!containsComponent(screen.uiRuntime().root(),panel.panel.field(1)))
+            throw new IllegalStateException("resize detached the retained text field");
+    }
+    private boolean containsRangeSlider(UIComponent root) {
+        if(root instanceof com.nstut.openui.controls.Slider) return true;
+        for(UIComponent child:root.children()) if(containsRangeSlider(child)) return true;
+        return false;
+    }
+    private boolean containsComponent(UIComponent root,UIComponent target) {
+        if(root==target) return true;
+        for(UIComponent child:root.children()) if(containsComponent(child,target)) return true;
+        return false;
     }
     private void edit(int index,String value) {
         TextField input=panel.panel.field(index); panel.revealField(index); input.requestFocus(); panel.tick(); input.setValue(value);
