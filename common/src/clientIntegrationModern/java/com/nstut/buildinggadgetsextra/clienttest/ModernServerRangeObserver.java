@@ -41,6 +41,8 @@ public final class ModernServerRangeObserver {
      * completing its initial inventory synchronization while that event is firing.
      */
     public static void setupAndWatch(ServerPlayer player, Consumer<ServerPlayer> sender) {
+        // UI/transport verification must not depend on terrain or damage in a copied GameTest world.
+        player.setInvulnerable(true);
         copyTransportSender = sender;
         watchedPlayer = player;
         loginTicks = 0;

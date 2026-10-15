@@ -128,6 +128,10 @@ public final class ModernClientRangeAdapter implements ClientRangeRoundTripScena
         MultitoolRadialScreen screen=(MultitoolRadialScreen)radialScreen();
         com.nstut.openui.api.ButtonWidget plus=findPlus(profileRoot());
         if(plus==null) throw new IllegalStateException("OpenUI range step missing");
+        // Server echo can rebuild the screen during a tick before the next render on slow CI GPUs.
+        screen.uiRuntime().root().layoutTree(minecraft().font,0,0,screen.width,screen.height);
+        plus.requestFocus();
+        screen.uiRuntime().root().layoutTree(minecraft().font,0,0,screen.width,screen.height);
         clicker.click(screen,plus.getX()+plus.getWidth()/2.0,plus.getY()+plus.getHeight()/2.0);
     }
 
