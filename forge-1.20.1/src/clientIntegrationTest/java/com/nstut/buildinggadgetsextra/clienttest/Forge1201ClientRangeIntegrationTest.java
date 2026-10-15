@@ -19,6 +19,7 @@ public final class Forge1201ClientRangeIntegrationTest {
     private static final ModernClientRangeAdapter ADAPTER = new ModernClientRangeAdapter(
             (screen, x, y) -> screen.mouseClicked(x, y, 0));
     private static final ClientRangeRoundTripScenario SCENARIO = new ClientRangeRoundTripScenario(ADAPTER);
+    private static final ClientStartupGate STARTUP=new ClientStartupGate();
     private static final long BOOT_STARTED_NANOS = System.nanoTime();
     private static boolean connectionRequested;
 
@@ -30,14 +31,14 @@ public final class Forge1201ClientRangeIntegrationTest {
 
         Minecraft minecraft = Minecraft.getInstance();
         if (minecraft.player == null || minecraft.level == null) {
-            if (DEDICATED && !connectionRequested && minecraft.screen != null) {
+            if (DEDICATED && !connectionRequested && STARTUP.ready(minecraft)) {
                 connectionRequested = true;
                 ServerAddress address = ServerAddress.parseString(DEDICATED_ADDRESS);
                 ServerData server = new ServerData("BGE integration", DEDICATED_ADDRESS, false);
                 ConnectScreen.startConnecting(minecraft.screen, minecraft, address, server, true);
             }
             if (System.nanoTime() - BOOT_STARTED_NANOS > BOOT_TIMEOUT_NANOS) {
-                ADAPTER.fail("timeout waiting for " + (DEDICATED ? "dedicated server connection" : "quick-play integration world"), null);
+                ADAPTER.fail("timeout waiting for " + (DEDICATED ? "dedicated server connection" : "quick-play integration world")+ClientStartupGate.describe(minecraft), null);
             }
             return;
         }

@@ -22,6 +22,7 @@ public final class NeoForge2612ClientRangeIntegrationTest {
     private static final ModernClientRangeAdapter ADAPTER = new ModernClientRangeAdapter((screen, x, y) ->
             screen.mouseClicked(new MouseButtonEvent(x, y, new MouseButtonInfo(0, 0)), false));
     private static final ClientRangeRoundTripScenario SCENARIO = new ClientRangeRoundTripScenario(ADAPTER);
+    private static final ClientStartupGate STARTUP=new ClientStartupGate();
     private static final long BOOT_STARTED_NANOS = System.nanoTime();
     private static boolean startupRequested;
 
@@ -33,7 +34,7 @@ public final class NeoForge2612ClientRangeIntegrationTest {
 
         Minecraft minecraft = Minecraft.getInstance();
         if (minecraft.player == null || minecraft.level == null) {
-            if (!startupRequested && minecraft.screen != null) {
+            if (!startupRequested && STARTUP.ready(minecraft)) {
                 startupRequested = true;
                 if (DEDICATED) {
                     ServerAddress address = ServerAddress.parseString(DEDICATED_ADDRESS);
@@ -47,7 +48,7 @@ public final class NeoForge2612ClientRangeIntegrationTest {
                 }
             }
             if (System.nanoTime() - BOOT_STARTED_NANOS > BOOT_TIMEOUT_NANOS) {
-                ADAPTER.fail("timeout waiting for " + (DEDICATED ? "dedicated server connection" : "prepared integration world"), null);
+                ADAPTER.fail("timeout waiting for " + (DEDICATED ? "dedicated server connection" : "prepared integration world")+ClientStartupGate.describe(minecraft), null);
             }
             return;
         }

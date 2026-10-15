@@ -16,6 +16,8 @@ The shared native client driver runs on Forge 1.20.1, NeoForge 1.21.1, and NeoFo
 
 The server only prepares isolated test terrain and positions the player. It does **not** seed selection coordinates, invoke Paste, or write client assertions. It independently records both corner interactions, accepted cut UUID, source removal, destination placement, consumed buffer, and return to selection. The resulting block remains in the disposable test world so client block-update verification cannot race fixture cleanup. The next run resets the fixture area. Player restoration waits until the client has observed the block updates and leaves the Cut/Paste profile, so distant saved-world spawn positions cannot unload the fixture during validation.
 
+Client bootstrap waits for resource loading to finish and the initial menu to remain stable before connecting or opening a world, so startup cannot replace an in-progress connection screen. Boot failures record the actual screen and overlay.
+
 Each stage has a bounded timeout with its name, held mode, buffer state, corners, and player pose in diagnostics. Tests exercise actual fullscreen changes; synthetic layout checks supplement them.
 
 ## CI gates and artifacts
