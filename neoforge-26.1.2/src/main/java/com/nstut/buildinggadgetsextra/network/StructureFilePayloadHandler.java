@@ -23,15 +23,12 @@ public final class StructureFilePayloadHandler {
             byte[] bytes = NativeStructureBridge.exportStructure(player, name);
             if (bytes == null) return;
 
-            int total = Math.max(1, (bytes.length + ExtraConstants.STRUCTURE_CHUNK_SIZE - 1)
-                    / ExtraConstants.STRUCTURE_CHUNK_SIZE);
-            for (int index = 0; index < total; index++) {
-                int start = index * ExtraConstants.STRUCTURE_CHUNK_SIZE;
-                int end = Math.min(bytes.length, start + ExtraConstants.STRUCTURE_CHUNK_SIZE);
-                byte[] chunk = new byte[end - start];
-                System.arraycopy(bytes, start, chunk, 0, chunk.length);
-                PacketDistributor.sendToPlayer(player,
-                        new StructureDownloadPayload(payload.requestId(), name, index, total, chunk));
+            try {
+                com.nstut.packetweave.api.ChunkedTransfer.send(bytes, ExtraConstants.STRUCTURE_CHUNK_SIZE,
+                        (index, total, chunk) -> PacketDistributor.sendToPlayer(player,
+                                new StructureDownloadPayload(payload.requestId(), name, index, total, chunk)));
+            } catch (java.io.IOException | IllegalArgumentException error) {
+                player.sendOverlayMessage(Component.translatable(ExtraConstants.STRUCTURE_SAVE_FAILED, name));
             }
         });
     }

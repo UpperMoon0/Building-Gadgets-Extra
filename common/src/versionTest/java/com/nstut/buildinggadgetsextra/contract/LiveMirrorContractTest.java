@@ -19,21 +19,46 @@ class LiveMirrorContractTest {
     private final boolean legacyCut = Boolean.parseBoolean(requiredProperty("bge.legacyCut"));
 
     @Test
+    void screenInitializationDoesNotMountControlsIntoRetiringRuntime() throws Exception {
+        String screen=source("client/"+(legacyCut?"LegacyMultitoolScreen.java":"MultitoolRadialScreen.java"));
+        int init=screen.indexOf("protected void init()");
+        int end=screen.indexOf("}",init);
+        String body=screen.substring(init,end);
+        contains(body,"populateContextButtons()", "prepare fresh controls before runtime replacement");
+        assertFalse(body.contains("rebuildSettings()") || body.contains("rebuildContextButtons()"), label("must not mount into retiring runtime"));
+    }
+
+    @Test
+    void modernProfileControlsWaitForAuthoritativeSelection() throws Exception {
+        if (legacyCut) return; // The legacy selector updates its local profile before rebuilding.
+        contains(source("client/MultitoolRadialScreen.java"),
+                "MultitoolState.getActiveMode(authoritativeStack()) != selectedTool()", "resize respects pending profile selection");
+        String sync=source("mixin/MultitoolRadialScreenProfileSyncMixin.java");
+        contains(sync,"MultitoolState.getActiveMode(held) != navigation.selectedTool()", "authoritative profile gate");
+        contains(sync,"ci.cancel()", "deferred profile controls");
+        contains(sync,"new MultitoolRadialScreen(held)", "rebuild after inventory echo");
+        contains(sync,"minecraft.setScreen(", "replace visible screen after inventory echo");
+    }
+
+    @Test
     void liveMirrorIsOnlyExposedWherePerPositionStateTransformsAreSafe() throws Exception {
         Path mixin = module.resolve("src/main/java/com/nstut/buildinggadgetsextra/mixin/BaseModeLiveMirrorMixin.java");
         Path modernRadial = module.resolve("src/main/java/com/nstut/buildinggadgetsextra/client/MultitoolRadialScreen.java");
         Path legacyRadial = module.resolve("src/main/java/com/nstut/buildinggadgetsextra/client/LegacyMultitoolScreen.java");
 
         if (legacyCut) {
-            assertFalse(Files.exists(mixin), label("legacy BG1 must not claim live mirror without per-position block states"));
-            String radial = read(legacyRadial);
-            assertFalse(radial.contains("LIVE_MIRROR_HORIZONTAL"), label("legacy UI must keep unsupported live mirror hidden"));
+            String plan = source("transform/LegacyLivePlan.java");
+            contains(plan, "OperationPlanner.compose", "legacy shared modifier planner");
+            contains(plan, "TemplateTransforms.mirrorVerticalState", "legacy per-copy directional state");
+            contains(source("mixin/LegacyBuildRenderMixin.java"), "LegacyLivePlan.state", "legacy matching preview states");
+            contains(source("mixin/LegacyAnchorModifiersMixin.java"), "BGEAnchorTransforms", "anchored state provenance");
+            contains(source("client/InlineModifiers.java"), "isLiveMirrorHorizontal", "legacy live modifiers visible");
             return;
         }
 
         assertTrue(Files.isRegularFile(mixin), label("live mirror planner mixin"));
         String mixinSource = read(mixin);
-        contains(mixinSource, "OperationPlanner.mirrorCopies", "shared planner usage");
+        contains(mixinSource, "OperationPlanner.compose", "shared planner usage");
         contains(mixinSource, "MAX_LIVE_PLAN_POSITIONS", "bounded interactive plan");
         contains(mixinSource, "PlanPos.ZERO", "BG2 local-coordinate mirror pivot");
         contains(mixinSource, "start.offset(localPos)", "local-to-world validation conversion");

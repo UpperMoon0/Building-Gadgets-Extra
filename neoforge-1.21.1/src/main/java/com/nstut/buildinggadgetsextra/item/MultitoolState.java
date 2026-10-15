@@ -37,9 +37,39 @@ public final class MultitoolState {
     private MultitoolState() {
     }
 
+    public static com.nstut.buildinggadgetsextra.common.planner.LiveModifiers getLiveModifiers(ItemStack stack) {
+        String key = "BGEModifiers_" + getActiveMode(stack).serializedName();
+        CompoundTag root = stack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag();
+        CompoundTag tag = root.getCompound(key);
+        if (tag.isEmpty()) return com.nstut.buildinggadgetsextra.common.planner.LiveModifiers.NONE;
+        int[] values = new int[com.nstut.buildinggadgetsextra.common.planner.LiveModifiers.FIELDS];
+        for (int i = 0; i < values.length; i++) values[i] = tag.getInt("V" + i);
+        if (!tag.contains("V8")) values[8] = Math.max(2, values[0]);
+        if (!tag.contains("V9")) values[9] = Math.max(2, values[4]);
+        try { return com.nstut.buildinggadgetsextra.common.planner.LiveModifiers.from(values); }
+        catch (IllegalArgumentException invalid) { return com.nstut.buildinggadgetsextra.common.planner.LiveModifiers.NONE; }
+    }
+
+    public static void setLiveModifiers(ItemStack stack, com.nstut.buildinggadgetsextra.common.planner.LiveModifiers modifiers) {
+        String key = "BGEModifiers_" + getActiveMode(stack).serializedName();
+        CompoundTag tag = new CompoundTag();
+        for (int i = 0; i < com.nstut.buildinggadgetsextra.common.planner.LiveModifiers.FIELDS; i++) tag.putInt("V" + i, modifiers.value(i));
+        CustomData.update(DataComponents.CUSTOM_DATA, stack, root -> root.put(key, tag));
+    }
+
     public static MultitoolMode getActiveMode(ItemStack stack) {
         return MultitoolMode.parse(stack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY)
                 .copyTag().getString(ACTIVE_MODE));
+    }
+
+    /** Cut/Paste has one legal action for each buffer state, including restored old items. */
+    public static void syncCutPasteMode(ItemStack stack) {
+        if (getActiveMode(stack) != MultitoolMode.CUT_PASTE) return;
+        com.direwolf20.buildinggadgets2.util.modes.BaseMode next = GadgetNBT.hasCopyUUID(stack)
+                ? new com.direwolf20.buildinggadgets2.util.modes.Paste()
+                : new com.direwolf20.buildinggadgets2.util.modes.Cut();
+        GadgetNBT.setMode(stack, next);
+        setProfileMode(stack, MultitoolMode.CUT_PASTE, next.getId());
     }
 
     public static void setActiveMode(ItemStack stack, MultitoolMode mode) {

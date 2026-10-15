@@ -14,6 +14,32 @@ public final class MultitoolState {
     private static final String ACTIVE = "BGEActiveTool";
     private static final String PROFILE = "BGEProfile_";
     private MultitoolState() {}
+    public static boolean isLiveMirrorHorizontal(ItemStack stack) { return stack.getOrCreateTag().getBoolean("BGEMirrorH_" + getActiveMode(stack).serializedName()); }
+    public static boolean isLiveMirrorVertical(ItemStack stack) { return stack.getOrCreateTag().getBoolean("BGEMirrorV_" + getActiveMode(stack).serializedName()); }
+    public static void toggleLiveMirror(ItemStack stack, boolean vertical) {
+        String key = (vertical ? "BGEMirrorV_" : "BGEMirrorH_") + getActiveMode(stack).serializedName();
+        stack.getOrCreateTag().putBoolean(key, !stack.getOrCreateTag().getBoolean(key));
+    }
+
+    public static com.nstut.buildinggadgetsextra.common.planner.LiveModifiers getLiveModifiers(ItemStack stack) {
+        String key = "BGEModifiers_" + getActiveMode(stack).serializedName();
+        CompoundNBT root = stack.getOrCreateTag();
+        CompoundNBT tag = root.getCompound(key);
+        if (tag.isEmpty()) return com.nstut.buildinggadgetsextra.common.planner.LiveModifiers.NONE;
+        int[] values = new int[com.nstut.buildinggadgetsextra.common.planner.LiveModifiers.FIELDS];
+        for (int i = 0; i < values.length; i++) values[i] = tag.getInt("V" + i);
+        if (!tag.contains("V8")) values[8] = Math.max(2, values[0]);
+        if (!tag.contains("V9")) values[9] = Math.max(2, values[4]);
+        try { return com.nstut.buildinggadgetsextra.common.planner.LiveModifiers.from(values); }
+        catch (IllegalArgumentException invalid) { return com.nstut.buildinggadgetsextra.common.planner.LiveModifiers.NONE; }
+    }
+
+    public static void setLiveModifiers(ItemStack stack, com.nstut.buildinggadgetsextra.common.planner.LiveModifiers modifiers) {
+        String key = "BGEModifiers_" + getActiveMode(stack).serializedName();
+        CompoundNBT tag = new CompoundNBT();
+        for (int i = 0; i < com.nstut.buildinggadgetsextra.common.planner.LiveModifiers.FIELDS; i++) tag.putInt("V" + i, modifiers.value(i));
+        stack.getOrCreateTag().put(key, tag);
+    }
 
     public static MultitoolMode getActiveMode(ItemStack stack) {
         return MultitoolMode.parse(stack.getOrCreateTag().getString(ACTIVE));
@@ -44,7 +70,9 @@ public final class MultitoolState {
             index %= ExchangingModes.values().length;
             ((GadgetExchanger) OurItems.EXCHANGING_GADGET_ITEM.get()).setMode(stack, index);
         } else if (mode == MultitoolMode.COPY_PASTE || mode == MultitoolMode.CUT_PASTE) {
-            index %= GadgetCopyPaste.ToolMode.values().length;
+            index = mode == MultitoolMode.CUT_PASTE
+                    ? (stack.getOrCreateTag().getBoolean("cutBufferActive") ? GadgetCopyPaste.ToolMode.PASTE.ordinal() : GadgetCopyPaste.ToolMode.COPY.ordinal())
+                    : index % GadgetCopyPaste.ToolMode.values().length;
             ((GadgetCopyPaste) OurItems.COPY_PASTE_GADGET_ITEM.get()).setMode(stack, index);
         }
         stack.getOrCreateTag().putInt(PROFILE + mode.serializedName(), index);
@@ -55,13 +83,6 @@ public final class MultitoolState {
         saveCurrentProfile(stack, previous);
         setActiveMode(stack, selected);
         if (selected == MultitoolMode.DESTRUCTION) return;
-        if (selected == MultitoolMode.CUT_PASTE) {
-            boolean hasCutBuffer = stack.getOrCreateTag().getBoolean("cutBufferActive");
-            int modeIndex = hasCutBuffer ? GadgetCopyPaste.ToolMode.PASTE.ordinal() : GadgetCopyPaste.ToolMode.COPY.ordinal();
-            ((GadgetCopyPaste) OurItems.COPY_PASTE_GADGET_ITEM.get()).setMode(stack, modeIndex);
-            stack.getOrCreateTag().putInt(PROFILE + selected.serializedName(), modeIndex);
-            return;
-        }
         applyProfile(stack, selected, getProfile(stack, selected));
     }
 }

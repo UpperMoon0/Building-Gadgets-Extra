@@ -37,6 +37,10 @@ The server setting `multitoolRangeMultiplier` defaults to 2.0 (allowed: 1.0-4.0)
 
 Creative players can use the multitool with an empty FE battery. Survival players still require and consume the configured energy for the corresponding gadget profile.
 
+## Dependencies
+
+Install [PacketWeave 0.1.3+](https://www.curseforge.com/minecraft/mc-mods/packetweave) on both server and client. Clients also require [OpenUI MC 0.0.13+](https://www.curseforge.com/minecraft/mc-mods/openui-mc). Use the matching Minecraft/loader build for each dependency, together with Building Gadgets or Building Gadgets 2 below.
+
 ## Multiplayer
 
 Building Gadgets Extra works in singleplayer and multiplayer. For multiplayer, install it on the server and on each player's client. Every player keeps their own saved-build collection on their computer, while gadget/template changes remain server-authoritative.
@@ -62,4 +66,16 @@ Large BG2 copy previews are synchronized in bounded chunks rather than one overs
 
 On Forge 1.20.1, NeoForge 1.21.1, and NeoForge 26.1.2, select the Builder's Multitool Building or Exchanging profile and use **Horizontal Mirror** or **Vertical Mirror** in its radial menu. Each toggle stays with that profile. Preview and placement use the same mirrored candidates, with directional block states transformed per copy. Horizontal mirroring follows the facing axis; vertical mirroring uses the operation anchor. Existing candidates take precedence when copies overlap.
 
-Interactive plans are limited to 65,536 positions; an oversized or overflowing mirrored plan falls back to the original upstream operation. Forge 1.16.5 keeps template mirroring but does not expose live Build/Exchange mirroring. Update Extra on both server and clients together: 0.0.6 requires the matching live-mirror protocol.
+Interactive plans are limited to 65,536 positions. Since 0.0.7, an oversized or overflowing plan rejects the operation, and live mirroring is also available on Forge 1.16.5. Update Extra on both server and clients together for matching protocols.
+
+### Composable live modifiers (0.0.7)
+
+Select the Builder's Multitool Building or Exchanging profile. Its settings area contains Range, the existing profile options, and a **Modifiers** group. Horizontal/Vertical Mirror, Array and Radial have visible On/Off states. The separate Array and Radial icons (or disclosure buttons) expand their numeric controls inline; they do not open another screen.
+
+The profile toolbar, Range, mode wheel and modifier controls use one flat visual style. Total copies and compact axis fields keep the expanded forms readable at larger GUI scales.
+
+Array repeats with signed X/Y/Z spacing in blocks. Radial repeats around the vertical Y axis with center offsets relative to the operation origin. Counts include the original. Enabled counts are 2-16; spacing and center offsets are bounded to -64..64. Turning a stage off preserves its configured count and offsets. Each expanded stage has its own reset. Composition order is shown only when multiple stages are enabled and lists only those stages.
+
+Valid numeric edits save on Enter or leaving the field. Toggles save immediately. The server confirms the active profile's settings; there is no extra Apply/Cancel screen. Invalid fields show a specific error. Scrolling and resizing preserve edits; settings do not overlap the operation wheel at smaller GUI sizes. Build and Exchange settings are independent. Copy/Paste, Cut/Paste, Destruction and native gadgets keep their existing workflows.
+
+Radial geometry rounds to blocks and directional states rotate to the nearest supported quarter turn. Overlaps keep the first candidate and are charged once. Preview and placement share the common planner. Plans above 65,536 positions or coordinate overflow are rejected with feedback; normal inventory, FE, world and protection rules still apply. All four versions support live modifiers; update clients and servers together.

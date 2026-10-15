@@ -29,6 +29,7 @@ import java.nio.file.Paths;
 public final class Forge1165ClientRangeIntegrationTest {
     private static final long BOOT_TIMEOUT_NANOS = 120_000_000_000L;
     private static final boolean ENABLED = Boolean.getBoolean(ClientRangeRoundTripScenario.ENABLE_PROPERTY);
+    private static final ModifierScreenRoundTrip MODIFIERS = new ModifierScreenRoundTrip();
     private static final Adapter ADAPTER = new Adapter();
     private static final ClientRangeRoundTripScenario SCENARIO = new ClientRangeRoundTripScenario(ADAPTER);
     private static final long BOOT_STARTED_NANOS = System.nanoTime();
@@ -66,7 +67,7 @@ public final class Forge1165ClientRangeIntegrationTest {
 
         @Override
         public boolean hasReadyMultitool() {
-            return held().getItem() instanceof BuildersMultitool;
+            return held().getItem() instanceof BuildersMultitool && MODIFIERS.tick(held());
         }
 
         @Override
@@ -87,17 +88,9 @@ public final class Forge1165ClientRangeIntegrationTest {
         @Override
         public int visibleScreenRange() {
             if (!(minecraft().screen instanceof LegacyMultitoolScreen)) return -1;
-            try {
-                Field rangeLabelY = LegacyMultitoolScreen.class.getDeclaredField("rangeLabelY");
-                rangeLabelY.setAccessible(true);
-                if (rangeLabelY.getInt(minecraft().screen) < 0) return -1;
-
-                Field stack = LegacyMultitoolScreen.class.getDeclaredField("stack");
-                stack.setAccessible(true);
-                return GadgetUtils.getToolRange((ItemStack) stack.get(minecraft().screen));
-            } catch (ReflectiveOperationException error) {
-                throw new IllegalStateException("cannot read legacy range controls", error);
-            }
+            LegacyMultitoolScreen screen=(LegacyMultitoolScreen)minecraft().screen;
+            com.nstut.openui.api.TextWidget label=findRange(screen.uiRuntime().root());
+            return label==null?-1:Integer.parseInt(label.getText().getString().substring(7));
         }
 
         @Override
@@ -111,10 +104,23 @@ public final class Forge1165ClientRangeIntegrationTest {
         public void clickRangePlus() {
             Screen screen = minecraft().screen;
             if (!(screen instanceof LegacyMultitoolScreen)) throw new IllegalStateException("legacy range screen missing");
-            // Real + Button created by LegacyMultitoolScreen.addRange for the Build profile.
-            screen.mouseClicked(screen.width / 2.0 + 185.0, screen.height / 2.0 + 26.0, 0);
+            LegacyMultitoolScreen radial=(LegacyMultitoolScreen)screen;
+            com.nstut.openui.api.ButtonWidget plus=findPlus(radial.uiRuntime().root());
+            if(plus==null) throw new IllegalStateException("legacy OpenUI range step missing");
+            radial.uiRuntime().root().layoutTree(minecraft().font,0,0,screen.width,screen.height);
+            screen.mouseClicked(plus.getX()+plus.getWidth()/2.0,plus.getY()+plus.getHeight()/2.0,0);
         }
 
+        private com.nstut.openui.api.TextWidget findRange(com.nstut.openui.api.UIComponent root) {
+            if(root instanceof com.nstut.openui.api.TextWidget && ((com.nstut.openui.api.TextWidget)root).getText().getString().startsWith("Range: ")) return (com.nstut.openui.api.TextWidget)root;
+            for(com.nstut.openui.api.UIComponent child:root.children()) { com.nstut.openui.api.TextWidget found=findRange(child); if(found!=null) return found; }
+            return null;
+        }
+        private com.nstut.openui.api.ButtonWidget findPlus(com.nstut.openui.api.UIComponent root) {
+            if(root instanceof com.nstut.openui.api.ButtonWidget && ((com.nstut.openui.api.ButtonWidget)root).getLabel().getString().equals("+")) return (com.nstut.openui.api.ButtonWidget)root;
+            for(com.nstut.openui.api.UIComponent child:root.children()) { com.nstut.openui.api.ButtonWidget found=findPlus(child); if(found!=null) return found; }
+            return null;
+        }
         @Override
         public void closeScreen() {
             minecraft().setScreen(null);

@@ -1,9 +1,5 @@
 package com.nstut.buildinggadgetsextra.clienttest;
 
-import com.direwolf20.buildinggadgets2.client.screen.CopyGUI;
-import com.direwolf20.buildinggadgets2.client.screen.DestructionGUI;
-import com.direwolf20.buildinggadgets2.client.screen.widgets.GuiIncrementer;
-import com.direwolf20.buildinggadgets2.client.screen.widgets.IncrementalSliderWidget;
 import com.direwolf20.buildinggadgets2.common.items.BaseGadget;
 import com.direwolf20.buildinggadgets2.common.worlddata.BG2DataClient;
 import com.direwolf20.buildinggadgets2.util.GadgetNBT;
@@ -33,6 +29,9 @@ public final class ModernClientRangeAdapter implements ClientRangeRoundTripScena
     }
 
     private final ScreenClicker clicker;
+    private static ScreenClicker generalClicker;
+    static void clickGeneral(Screen screen,double x,double y) { generalClicker.click(screen,x,y); }
+    private final ModifierScreenRoundTrip modifierRoundTrip = new ModifierScreenRoundTrip();
     private String pendingPassDetail;
     private int copyTransportTicks;
     private boolean copyTransportVerified;
@@ -78,7 +77,7 @@ public final class ModernClientRangeAdapter implements ClientRangeRoundTripScena
     }
 
     public ModernClientRangeAdapter(ScreenClicker clicker) {
-        this.clicker = clicker;
+        this.clicker = clicker; generalClicker=clicker;
     }
 
     private Minecraft minecraft() {
@@ -91,7 +90,7 @@ public final class ModernClientRangeAdapter implements ClientRangeRoundTripScena
 
     @Override
     public boolean hasReadyMultitool() {
-        return held().getItem() instanceof BuildersMultitool;
+        return held().getItem() instanceof BuildersMultitool && modifierRoundTrip.tick(held());
     }
 
     @Override
@@ -111,8 +110,9 @@ public final class ModernClientRangeAdapter implements ClientRangeRoundTripScena
 
     @Override
     public int visibleScreenRange() {
-        IncrementalSliderWidget slider = rangeSliderOrNull();
-        return slider == null ? -1 : slider.getValueInt();
+        com.nstut.openui.api.UIComponent root=profileRoot();
+        com.nstut.openui.api.TextWidget label=findRange(root);
+        return label==null?-1:Integer.parseInt(label.getText().getString().substring("Range: ".length()));
     }
 
     @Override
@@ -123,10 +123,14 @@ public final class ModernClientRangeAdapter implements ClientRangeRoundTripScena
 
     @Override
     public void clickRangePlus() {
-        Screen screen = radialScreen();
-        IncrementalSliderWidget slider = rangeSliderOrNull();
-        if (slider == null) throw new IllegalStateException("range slider missing");
-        clickSliderPlus(screen, slider);
+        MultitoolRadialScreen screen=(MultitoolRadialScreen)radialScreen();
+        com.nstut.openui.api.ButtonWidget plus=findPlus(profileRoot());
+        if(plus==null) throw new IllegalStateException("OpenUI range step missing");
+        // Server echo can rebuild the screen during a tick before the next render on slow CI GPUs.
+        screen.uiRuntime().root().layoutTree(minecraft().font,0,0,screen.width,screen.height);
+        plus.requestFocus();
+        screen.uiRuntime().root().layoutTree(minecraft().font,0,0,screen.width,screen.height);
+        clicker.click(screen,plus.getX()+plus.getWidth()/2.0,plus.getY()+plus.getHeight()/2.0);
     }
 
     @Override
@@ -159,71 +163,31 @@ public final class ModernClientRangeAdapter implements ClientRangeRoundTripScena
         switchToTool(MultitoolMode.DESTRUCTION);
     }
 
-    @Override
-    public boolean isCopyScreenOpen() {
-        return minecraft().screen instanceof CopyGUI;
+    private com.nstut.buildinggadgetsextra.client.ui.ToolSettingsPanel toolEditor(String kind) {
+        MultitoolRadialScreen screen=(MultitoolRadialScreen)radialScreen();
+        if(screen.toolSettings()==null || !screen.toolSettings().kind().equals(kind)) throw new IllegalStateException("inline "+kind+" settings missing");
+        return screen.toolSettings();
     }
-
-    @Override
-    public void openCopyConfig() {
-        Screen screen = radialScreen();
-        // Copy/Paste right rail: raytrace, paste-replace, then copy-selection GUI.
-        clicker.click(screen, screen.width / 2.0 + 124.0, screen.height / 2.0 - 32.0);
-    }
-
-    @Override
-    public int visibleCopyStartX() {
-        return copyStartX().getValue();
-    }
-
-    @Override
-    public void clickCopyStartXPlus() {
-        GuiIncrementer startX = copyStartX();
-        clicker.click(copyScreen(), startX.getX() + 60.0, startX.getY() + 7.0);
-    }
-
-    @Override
-    public void confirmCopyConfig() {
-        Screen screen = copyScreen();
-        // Four centered buttons total 285 px; Confirm is the first 50 px button.
-        clicker.click(screen, screen.width / 2.0 - 117.0, screen.height / 2.0 + 30.0);
-    }
+    @Override public boolean isCopyScreenOpen() { return minecraft().screen instanceof MultitoolRadialScreen && ((MultitoolRadialScreen)minecraft().screen).toolSettings()!=null && ((MultitoolRadialScreen)minecraft().screen).toolSettings().kind().equals("copy"); }
+    @Override public void openCopyConfig() { toolEditor("copy"); captureInline("copy-settings.png"); }
+    @Override public int visibleCopyStartX() { return Integer.parseInt(toolEditor("copy").field(0).getValue()); }
+    @Override public void clickCopyStartXPlus() { var editor=toolEditor("copy");editor.field(0).setValue(Integer.toString(visibleCopyStartX()+1));if(!editor.flush()) throw new IllegalStateException("copy edit rejected"); }
+    @Override public void confirmCopyConfig() { if(!toolEditor("copy").flush()) throw new IllegalStateException("copy commit rejected");closeScreen(); }
 
     @Override
     public int clientCopyStartX() {
         return GadgetNBT.getCopyStartPos(held()).getX();
     }
 
-    @Override
-    public boolean isDestructionScreenOpen() {
-        return minecraft().screen instanceof DestructionGUI;
-    }
-
-    @Override
-    public void openDestructionConfig() {
-        Screen screen = radialScreen();
-        // Destruction has a single right-rail configure button at y = center - 104.
-        clicker.click(screen, screen.width / 2.0 + 124.0, screen.height / 2.0 - 92.0);
-    }
-
-    @Override
-    public int visibleDestructionLeft() {
-        return destructionSlider(-145, -7).getValueInt();
-    }
-
-    @Override
-    public int visibleDestructionDepth() {
-        return destructionSlider(-35, -7).getValueInt();
-    }
-
-    @Override
-    public void clickDestructionLeftPlus() {
-        clickSliderPlus(destructionScreen(), destructionSlider(-145, -7));
-    }
-
-    @Override
-    public void clickDestructionDepthPlus() {
-        clickSliderPlus(destructionScreen(), destructionSlider(-35, -7));
+    @Override public boolean isDestructionScreenOpen() { return minecraft().screen instanceof MultitoolRadialScreen && ((MultitoolRadialScreen)minecraft().screen).toolSettings()!=null && ((MultitoolRadialScreen)minecraft().screen).toolSettings().kind().equals("destruction"); }
+    @Override public void openDestructionConfig() { toolEditor("destruction");captureInline("destruction-settings.png"); }
+    @Override public int visibleDestructionLeft() { return Integer.parseInt(toolEditor("destruction").field(0).getValue()); }
+    @Override public int visibleDestructionDepth() { return Integer.parseInt(toolEditor("destruction").field(4).getValue()); }
+    @Override public void clickDestructionLeftPlus() { incrementDestruction(0); }
+    @Override public void clickDestructionDepthPlus() { incrementDestruction(4); }
+    private void incrementDestruction(int index) { var editor=toolEditor("destruction");editor.field(index).setValue(Integer.toString(Integer.parseInt(editor.field(index).getValue())+1));if(!editor.flush()) throw new IllegalStateException("destruction edit rejected"); }
+    private void captureInline(String name) {
+        ModifierScreenRoundTrip.captureCurrent(name);
     }
 
     @Override
@@ -247,69 +211,31 @@ public final class ModernClientRangeAdapter implements ClientRangeRoundTripScena
         return screen;
     }
 
-    private Screen copyScreen() {
-        Screen screen = minecraft().screen;
-        if (!(screen instanceof CopyGUI)) throw new IllegalStateException("copy coordinate screen missing");
-        return screen;
-    }
-
-    private Screen destructionScreen() {
-        Screen screen = minecraft().screen;
-        if (!(screen instanceof DestructionGUI)) throw new IllegalStateException("destruction screen missing");
-        return screen;
-    }
-
     private void switchToTool(MultitoolMode tool) {
         Screen screen = radialScreen();
         // Center is Back in a submenu and harmless in the general page, so this normalizes navigation.
-        clicker.click(screen, screen.width / 2.0, screen.height / 2.0);
+        clicker.click(screen, ((MultitoolRadialScreen)screen).menuCenterX(), ((MultitoolRadialScreen)screen).menuCenterY());
         double angle = -Math.PI / 2.0 + tool.ordinal() * (Math.PI * 2.0 / MultitoolMode.values().length);
         clicker.click(screen,
                 screen.width / 2.0 + Math.cos(angle) * 68.0,
                 screen.height / 2.0 + Math.sin(angle) * 68.0);
     }
 
-    private IncrementalSliderWidget rangeSliderOrNull() {
-        Screen screen = minecraft().screen;
-        if (!(screen instanceof MultitoolRadialScreen)) return null;
-        for (GuiEventListener child : screen.children()) {
-            if (child instanceof IncrementalSliderWidget) return (IncrementalSliderWidget) child;
-        }
+    private com.nstut.openui.api.UIComponent profileRoot() {
+        if(!(minecraft().screen instanceof MultitoolRadialScreen screen) || screen.uiRuntime()==null) return null;
+        return screen.uiRuntime().root();
+    }
+    private com.nstut.openui.api.TextWidget findRange(com.nstut.openui.api.UIComponent root) {
+        if(root==null) return null;
+        if(root instanceof com.nstut.openui.api.TextWidget text && text.getText().getString().startsWith("Range: ")) return text;
+        for(com.nstut.openui.api.UIComponent child:root.children()) { com.nstut.openui.api.TextWidget found=findRange(child); if(found!=null) return found; }
         return null;
     }
-
-    private GuiIncrementer copyStartX() {
-        Screen screen = copyScreen();
-        GuiIncrementer result = null;
-        for (GuiEventListener child : screen.children()) {
-            if (!(child instanceof GuiIncrementer)) continue;
-            GuiIncrementer current = (GuiIncrementer) child;
-            if (result == null || current.getY() < result.getY()
-                    || (current.getY() == result.getY() && current.getX() < result.getX())) {
-                result = current;
-            }
-        }
-        if (result == null) throw new IllegalStateException("copy Start X incrementer missing");
-        return result;
-    }
-
-    private IncrementalSliderWidget destructionSlider(int relativeX, int relativeY) {
-        Screen screen = destructionScreen();
-        int expectedX = screen.width / 2 + relativeX;
-        int expectedY = screen.height / 2 + relativeY;
-        for (GuiEventListener child : screen.children()) {
-            if (child instanceof IncrementalSliderWidget) {
-                IncrementalSliderWidget slider = (IncrementalSliderWidget) child;
-                if (slider.getX() == expectedX && slider.getY() == expectedY) return slider;
-            }
-        }
-        throw new IllegalStateException("destruction slider missing at " + expectedX + "," + expectedY);
-    }
-
-    private void clickSliderPlus(Screen screen, IncrementalSliderWidget slider) {
-        clicker.click(screen,
-                slider.getX() + slider.getWidth() + 5.0 + slider.getHeight() / 2.0,
-                slider.getY() + slider.getHeight() / 2.0);
+    private com.nstut.openui.api.ButtonWidget findPlus(com.nstut.openui.api.UIComponent root) {
+        if(root==null) return null;
+        if(root instanceof com.nstut.openui.api.ButtonWidget button && button.getLabel().getString().equals("+")) return button;
+        for(com.nstut.openui.api.UIComponent child:root.children()) { com.nstut.openui.api.ButtonWidget found=findPlus(child); if(found!=null) return found; }
+        return null;
     }
 
     @Override

@@ -51,6 +51,8 @@ public final class MirrorIconButton extends GuiIconActionable {
         Minecraft minecraft = Minecraft.getInstance();
         graphics.fill(getX(), getY(), getX() + width, getY() + height,
                 RadialIconLayout.BACKGROUND_COLOR);
+
+        graphics.flush();
         RenderSystem.enableBlend();
         RenderSystem.setShaderColor(1, 1, 1, this.alpha);
         graphics.blit(icon, getX(), getY(), width, height,

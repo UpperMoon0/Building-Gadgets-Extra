@@ -34,7 +34,7 @@ class TransferRegressionContractTest {
                 label("server-provided download names must never select a client filesystem path"));
 
         int requestGuard = client.indexOf("if (!hasDestination(");
-        int accumulator = client.indexOf("DOWNLOADS.computeIfAbsent");
+        int accumulator = client.indexOf("DOWNLOADS.accept");
         assertTrue(requestGuard >= 0 && accumulator > requestGuard,
                 label("request-id authorization must happen before allocating download state"));
 
@@ -67,12 +67,12 @@ class TransferRegressionContractTest {
         contains(capture, pasteGuard, "Paste-mode authorization at transfer capture");
         contains(matches, pasteGuard, "Paste-mode authorization during transfer revalidation");
 
-        int perChunkRevalidation = upload.indexOf("if (!transfer.matches(player))");
+        int perChunkRevalidation = upload.indexOf("if (!transfer.matches(player) ||");
         int acceptChunk = upload.indexOf("TRANSFERS.accept");
         assertTrue(perChunkRevalidation >= 0 && acceptChunk > perChunkRevalidation,
                 label("authorization must be revalidated before accepting each upload chunk"));
 
-        int complete = upload.indexOf("if (transfer.chunks.isComplete())");
+        int complete = upload.indexOf("byte[] bytes = TRANSFERS.complete(key)");
         int finalRevalidation = upload.indexOf("if (transfer.matches(player))", complete);
         int commit = upload.indexOf("NativeStructureBridge.importStructure", finalRevalidation);
         assertTrue(complete >= 0 && finalRevalidation > complete && commit > finalRevalidation,
@@ -85,12 +85,12 @@ class TransferRegressionContractTest {
                 ? "StructureUploadPacket.java" : "StructureUploadHandler.java"));
         contains(upload, "@", "event subscriber registration");
         contains(upload, "EventBusSubscriber(modid = ExtraConstants.MOD_ID", "server event subscriber");
-        contains(upload, "UploadTransferRegistry<TransferState>", "shared bounded upload storage");
-        contains(upload, "if (!TRANSFERS.put(key, transfer)) return;", "upload admission limit");
+        contains(upload, "ContextualTransferRegistry<TransferState>", "shared bounded upload storage");
+        contains(upload, "if (!TRANSFERS.beginBounded(key,", "upload admission limit");
         contains(upload, "TRANSFERS.accept(key,", "global byte ceiling before chunk retention");
         contains(upload, "@SubscribeEvent\n    public static void onServerTick", "independent expiry event");
         contains(upload, "PlayerEvent.PlayerLoggedOutEvent", "logout event");
-        contains(upload, "TRANSFERS.removePlayer(", "per-player logout cleanup");
+        contains(upload, "TRANSFERS.cancelOwner(", "per-player logout cleanup");
         contains(upload, "ServerStoppedEvent event", "shutdown event");
         contains(upload, "TRANSFERS.clear();", "shutdown cleanup");
     }

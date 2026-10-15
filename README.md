@@ -25,13 +25,14 @@ Building Gadgets Extra is a Forge and NeoForge addon for [Building Gadgets](http
 | 1.20.1 | Forge 47.4.21 | Building Gadgets 2 1.0.8 | 17 |
 | 1.16.5 | Forge 36.2.42 | Building Gadgets 3.8.4 | 8 |
 
-The mod must be installed on the server and on every connecting client.
+The mod and [PacketWeave 0.1.3+](https://github.com/UpperMoon0/PacketWeave) must be installed on the server and every connecting client. Clients also require [OpenUI MC 0.0.13+](https://github.com/UpperMoon0/OpenUI-MC). Use the matching Minecraft/loader artifact for each dependency.
 
 ## Installation
 
 1. Install the Forge or NeoForge version listed for your Minecraft version above.
 2. Install the matching Building Gadgets version.
-3. Place the matching `building-gadgets-extra-<loader>-<minecraft>-<version>.jar` in the `mods` folder on both the client and server.
+3. Install PacketWeave on both sides and OpenUI MC on the client.
+4. Place the matching `building-gadgets-extra-<loader>-<minecraft>-<version>.jar` in the `mods` folder on both the client and server.
 
 ## Usage
 
@@ -45,6 +46,15 @@ The mod must be installed on the server and on every connecting client.
 ### Builder's Multitool
 
 The Builder's Multitool keeps each virtual gadget profile independent while sharing a single physical FE battery. Fresh profiles start on the intended native Building Gadgets mode: Build To Me for Build, Surface for Exchange, Copy for Copy/Paste, and Cut for Cut/Paste.
+
+To move blocks with the **Cut/Paste** profile:
+
+1. Right-click the first corner, then Shift + right-click the opposite corner.
+2. Open the menu and press **Cut selection**. The button stays disabled until both corners are selected.
+3. The tool automatically enters Paste and the menu shows placement instructions. Wait for the cut to finish, close the menu, aim at the destination, and right-click to paste once.
+4. After pasting, the tool returns to selecting a new area. Switching profiles preserves cut contents until they are pasted; a second cut cannot replace them.
+
+Selection and Paste offset controls update from the server while the menu is open. No Back/reselect step is needed.
 
 The server config option `multitoolRangeMultiplier` defaults to **2.0** (allowed: **1.0-4.0**). It scales targeting reach for **all five profiles**, Build To Me's distance cap, the Build/Exchange range cap, and destruction dimensions. With upstream defaults, targeting increases from **32 to 64** blocks and the Build/Exchange range setting increases from **15 to 30**. The range slider controls the size of Build/Exchange patterns; Build To Me instead uses targeting distance.
 
@@ -154,4 +164,44 @@ Large BG2 copy previews are synchronized in bounded chunks rather than one overs
 
 On Forge 1.20.1, NeoForge 1.21.1, and NeoForge 26.1.2, select the Builder's Multitool Building or Exchanging profile and use **Horizontal Mirror** or **Vertical Mirror** in its radial menu. Each toggle stays with that profile. Preview and placement use the same mirrored candidates, with directional block states transformed per copy. Horizontal mirroring follows the facing axis; vertical mirroring uses the operation anchor. Existing candidates take precedence when copies overlap.
 
-Interactive plans are limited to 65,536 positions; an oversized or overflowing mirrored plan falls back to the original upstream operation. Forge 1.16.5 keeps template mirroring but does not expose live Build/Exchange mirroring. Update Extra on both server and clients together: 0.0.6 requires the matching live-mirror protocol.
+Interactive plans are limited to 65,536 positions. Since 0.0.7, an oversized or overflowing plan rejects the operation, and live mirroring is also available on Forge 1.16.5. Update Extra on both server and clients together for matching protocols.
+
+### Composable live modifiers (0.0.7)
+
+Select the Builder's Multitool Building or Exchanging profile. Its settings area contains Range, the existing profile options, and a **Modifiers** group. Horizontal/Vertical Mirror, Array and Radial have visible On/Off states. The separate Array and Radial icons (or disclosure buttons) expand their numeric controls inline; they do not open another screen.
+
+The profile toolbar, Range, mode wheel and modifier controls use one flat visual style. Total copies and compact axis fields keep the expanded forms readable at larger GUI scales.
+
+Array repeats with signed X/Y/Z spacing in blocks. Radial repeats around the vertical Y axis with center offsets relative to the operation origin. Counts include the original. Enabled counts are 2-16; spacing and center offsets are bounded to -64..64. Turning a stage off preserves its configured count and offsets. Each expanded stage has its own reset. Composition order is shown only when multiple stages are enabled and lists only those stages.
+
+Valid numeric edits save on Enter or leaving the field. Toggles save immediately. The server confirms the active profile's settings; there is no extra Apply/Cancel screen. Invalid fields show a specific error. Scrolling and resizing preserve edits; settings do not overlap the operation wheel at smaller GUI sizes. Build and Exchange settings are independent. Copy/Paste and Destruction keep their native actions; Cut/Paste advances automatically from selection to one-time placement.
+
+Radial geometry rounds to blocks and directional states rotate to the nearest supported quarter turn. Overlaps keep the first candidate and are charged once. Preview and placement share the common planner. Plans above 65,536 positions or coordinate overflow are rejected with feedback; normal inventory, FE, world and protection rules still apply. All four versions support live modifiers; update clients and servers together.
+
+## Building with pinned dependencies
+
+Clone with `git clone --recurse-submodules` (or initialize an existing clone with
+`git submodule update --init --recursive`). Before building a native target, run:
+
+```
+python scripts/prepare_dependencies.py --target forge-1.20.1
+```
+
+Supported target names are `forge-1.16.5`, `forge-1.20.1`, `neoforge-1.21.1` and
+`neoforge-26.1.2`. The script builds standalone PacketWeave and publishes the pinned
+OpenUI artifact to Maven local. Use Java 21 for the older build tools and Java 25 for
+26.x; `JAVA21_HOME` / `JAVA25_HOME` can select those installations. The gadget jar
+contains neither dependency's classes. CI prepares the same pinned revisions.
+
+All five multitool profiles use one shared OpenUI settings panel and wheel style.
+Typed Cut coordinates and Clear selection only change the selected corners; press Cut selection to create the pending paste buffer. Normal Copy coordinates keep the upstream snapshot behavior.
+Build/Exchange include range and inline modifiers; Copy/Cut include selection coordinates,
+Paste includes offsets, and Destruction includes dimensions and Revert. Undo is the
+rightmost action. Copy coordinates switch between world and relative positions (legacy
+server configuration still controls absolute-coordinate editing). Numeric drafts survive
+resize and fullscreen changes. Minecraft adapters retain packet and item access only.
+PacketWeave handles chunking, bounded assembly, expiry and byte accounting; gadget
+identity, active-profile checks, response correlation and local save paths remain
+application policy.
+
+Workflow coverage, required CI evidence, and local test commands are documented in the [native UI regression suite](docs/ui-regression-tests.md).

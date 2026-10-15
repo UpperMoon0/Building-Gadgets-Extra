@@ -37,7 +37,7 @@ sourceSets {
         java.srcDir file('../common/src/clientIntegrationModern/java')
         java.srcDir file('src/clientIntegrationTest/java')
         compileClasspath += sourceSets.main.output + sourceSets.main.compileClasspath
-        runtimeClasspath += output + compileClasspath + sourceSets.main.runtimeClasspath
+        runtimeClasspath = output + sourceSets.main.runtimeClasspath + configurations.clientIntegrationTestRuntimeClasspath
     }
 }
 
@@ -62,12 +62,14 @@ neoForge {
             systemProperty 'neoforge.enabledGameTestNamespaces', mod_id
         }
         clientIntegrationTest {
+            if (project.hasProperty('uiScreenshots')) programArguments.addAll(['--width', '1920', '--height', '1080'])
             client()
             gameDirectory = project.file('run-client-integration')
             systemProperty 'bge.clientIntegrationTest', 'true'
             systemProperty 'bge.clientIntegrationResultDir', project.file('build/client-integration').absolutePath
         }
         dedicatedClientIntegrationTest {
+            if (project.hasProperty('uiScreenshots')) programArguments.addAll(['--width', '1920', '--height', '1080'])
             client()
             gameDirectory = project.file('run-client-integration-dedicated')
             systemProperty 'bge.clientIntegrationTest', 'true'
@@ -135,3 +137,15 @@ def generateModMetadata = tasks.register('generateModMetadata', ProcessResources
 
 sourceSets.main.resources.srcDir generateModMetadata
 neoForge.ideSyncTask generateModMetadata
+
+dependencies {
+    compileOnly project(':packetweave-api')
+    testImplementation project(':packetweave-api')
+    runtimeOnly files(file('../vendor/PacketWeave/targets/neoforge-26.1.2/build/libs/packetweave-neoforge-26.1.2-0.1.3.jar'))
+}
+
+repositories { mavenLocal() }
+sourceSets.main.java.srcDir file("../common/src/clientShared/java")
+dependencies {
+    implementation "com.nstut:openui-mc-neoforge-26.1.2:0.0.13"
+}

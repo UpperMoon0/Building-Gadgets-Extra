@@ -52,6 +52,7 @@ public final class MirrorIconButton extends GuiIconActionable {
     protected void extractContents(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
         graphics.fill(getX(), getY(), getX() + width, getY() + height,
                 RadialIconLayout.BACKGROUND_COLOR);
+
         graphics.blit(RenderPipelines.GUI_TEXTURED, icon, getX(), getY(), 0, 0,
                 width, height,
                 sourceSize, sourceSize, sourceSize, sourceSize,

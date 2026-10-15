@@ -70,12 +70,14 @@ public final class BgeGameTests {
 
     public static void register(IEventBus modEventBus) {
         test("multitool_energy_and_profile_state", 40, BgeGameTests::energyAndProfileState);
+        test("multitool_cut_coordinates_only_select_and_clear", 40, BgeGameTests::cutCoordinatesOnlySelectAndClear);
         test("multitool_cut_queues_real_server_work", 40, BgeGameTests::cutQueuesRealServerWork);
         test("multitool_creative_zero_energy", 40, BgeGameTests::creativeZeroEnergy);
         test("configurable_copy_volume", 40, BgeGameTests::configurableCopyVolume);
         test("million_block_copy_network_round_trip", 100, BgeGameTests::millionBlockCopyNetworkRoundTrip);
         test("copy_network_rejects_malformed_data", 40, BgeGameTests::copyNetworkRejectsMalformedData);
         test("live_mirror_collect_preserves_states_and_profiles", 40, BgeGameTests::liveMirrorCollectPreservesStatesAndProfiles, "bge_live_mirror");
+        test("array_and_radial_modifiers", 40, BgeGameTests::arrayAndRadial);
         FUNCTIONS.register(modEventBus);
         modEventBus.addListener(BgeGameTests::onRegisterGameTests);
     }
@@ -144,6 +146,43 @@ public final class BgeGameTests {
                 "Build range must survive a real profile switch");
         helper.assertTrue(GadgetNBT.getGadgetBlockState(stack).is(Blocks.STONE),
                 "Build selected block must survive a real profile switch");
+        helper.succeed();
+    }
+
+    private static void cutCoordinatesOnlySelectAndClear(GameTestHelper helper) {
+        var player = helper.makeMockPlayer(GameType.CREATIVE);
+        ItemStack stack = new ItemStack(ExtraRegistration.BUILDERS_MULTITOOL.get());
+        BuildersMultitool multitool = (BuildersMultitool) stack.getItem();
+        player.setItemInHand(InteractionHand.MAIN_HAND, stack);
+        multitool.selectTool(stack, MultitoolMode.CUT_PASTE);
+        BlockPos source = helper.absolutePos(new BlockPos(1, 2, 1));
+        helper.getLevel().setBlock(source, Blocks.STONE.defaultBlockState(), 3);
+        var data = com.direwolf20.buildinggadgets2.common.worlddata.BG2Data.get(helper.getLevel().getServer().overworld());
+        UUID gadget = GadgetNBT.getUUID(stack);
+        var before = data.getCopyPasteList(gadget, false);
+        for (int attempt=0; attempt<2; attempt++) {
+            com.nstut.buildinggadgetsextra.network.MultitoolCutSelectionHandler.apply(player, GadgetNBT.nullPos, GadgetNBT.nullPos);
+            helper.assertTrue(!GadgetNBT.hasCopyUUID(stack), "clearing an empty Cut selection must not create a buffer");
+            com.nstut.buildinggadgetsextra.network.MultitoolCutSelectionHandler.apply(player, source, source);
+            helper.assertTrue(source.equals(GadgetNBT.getCopyStartPos(stack)) && source.equals(GadgetNBT.getCopyEndPos(stack)), "typed Cut coordinates must update the selection");
+            helper.assertTrue(!GadgetNBT.hasCopyUUID(stack), "typed Cut coordinates must not copy the selected blocks");
+            helper.assertTrue(GadgetNBT.getMode(stack).getId().getPath().equals("cut"), "coordinate edits must retain Cut mode");
+            helper.assertTrue(helper.getLevel().getBlockState(source).is(Blocks.STONE), "coordinate edits must not cut the world");
+            helper.assertTrue(data.getCopyPasteList(gadget, false) == before, "coordinate edits must not replace the copy snapshot");
+            com.nstut.buildinggadgetsextra.network.MultitoolCutSelectionHandler.apply(player, GadgetNBT.nullPos, GadgetNBT.nullPos);
+            helper.assertTrue(GadgetNBT.getCopyStartPos(stack).equals(GadgetNBT.nullPos) && GadgetNBT.getCopyEndPos(stack).equals(GadgetNBT.nullPos), "Clear must remove both selection corners");
+            helper.assertTrue(!GadgetNBT.hasCopyUUID(stack), "clearing a populated selection must not create a buffer");
+        }
+        UUID pending = UUID.randomUUID();
+        GadgetNBT.setCopyUUID(stack, pending);
+        com.nstut.buildinggadgetsextra.network.MultitoolCutSelectionHandler.apply(player, source, source);
+        helper.assertTrue(pending.equals(GadgetNBT.getCopyUUID(stack)) && GadgetNBT.getCopyStartPos(stack).equals(GadgetNBT.nullPos), "late coordinates must not change pending Cut contents");
+        GadgetNBT.clearCopyUUID(stack);
+        multitool.selectTool(stack, MultitoolMode.COPY_PASTE);
+        GadgetNBT.setCopyStartPos(stack, source);GadgetNBT.setCopyEndPos(stack, source);GadgetNBT.setCopyUUID(stack, pending);
+        com.nstut.buildinggadgetsextra.network.MultitoolCutSelectionHandler.apply(player, GadgetNBT.nullPos, GadgetNBT.nullPos);
+        helper.assertTrue(source.equals(GadgetNBT.getCopyStartPos(stack)) && source.equals(GadgetNBT.getCopyEndPos(stack))
+                && pending.equals(GadgetNBT.getCopyUUID(stack)), "stale Cut edits must leave the Copy profile unchanged");
         helper.succeed();
     }
 
@@ -510,5 +549,42 @@ public final class BgeGameTests {
         helper.assertTrue(state.is(Blocks.OAK_STAIRS) && state.getValue(StairBlock.FACING) == facing
                         && state.getValue(StairBlock.HALF) == half,
                 "copy at " + position + " must preserve its own transformed facing/half, got " + state);
+    }
+    private static void arrayAndRadial(GameTestHelper helper) {
+        var player = net.neoforged.neoforge.common.util.FakePlayerFactory.get(helper.getLevel(),new com.mojang.authlib.GameProfile(java.util.UUID.randomUUID(),"bge-modifiers"));
+        ItemStack stack = new ItemStack(ExtraRegistration.BUILDERS_MULTITOOL.get());
+        BuildersMultitool tool = (BuildersMultitool) stack.getItem();
+        tool.selectTool(stack, MultitoolMode.BUILD);
+        player.setItemInHand(net.minecraft.world.InteractionHand.MAIN_HAND, stack);
+        int[] settings = {1,0,0,0,4,0,0,0};
+        helper.assertTrue(com.nstut.buildinggadgetsextra.network.ModifierHandler.apply(player, MultitoolMode.BUILD.ordinal(), settings), "server must accept valid modifier parameters");
+        helper.assertTrue(!com.nstut.buildinggadgetsextra.network.ModifierHandler.apply(player, MultitoolMode.EXCHANGING.ordinal(), settings), "stale profile request must be rejected");
+        helper.assertTrue(!com.nstut.buildinggadgetsextra.network.ModifierHandler.apply(player, MultitoolMode.BUILD.ordinal(), new int[]{17,0,0,0,1,0,0,0}), "hostile copy count must be rejected");
+        var sourceState = Blocks.OAK_STAIRS.defaultBlockState().setValue(net.minecraft.world.level.block.StairBlock.FACING, Direction.EAST);
+        var mode = new com.direwolf20.buildinggadgets2.util.modes.BaseMode(false) {
+            public net.minecraft.resources.Identifier getId() { return net.minecraft.resources.Identifier.fromNamespaceAndPath("buildinggadgetsextra", "modifier_test"); }
+            public java.util.ArrayList<com.direwolf20.buildinggadgets2.util.datatypes.StatePos> collectWorld(Direction side, net.minecraft.world.entity.player.Player actor, BlockPos start, net.minecraft.world.level.block.state.BlockState state) {
+                return new java.util.ArrayList<>(java.util.List.of(new com.direwolf20.buildinggadgets2.util.datatypes.StatePos(state,new BlockPos(2,1,0))));
+            }
+            public boolean isPosValid(net.minecraft.world.level.Level level, net.minecraft.world.entity.player.Player actor, BlockPos pos, net.minecraft.world.level.block.state.BlockState state) { return true; }
+        };
+        var start = helper.absolutePos(new BlockPos(3,1,3));
+        var plan = mode.collect(Direction.UP,player,start,sourceState);
+        helper.assertTrue(plan.size()==4,"radial must produce four candidates");
+        helper.assertTrue(plan.stream().anyMatch(e->e.pos.equals(new BlockPos(0,1,2)) && e.state.getValue(net.minecraft.world.level.block.StairBlock.FACING)==Direction.SOUTH),"radial state and position must rotate together");
+        helper.assertTrue(plan.stream().anyMatch(e->e.pos.equals(new BlockPos(-2,1,0)) && e.state.getValue(net.minecraft.world.level.block.StairBlock.FACING)==Direction.WEST),"half-turn must preserve stair orientation");
+        tool.selectTool(stack,MultitoolMode.EXCHANGING);
+        helper.assertTrue(!MultitoolState.getLiveModifiers(stack).enabled(),"modifier settings must not leak between profiles");
+        tool.selectTool(stack,MultitoolMode.BUILD);
+        helper.assertTrue(MultitoolState.getLiveModifiers(stack).value(4)==4,"profile switching must restore modifiers");
+        helper.assertTrue(com.nstut.buildinggadgetsextra.network.ModifierHandler.apply(player,MultitoolMode.BUILD.ordinal(),new int[]{3,-2,1,0,1,0,0,0}),"array settings must apply");
+        plan=mode.collect(Direction.UP,player,start,sourceState);
+        helper.assertTrue(plan.size()==3 && plan.stream().anyMatch(e->e.pos.equals(new BlockPos(-2,3,0))),"array must translate on all selected axes");
+        ItemStack nativeTool = new ItemStack(com.direwolf20.buildinggadgets2.setup.Registration.Building_Gadget.get());
+        player.setItemInHand(net.minecraft.world.InteractionHand.MAIN_HAND,nativeTool);
+        helper.assertTrue(!com.nstut.buildinggadgetsextra.network.ModifierHandler.apply(player,MultitoolMode.BUILD.ordinal(),settings),"native gadgets must reject addon modifier settings");
+        helper.assertTrue(mode.collect(Direction.UP,player,start,sourceState).size()==1,"native gadget plan must remain unchanged");
+        player.setItemInHand(net.minecraft.world.InteractionHand.MAIN_HAND,ItemStack.EMPTY);
+        helper.succeed();
     }
 }

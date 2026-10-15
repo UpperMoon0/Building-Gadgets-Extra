@@ -36,14 +36,12 @@ public record StructureFilePacket(boolean load, String name, UUID requestId) {
             if (packet.load) return;
             byte[] bytes = NativeStructureBridge.exportStructure(player, name);
             if (bytes == null) return;
-            int total = Math.max(1, (bytes.length + ExtraConstants.STRUCTURE_CHUNK_SIZE - 1)
-                    / ExtraConstants.STRUCTURE_CHUNK_SIZE);
-            for (int i = 0; i < total; i++) {
-                int start = i * ExtraConstants.STRUCTURE_CHUNK_SIZE;
-                int end = Math.min(bytes.length, start + ExtraConstants.STRUCTURE_CHUNK_SIZE);
-                byte[] chunk = java.util.Arrays.copyOfRange(bytes, start, end);
-                ExtraNetwork.sendToPlayer(player,
-                        new StructureDownloadPacket(packet.requestId, name, i, total, chunk));
+            try {
+                com.nstut.packetweave.api.ChunkedTransfer.send(bytes, ExtraConstants.STRUCTURE_CHUNK_SIZE,
+                        (index, total, chunk) -> ExtraNetwork.sendToPlayer(player,
+                                new StructureDownloadPacket(packet.requestId, name, index, total, chunk)));
+            } catch (java.io.IOException | IllegalArgumentException error) {
+                player.displayClientMessage(Component.translatable(ExtraConstants.STRUCTURE_SAVE_FAILED, name), true);
             }
         });
         context.setPacketHandled(true);

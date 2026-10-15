@@ -18,4 +18,12 @@ public class GadgetExchangerMixin {
             cir.setReturnValue(stack);
         }
     }
+
+    @org.spongepowered.asm.mixin.Shadow private void exchangeBlock(net.minecraft.world.server.ServerWorld world, net.minecraft.entity.player.ServerPlayerEntity player, com.direwolf20.buildinggadgets.common.tainted.inventory.IItemIndex index, net.minecraft.util.math.BlockPos pos, com.direwolf20.buildinggadgets.common.tainted.building.BlockData data) { throw new AssertionError(); }
+    @Inject(method="exchangeBlock",at=@At("HEAD"),cancellable=true)
+    private void bge$state(net.minecraft.world.server.ServerWorld world, net.minecraft.entity.player.ServerPlayerEntity player, com.direwolf20.buildinggadgets.common.tainted.inventory.IItemIndex index, net.minecraft.util.math.BlockPos pos, com.direwolf20.buildinggadgets.common.tainted.building.BlockData data, org.spongepowered.asm.mixin.injection.callback.CallbackInfo ci) {
+        if (!(pos instanceof com.nstut.buildinggadgetsextra.transform.LegacyLivePlan.Position)) return;
+        exchangeBlock(world, player, index, new net.minecraft.util.math.BlockPos(pos.getX(),pos.getY(),pos.getZ()), com.nstut.buildinggadgetsextra.transform.LegacyLivePlan.data(data,pos));
+        ci.cancel();
+    }
 }

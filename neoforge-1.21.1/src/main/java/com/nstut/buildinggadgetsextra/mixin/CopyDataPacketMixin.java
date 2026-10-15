@@ -15,7 +15,6 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 import java.io.IOException;
-import java.util.Arrays;
 import java.util.UUID;
 
 /** Covers copy, login/resync, template-manager and imported-template sends alike. */
@@ -32,14 +31,9 @@ public abstract class CopyDataPacketMixin {
         try {
             byte[] bytes = CopyDataTransfer.encode(copy.tag());
             UUID transferId = UUID.randomUUID();
-            int chunkSize = ExtraConstants.STRUCTURE_CHUNK_SIZE;
-            int total = (bytes.length + chunkSize - 1) / chunkSize;
-            for (int index = 0; index < total; index++) {
-                int start = index * chunkSize;
-                send(new ClientboundCustomPayloadPacket(new CopyDataPayload(
-                        transferId, copy.gadgetUUID(), copy.copyUUID(), index, total,
-                        Arrays.copyOfRange(bytes, start, Math.min(bytes.length, start + chunkSize)))));
-            }
+            com.nstut.packetweave.api.ChunkedTransfer.send(bytes, ExtraConstants.STRUCTURE_CHUNK_SIZE,
+                    (index, total, chunk) -> send(new ClientboundCustomPayloadPacket(new CopyDataPayload(
+                            transferId, copy.gadgetUUID(), copy.copyUUID(), index, total, chunk))));
         } catch (IOException | RuntimeException error) {
             LogUtils.getLogger().warn("Rejected invalid or oversized Building Gadgets copy template", error);
         }

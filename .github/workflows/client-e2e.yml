@@ -31,7 +31,7 @@ jobs:
             integration_server_dir: forge-1.16.5/run-client-integration-server
             integration_result_dir: forge-1.16.5/build/client-integration
           - name: Forge 1.20.1
-            java: '17'
+            java: '21'
             working_directory: .
             integration_server_task: :forge-1.20.1:runClientIntegrationTestServer
             integration_client_task: :forge-1.20.1:runDedicatedClientIntegrationTest
@@ -55,15 +55,22 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v5
+        with:
+          submodules: recursive
 
       - name: Setup Java ${{ matrix.java }}
         uses: actions/setup-java@v5
         with:
           distribution: temurin
-          java-version: ${{ matrix.java }}
+          java-version: |
+            21
+            ${{ matrix.java }}
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
+
+      - name: Build pinned native dependencies
+        run: python3 scripts/prepare_dependencies.py --target ${{ matrix.name == 'Forge 1.16.5' && 'forge-1.16.5' || matrix.name == 'Forge 1.20.1' && 'forge-1.20.1' || matrix.name == 'NeoForge 1.21.1' && 'neoforge-1.21.1' || 'neoforge-26.1.2' }}
 
       - name: Install headless display support
         shell: bash
@@ -128,7 +135,7 @@ jobs:
           fi
 
           set +e
-          xvfb-run -a ./gradlew '${{ matrix.integration_client_task }}' --no-daemon --no-configuration-cache > "$CLIENT_LOG" 2>&1
+          timeout --kill-after=30s 10m xvfb-run -a -s '-screen 0 1920x1080x24' ./gradlew '${{ matrix.integration_client_task }}' -PuiScreenshots --no-daemon --no-configuration-cache > "$CLIENT_LOG" 2>&1
           CLIENT_STATUS=$?
           set -e
           cat "$CLIENT_LOG"
@@ -166,6 +173,7 @@ jobs:
 
           cat "$RESULT_DIR/client-pass.txt"
           cat "$RESULT_DIR/server-pass.txt"
+          python3 "$GITHUB_WORKSPACE/scripts/verify_client_evidence.py" --result-dir "$RESULT_DIR" --mode dedicated ${{ matrix.name != 'Forge 1.16.5' && '--require-cut' || '--require-legacy-cut-state' }} ${{ matrix.name == 'Forge 1.20.1' && '--require-screenshots' || '' }}
 
       - name: Upload dedicated E2E diagnostics
         if: always()
@@ -174,6 +182,8 @@ jobs:
           name: dedicated-e2e-${{ matrix.name }}
           path: |
             ${{ matrix.working_directory }}/${{ matrix.integration_result_dir }}/*.log
+            ${{ matrix.working_directory }}/${{ matrix.integration_result_dir }}/*.png
+            ${{ matrix.working_directory }}/${{ matrix.integration_result_dir }}/*.json
             ${{ matrix.working_directory }}/${{ matrix.integration_result_dir }}/*-pass.txt
             ${{ matrix.working_directory }}/${{ matrix.integration_result_dir }}/*-fail.txt
           if-no-files-found: ignore

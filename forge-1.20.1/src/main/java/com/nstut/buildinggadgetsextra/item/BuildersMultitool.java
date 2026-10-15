@@ -58,6 +58,7 @@ public final class BuildersMultitool extends GadgetCopyPaste {
         MultitoolState.setActiveMode(stack, selected);
         MultitoolState.restoreTemplateProfile(stack, selected);
         if (selected == MultitoolMode.DESTRUCTION) return;
+        if (selected == MultitoolMode.CUT_PASTE) { MultitoolState.syncCutPasteMode(stack); return; }
         ResourceLocation saved = MultitoolState.getProfileMode(stack, selected);
         BaseMode next = GadgetModes.INSTANCE.getModesForGadget(target(selected)).stream()
                 .filter(mode -> saved != null && mode.getId().equals(saved)).findFirst()
@@ -71,6 +72,7 @@ public final class BuildersMultitool extends GadgetCopyPaste {
     }
 
     public void selectGadgetMode(ItemStack stack, ResourceLocation requested) {
+        if (MultitoolState.getActiveMode(stack) == MultitoolMode.CUT_PASTE) { MultitoolState.syncCutPasteMode(stack); return; }
         if (MultitoolState.getActiveMode(stack) == MultitoolMode.DESTRUCTION) return;
         GadgetModes.INSTANCE.getModesForGadget(target(stack)).stream().filter(mode -> mode.getId().equals(requested)).findFirst().ifPresent(mode -> {
             GadgetNBT.setMode(stack, mode);
@@ -83,7 +85,10 @@ public final class BuildersMultitool extends GadgetCopyPaste {
             case BUILD -> Registration.Building_Gadget.get().use(level, player, hand);
             case EXCHANGING -> Registration.Exchanging_Gadget.get().use(level, player, hand);
             case COPY_PASTE -> Registration.CopyPaste_Gadget.get().use(level, player, hand);
-            case CUT_PASTE -> Registration.CutPaste_Gadget.get().use(level, player, hand);
+            case CUT_PASTE -> {
+                MultitoolState.syncCutPasteMode(player.getItemInHand(hand));
+                yield Registration.CutPaste_Gadget.get().use(level, player, hand);
+            }
             case DESTRUCTION -> Registration.Destruction_Gadget.get().use(level, player, hand);
         };
     }

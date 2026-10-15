@@ -12,6 +12,7 @@ import com.nstut.buildinggadgetsextra.common.CopyDataAssembly;
 import com.nstut.buildinggadgetsextra.common.ExtraConstants;
 import com.nstut.buildinggadgetsextra.common.MultitoolMode;
 import com.nstut.buildinggadgetsextra.item.BuildersMultitool;
+import com.nstut.buildinggadgetsextra.item.MultitoolState;
 import com.nstut.buildinggadgetsextra.network.CopyDataPayload;
 import com.nstut.buildinggadgetsextra.network.CopyDataTransfer;
 import com.nstut.buildinggadgetsextra.setup.ExtraConfig;
@@ -292,5 +293,43 @@ public final class MultitoolReachGameTests {
         }
         tag.putIntArray("statelist", indices);
         return tag;
+    }
+    @GameTest(template = "bge_empty", timeoutTicks = 40)
+    public static void arrayAndRadialUseServerSettingsAndRotateStates(GameTestHelper helper) {
+        var player = FakePlayerFactory.get(helper.getLevel(),new com.mojang.authlib.GameProfile(java.util.UUID.randomUUID(),"bge-modifiers"));
+        ItemStack stack = new ItemStack(ExtraRegistration.BUILDERS_MULTITOOL.get());
+        BuildersMultitool tool = (BuildersMultitool) stack.getItem();
+        tool.selectTool(stack, MultitoolMode.BUILD);
+        player.setItemInHand(net.minecraft.world.InteractionHand.MAIN_HAND, stack);
+        int[] settings = {1,0,0,0,4,0,0,0};
+        helper.assertTrue(com.nstut.buildinggadgetsextra.network.ModifierHandler.apply(player, MultitoolMode.BUILD.ordinal(), settings), "server must accept valid modifier parameters");
+        helper.assertTrue(!com.nstut.buildinggadgetsextra.network.ModifierHandler.apply(player, MultitoolMode.EXCHANGING.ordinal(), settings), "stale profile request must be rejected");
+        helper.assertTrue(!com.nstut.buildinggadgetsextra.network.ModifierHandler.apply(player, MultitoolMode.BUILD.ordinal(), new int[]{17,0,0,0,1,0,0,0}), "hostile copy count must be rejected");
+        var sourceState = Blocks.OAK_STAIRS.defaultBlockState().setValue(net.minecraft.world.level.block.StairBlock.FACING, Direction.EAST);
+        var mode = new com.direwolf20.buildinggadgets2.util.modes.BaseMode(false) {
+            public net.minecraft.resources.ResourceLocation getId() { return net.minecraft.resources.ResourceLocation.fromNamespaceAndPath("buildinggadgetsextra", "modifier_test"); }
+            public java.util.ArrayList<com.direwolf20.buildinggadgets2.util.datatypes.StatePos> collectWorld(Direction side, net.minecraft.world.entity.player.Player actor, BlockPos start, net.minecraft.world.level.block.state.BlockState state) {
+                return new java.util.ArrayList<>(java.util.List.of(new com.direwolf20.buildinggadgets2.util.datatypes.StatePos(state,new BlockPos(2,1,0))));
+            }
+            public boolean isPosValid(net.minecraft.world.level.Level level, net.minecraft.world.entity.player.Player actor, BlockPos pos, net.minecraft.world.level.block.state.BlockState state) { return true; }
+        };
+        var start = helper.absolutePos(new BlockPos(3,1,3));
+        var plan = mode.collect(Direction.UP,player,start,sourceState);
+        helper.assertTrue(plan.size()==4,"radial must produce four candidates");
+        helper.assertTrue(plan.stream().anyMatch(e->e.pos.equals(new BlockPos(0,1,2)) && e.state.getValue(net.minecraft.world.level.block.StairBlock.FACING)==Direction.SOUTH),"radial state and position must rotate together");
+        helper.assertTrue(plan.stream().anyMatch(e->e.pos.equals(new BlockPos(-2,1,0)) && e.state.getValue(net.minecraft.world.level.block.StairBlock.FACING)==Direction.WEST),"half-turn must preserve stair orientation");
+        tool.selectTool(stack,MultitoolMode.EXCHANGING);
+        helper.assertTrue(!MultitoolState.getLiveModifiers(stack).enabled(),"modifier settings must not leak between profiles");
+        tool.selectTool(stack,MultitoolMode.BUILD);
+        helper.assertTrue(MultitoolState.getLiveModifiers(stack).value(4)==4,"profile switching must restore modifiers");
+        helper.assertTrue(com.nstut.buildinggadgetsextra.network.ModifierHandler.apply(player,MultitoolMode.BUILD.ordinal(),new int[]{3,-2,1,0,1,0,0,0}),"array settings must apply");
+        plan=mode.collect(Direction.UP,player,start,sourceState);
+        helper.assertTrue(plan.size()==3 && plan.stream().anyMatch(e->e.pos.equals(new BlockPos(-2,3,0))),"array must translate on all selected axes");
+        ItemStack nativeTool = new ItemStack(com.direwolf20.buildinggadgets2.setup.Registration.Building_Gadget.get());
+        player.setItemInHand(net.minecraft.world.InteractionHand.MAIN_HAND,nativeTool);
+        helper.assertTrue(!com.nstut.buildinggadgetsextra.network.ModifierHandler.apply(player,MultitoolMode.BUILD.ordinal(),settings),"native gadgets must reject addon modifier settings");
+        helper.assertTrue(mode.collect(Direction.UP,player,start,sourceState).size()==1,"native gadget plan must remain unchanged");
+        player.setItemInHand(net.minecraft.world.InteractionHand.MAIN_HAND,ItemStack.EMPTY);
+        helper.succeed();
     }
 }

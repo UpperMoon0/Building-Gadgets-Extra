@@ -37,15 +37,11 @@ class RadialTextureContractTest {
         if ("1.20.1".equals(minecraftVersion)) {
             contains(screen, "MirrorIconButton.addonSettingIcon(load ? \"load\" : \"save\")",
                     "Save/Load explicit addon resource ownership");
-            contains(screen, "MirrorIconButton.upstreamSettingIcon(\"cut\")",
-                    "Cut explicit upstream resource ownership");
             assertFalse(button.contains("MirrorIconButton(int x, int y, String iconName, int sourceSize"),
                     label("Forge 1.20.1 icon ownership must not be inferred from source size"));
         } else {
             contains(button, "addonSettingIcon(iconName)", "default addon-owned setting-icon resolution");
             contains(button, "upstreamSettingIcon(iconName)", "explicit-size upstream setting-icon resolution");
-            contains(screen, "\"cut\", RadialIconLayout.MODERN_SETTING_ICON_SIZE",
-                    "multitool Cut explicit-size upstream icon path");
         }
         contains(button, "\"buildinggadgets2\"", "BG2 texture namespace");
         contains(button, "\"textures/gui/setting/\" + iconName + \".png\"", "setting texture path");

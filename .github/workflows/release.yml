@@ -24,6 +24,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          submodules: recursive
 
       - name: Detect version bump or unpublished version
         id: version
@@ -86,6 +87,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          submodules: recursive
 
       - name: Setup Java 21
         uses: actions/setup-java@v4
@@ -118,6 +120,13 @@ jobs:
           MOD_VERSION: ${{ steps.version.outputs.value }}
         shell: bash
         run: test -s "changelog/$MOD_VERSION.md"
+
+      - name: Build pinned native dependencies
+        run: |
+          python3 scripts/prepare_dependencies.py --target forge-1.16.5
+          python3 scripts/prepare_dependencies.py --target forge-1.20.1
+          python3 scripts/prepare_dependencies.py --target neoforge-1.21.1
+          python3 scripts/prepare_dependencies.py --target neoforge-26.1.2
 
       - name: Run tests
         run: ./gradlew test --no-daemon --no-configuration-cache
@@ -169,7 +178,7 @@ jobs:
           [[ -f "$changelog_path" ]] \
             || { echo "Missing release changelog: $changelog_path" >&2; exit 1; }
 
-          relations='{"projects":[{"slug":"building-gadgets","type":"requiredDependency"}]}'
+          relations='{"projects":[{"slug":"building-gadgets","type":"requiredDependency"},{"slug":"packetweave","type":"requiredDependency"},{"slug":"openui-mc","type":"requiredDependency"}]}'
           targets=(
             "neoforge-26.1.2:NeoForge:26.1.2:Java 25:neoforge-26.1.2/build/libs/building-gadgets-extra-neoforge-26.1.2-${MOD_VERSION}.jar"
             "neoforge-1.21.1:NeoForge:1.21.1:Java 21:neoforge-1.21.1/build/libs/building-gadgets-extra-neoforge-1.21.1-${MOD_VERSION}.jar"

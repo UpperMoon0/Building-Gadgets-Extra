@@ -39,6 +39,7 @@ public final class MirrorIconButton extends GuiIconActionable {
         RenderSystem.color4f(1, 1, 1, .2f);
         fill(poseStack, x, y, x + width, y + height, RadialIconLayout.BACKGROUND_COLOR);
         RenderSystem.enableTexture();
+
         RenderSystem.color4f(1, 1, 1, alpha);
         minecraft.getTextureManager().bind(icon);
         blit(poseStack, x, y, width, height,

@@ -13,7 +13,8 @@ public final class ClientRangeRoundTripScenario {
     public static final int COPY_START_X_TARGET = 1;
     public static final int DESTRUCTION_LEFT_TARGET = 20;
     public static final int DESTRUCTION_DEPTH_TARGET = 20;
-    public static final int TIMEOUT_TICKS = 1200;
+    // Includes the fullscreen/render and five-profile editor prelude before the round trip.
+    public static final int TIMEOUT_TICKS = 2400;
 
     public interface Adapter {
         boolean hasReadyMultitool();
@@ -229,6 +230,7 @@ public final class ClientRangeRoundTripScenario {
                     advance(Phase.OPEN_COPY_CONFIG, 1);
                     break;
                 case OPEN_COPY_CONFIG:
+                    if (!adapter.isCopyScreenOpen()) return; // Wait for the authoritative submenu rebuild.
                     adapter.openCopyConfig();
                     advance(Phase.EDIT_COPY_START, 2);
                     break;
@@ -262,6 +264,7 @@ public final class ClientRangeRoundTripScenario {
                     advance(Phase.OPEN_DESTRUCTION_CONFIG, 1);
                     break;
                 case OPEN_DESTRUCTION_CONFIG:
+                    if (!adapter.isDestructionScreenOpen()) return;
                     adapter.openDestructionConfig();
                     advance(Phase.EDIT_DESTRUCTION, 2);
                     break;

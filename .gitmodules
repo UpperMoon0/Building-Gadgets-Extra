@@ -1,0 +1,6 @@
+[submodule "vendor/PacketWeave"]
+	path = vendor/PacketWeave
+	url = https://github.com/UpperMoon0/PacketWeave.git
+[submodule "vendor/OpenUI-MC"]
+	path = vendor/OpenUI-MC
+	url = https://github.com/UpperMoon0/OpenUI-MC.git

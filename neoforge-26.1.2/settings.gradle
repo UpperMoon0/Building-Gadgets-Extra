@@ -9,3 +9,6 @@ plugins {
 }
 
 rootProject.name = 'building-gadgets-extra-neoforge-26.1.2'
+
+include 'packetweave-api'
+project(':packetweave-api').projectDir=file('../packetweave-api')

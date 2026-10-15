@@ -31,6 +31,7 @@ public final class CutSelectionPacketHandler {
 
         ItemStack gadget = AbstractGadget.getGadget(player);
         if (!(gadget.getItem() instanceof GadgetCopyPaste)
+                || gadget.getOrCreateTag().getBoolean("cutBufferActive")
                 || GadgetCopyPaste.getToolMode(gadget) != GadgetCopyPaste.ToolMode.COPY) return;
 
         Optional<Region> selected = GadgetCopyPaste.getSelectedRegion(gadget);
@@ -84,6 +85,7 @@ public final class CutSelectionPacketHandler {
         item.setMode(gadget, GadgetCopyPaste.ToolMode.PASTE.ordinal());
         gadget.getOrCreateTag().putBoolean("cutBufferActive", true);
         player.inventory.setChanged();
+        player.containerMenu.broadcastChanges();
         player.displayClientMessage(new TranslationTextComponent(ExtraConstants.CUT_COMPLETE, blocks.size()), true);
     }
 

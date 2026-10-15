@@ -18,6 +18,7 @@ public final class LegacyMultitoolClientEvents {
     @SubscribeEvent(priority=EventPriority.HIGHEST)
     public static void tick(TickEvent.ClientTickEvent event){
         if(event.phase!=TickEvent.Phase.END)return;
+        ClientStructureFiles.tick();
         Minecraft mc=Minecraft.getInstance();if(mc.player==null||mc.screen!=null)return;
         ItemStack stack=AbstractGadget.getGadget(mc.player);
         if(stack.getItem() instanceof BuildersMultitool&&KeyBindings.menuSettings.consumeClick())mc.setScreen(new LegacyMultitoolScreen(stack));

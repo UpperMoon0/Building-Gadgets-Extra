@@ -8,7 +8,7 @@ import net.minecraftforge.fml.network.PacketDistributor;
 import net.minecraftforge.fml.network.simple.SimpleChannel;
 
 public final class ExtraNetwork {
-    private static final String VERSION = "4";
+    private static final String VERSION = "8";
     private static final SimpleChannel CHANNEL = NetworkRegistry.newSimpleChannel(
             new ResourceLocation(ExtraConstants.MOD_ID, "main"),
             () -> VERSION, VERSION::equals, VERSION::equals);
@@ -16,6 +16,8 @@ public final class ExtraNetwork {
     private ExtraNetwork() {}
 
     public static void register() {
+        CHANNEL.registerMessage(6, ModifierPacket.class, ModifierPacket::encode, ModifierPacket::decode, ModifierPacket::handle,
+                java.util.Optional.of(net.minecraftforge.fml.network.NetworkDirection.PLAY_TO_SERVER));
         CHANNEL.registerMessage(0, MirrorPacket.class,
                 MirrorPacket::encode, MirrorPacket::decode, MirrorPacket::handle);
         CHANNEL.registerMessage(1, StructureFilePacket.class,
@@ -30,6 +32,7 @@ public final class ExtraNetwork {
                 LegacyMultitoolPacket::encode, LegacyMultitoolPacket::decode, LegacyMultitoolPacket::handle);
     }
 
+    public static void sendToServer(ModifierPacket packet) { CHANNEL.sendToServer(packet); }
     public static void sendToServer(MirrorPacket packet) { CHANNEL.sendToServer(packet); }
     public static void sendToServer(StructureFilePacket packet) { CHANNEL.sendToServer(packet); }
     public static void sendToServer(StructureUploadPacket packet) { CHANNEL.sendToServer(packet); }

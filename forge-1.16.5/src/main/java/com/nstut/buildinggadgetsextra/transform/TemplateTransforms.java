@@ -22,6 +22,8 @@ public final class TemplateTransforms {
     private TemplateTransforms() {
     }
 
+    public static BlockState mirrorVerticalState(BlockState state) { return VerticalStateMirror.mirror(state, ADAPTER); }
+
     public static Template vertical(Template template) {
         TemplateAccessor accessor = (TemplateAccessor) (Object) template;
         if (accessor.buildingGadgetsExtra$getMap().isEmpty()) return template;

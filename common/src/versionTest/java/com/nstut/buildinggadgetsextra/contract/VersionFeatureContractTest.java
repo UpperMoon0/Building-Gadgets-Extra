@@ -156,7 +156,7 @@ class VersionFeatureContractTest {
         for (String setting : settings) {
             contains(radial, setting, "upstream setting support");
         }
-        contains(radial, "DestructionGUI", "destruction configuration support");
+        contains(radial, "createToolSettings(\"destruction\")", "inline destruction configuration support");
         contains(radial, "MaterialListGUI", "copy material-list support");
 
         String preview = source("client/MultitoolPreviewRenderer.java");

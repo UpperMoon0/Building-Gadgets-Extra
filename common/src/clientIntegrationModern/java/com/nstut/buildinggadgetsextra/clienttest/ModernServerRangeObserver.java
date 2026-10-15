@@ -27,6 +27,7 @@ public final class ModernServerRangeObserver {
     private static int observationTicks;
     private static boolean provisioned;
     private static boolean finished;
+    private static boolean modifiersObserved;
     private static boolean buildRangeObserved;
     private static boolean exchangeRangeObserved;
     private static boolean copySelectionObserved;
@@ -40,12 +41,16 @@ public final class ModernServerRangeObserver {
      * completing its initial inventory synchronization while that event is firing.
      */
     public static void setupAndWatch(ServerPlayer player, Consumer<ServerPlayer> sender) {
+        // UI/transport verification must not depend on terrain or damage in a copied GameTest world.
+        player.setInvulnerable(true);
         copyTransportSender = sender;
         watchedPlayer = player;
         loginTicks = 0;
         observationTicks = 0;
         provisioned = false;
+        CutPasteServerScenario.reset();
         finished = false;
+        modifiersObserved = false;
         buildRangeObserved = false;
         exchangeRangeObserved = false;
         copySelectionObserved = false;
@@ -67,8 +72,10 @@ public final class ModernServerRangeObserver {
         }
 
         observationTicks++;
+        CutPasteServerScenario.tick(watchedPlayer);
         ItemStack held = watchedPlayer.getItemInHand(InteractionHand.MAIN_HAND);
         if (held.getItem() instanceof BuildersMultitool) {
+            if (MultitoolState.getLiveModifiers(held).value(0) == 2 && MultitoolState.getLiveModifiers(held).value(4) == 4) modifiersObserved = true;
             MultitoolMode mode = MultitoolState.getActiveMode(held);
             if (mode == MultitoolMode.BUILD
                     && GadgetNBT.getToolRange(held) == ClientRangeRoundTripScenario.TARGET_RANGE) {
@@ -89,7 +96,7 @@ public final class ModernServerRangeObserver {
             }
         }
 
-        if (buildRangeObserved && exchangeRangeObserved && copySelectionObserved && destructionRangesObserved) {
+        if (CutPasteServerScenario.complete() && modifiersObserved && buildRangeObserved && exchangeRangeObserved && copySelectionObserved && destructionRangesObserved) {
             finished = true;
             write("server-pass.txt", "authoritative server range/profile observer saw build/exchange profiles, copy selection, and destruction ranges");
             return;

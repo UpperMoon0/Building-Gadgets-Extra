@@ -26,6 +26,7 @@ jobs:
         uses: actions/checkout@v5
         with:
           fetch-depth: 0
+          submodules: recursive
 
       - name: Build affected-version matrix
         id: plan
@@ -114,11 +115,12 @@ jobs:
               "gradle.properties",
               "gradlew",
               "gradlew.bat",
-              ".github/workflows/ci.yml"
+              ".github/workflows/ci.yml",
+              ".gitmodules"
           }
 
           for path in changed:
-              if path.startswith("common/") or path.startswith("gradle/") or path in global_files:
+              if path.startswith(("common/", "gradle/", "vendor/", "packetweave-api/", "scripts/")) or path in global_files:
                   selected.update(entries)
               elif path.startswith("forge-1.16.5/"):
                   selected.add("forge1165")
@@ -163,6 +165,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v5
+        with:
+          submodules: recursive
 
       - name: Setup Java 21
         uses: actions/setup-java@v5
@@ -177,6 +181,7 @@ jobs:
         run: |
           chmod +x ./gradlew
           ./gradlew -p common test --no-daemon --no-configuration-cache
+          python3 -m unittest discover -s scripts -p 'test_verify_client_evidence.py'
 
   versions:
     name: Verify ${{ matrix.name }}
@@ -192,15 +197,22 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v5
+        with:
+          submodules: recursive
 
       - name: Setup Java ${{ matrix.java }}
         uses: actions/setup-java@v5
         with:
           distribution: temurin
-          java-version: ${{ matrix.java }}
+          java-version: |
+            21
+            ${{ matrix.java }}
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
+
+      - name: Build pinned native dependencies
+        run: python3 scripts/prepare_dependencies.py --target ${{ matrix.id == 'forge1165' && 'forge-1.16.5' || matrix.id == 'forge1201' && 'forge-1.20.1' || matrix.id == 'neoforge1211' && 'neoforge-1.21.1' || 'neoforge-26.1.2' }}
 
       - name: Verify version
         working-directory: ${{ matrix.working_directory }}
@@ -254,7 +266,7 @@ jobs:
           RESULT_DIR='${{ matrix.integration_result_dir }}'
           chmod +x ./gradlew
 
-          xvfb-run -a ./gradlew '${{ matrix.integration_client_task }}' --no-daemon --no-configuration-cache
+          timeout --kill-after=30s 10m xvfb-run -a -s '-screen 0 1920x1080x24' ./gradlew '${{ matrix.integration_client_task }}' -PuiScreenshots --no-daemon --no-configuration-cache 2>&1 | tee "$RESULT_DIR/client.log"
 
           test -f "$RESULT_DIR/client-pass.txt"
           test ! -f "$RESULT_DIR/client-fail.txt"
@@ -262,3 +274,18 @@ jobs:
           test ! -f "$RESULT_DIR/server-fail.txt"
           cat "$RESULT_DIR/client-pass.txt"
           cat "$RESULT_DIR/server-pass.txt"
+
+          python3 "$GITHUB_WORKSPACE/scripts/verify_client_evidence.py" --result-dir "$RESULT_DIR" --mode integrated --require-cut ${{ matrix.id == 'forge1201' && '--require-screenshots' || '' }}
+
+      - name: Upload integrated UI diagnostics
+        if: always() && matrix.client_kind == 'integrated'
+        uses: actions/upload-artifact@v4
+        with:
+          name: integrated-ui-${{ matrix.id }}
+          path: |
+            ${{ matrix.working_directory }}/${{ matrix.integration_result_dir }}/*.png
+            ${{ matrix.working_directory }}/${{ matrix.integration_result_dir }}/*.json
+            ${{ matrix.working_directory }}/${{ matrix.integration_result_dir }}/*.txt
+            ${{ matrix.working_directory }}/${{ matrix.integration_result_dir }}/*.log
+            ${{ matrix.working_directory }}/${{ matrix.gametest_run_dir }}/logs/*.log
+          if-no-files-found: ignore

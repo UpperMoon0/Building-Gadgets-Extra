@@ -39,6 +39,15 @@ public final class MirrorPacket {
         if (player == null) return;
 
         ItemStack gadget = AbstractGadget.getGadget(player);
+        if (gadget.getItem() instanceof com.nstut.buildinggadgetsextra.item.BuildersMultitool) {
+            com.nstut.buildinggadgetsextra.common.MultitoolMode mode = com.nstut.buildinggadgetsextra.item.MultitoolState.getActiveMode(gadget);
+            if (mode == com.nstut.buildinggadgetsextra.common.MultitoolMode.BUILD || mode == com.nstut.buildinggadgetsextra.common.MultitoolMode.EXCHANGING) {
+                com.nstut.buildinggadgetsextra.item.MultitoolState.toggleLiveMirror(gadget, vertical);
+                com.direwolf20.buildinggadgets.common.util.GadgetUtils.setAnchor(gadget);
+                player.containerMenu.broadcastChanges();
+                return;
+            }
+        }
         if (!(gadget.getItem() instanceof GadgetCopyPaste)) return;
 
         player.level.getCapability(CapabilityTemplate.TEMPLATE_PROVIDER_CAPABILITY).ifPresent(provider ->
