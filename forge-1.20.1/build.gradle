@@ -73,6 +73,7 @@ minecraft {
             }
         }
         dedicatedClientIntegrationTest {
+            if (project.hasProperty('uiScreenshots')) args '--width', '1920', '--height', '1080'
             parent runs.client
             client true
             workingDirectory project.file('run-client-integration-dedicated')

@@ -52,8 +52,8 @@ public final class Forge1165ServerRangeIntegrationTest {
         if (!provisioned) {
             loginTicks++;
             if (loginTicks < PROVISION_DELAY_TICKS) return;
-            try { verifyModifiers(watchedPlayer); }
-            catch (RuntimeException failure) { finished = true; write("server-fail.txt", "legacy modifier regression: " + failure); return; }
+            try { verifyCutState(watchedPlayer); verifyModifiers(watchedPlayer); }
+            catch (RuntimeException failure) { finished = true; write("server-fail.txt", "legacy modifier/cut-state regression: " + failure); return; }
             provision(watchedPlayer);
             provisioned = true;
             return;
@@ -74,6 +74,33 @@ public final class Forge1165ServerRangeIntegrationTest {
             write("server-fail.txt", "server never observed authoritative range="
                     + ClientRangeRoundTripScenario.TARGET_RANGE + "; current=" + GadgetUtils.getToolRange(held));
         }
+    }
+
+    private static void verifyCutState(ServerPlayerEntity player) {
+        ItemStack stack=new ItemStack(ExtraRegistration.BUILDERS_MULTITOOL.get());
+        player.setItemInHand(Hand.MAIN_HAND,stack);
+        com.nstut.buildinggadgetsextra.common.MultitoolMode cut=com.nstut.buildinggadgetsextra.common.MultitoolMode.CUT_PASTE;
+        com.nstut.buildinggadgetsextra.item.MultitoolState.selectTool(stack,cut);
+        if(com.direwolf20.buildinggadgets.common.items.GadgetCopyPaste.getToolMode(stack)!=com.direwolf20.buildinggadgets.common.items.GadgetCopyPaste.ToolMode.COPY)
+            throw new IllegalStateException("fresh legacy Cut profile must select corners");
+        com.direwolf20.buildinggadgets.common.items.GadgetCopyPaste.setSelectedRegion(stack,
+                new com.direwolf20.buildinggadgets.common.tainted.building.Region(new net.minecraft.util.math.BlockPos(1,2,3),new net.minecraft.util.math.BlockPos(2,3,4)));
+        stack.getOrCreateTag().putBoolean("cutBufferActive",true);
+        com.nstut.buildinggadgetsextra.item.MultitoolState.applyProfile(stack,cut,0);
+        if(com.direwolf20.buildinggadgets.common.items.GadgetCopyPaste.getToolMode(stack)!=com.direwolf20.buildinggadgets.common.items.GadgetCopyPaste.ToolMode.PASTE)
+            throw new IllegalStateException("stale legacy Cut action replaced pending Paste");
+        net.minecraft.nbt.CompoundNBT before=stack.getOrCreateTag().copy();
+        com.nstut.buildinggadgetsextra.network.CutSelectionPacketHandler.handle(player);
+        if(!before.equals(stack.getOrCreateTag())) throw new IllegalStateException("repeated legacy Cut changed pending contents");
+        com.nstut.buildinggadgetsextra.item.MultitoolState.selectTool(stack,com.nstut.buildinggadgetsextra.common.MultitoolMode.BUILD);
+        com.nstut.buildinggadgetsextra.item.MultitoolState.selectTool(stack,cut);
+        if(!stack.getOrCreateTag().getBoolean("cutBufferActive") || !com.direwolf20.buildinggadgets.common.items.GadgetCopyPaste.getSelectedRegion(stack).isPresent())
+            throw new IllegalStateException("legacy profile navigation lost cut contents");
+        stack.getOrCreateTag().putBoolean("cutBufferActive",false);
+        com.nstut.buildinggadgetsextra.item.MultitoolState.applyProfile(stack,cut,1);
+        if(com.direwolf20.buildinggadgets.common.items.GadgetCopyPaste.getToolMode(stack)!=com.direwolf20.buildinggadgets.common.items.GadgetCopyPaste.ToolMode.COPY)
+            throw new IllegalStateException("empty legacy buffer retained Paste action");
+        write("legacy-cut-state-pass.txt","fresh selection, stale action, repeated cut, profile restoration, and consumed buffer guards passed");
     }
 
     private static void verifyModifiers(ServerPlayerEntity player) {

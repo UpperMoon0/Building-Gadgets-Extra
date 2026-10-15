@@ -69,9 +69,11 @@ neoForge {
             systemProperty 'bge.clientIntegrationTest', 'true'
             systemProperty 'bge.clientIntegrationResultDir', project.file('build/client-integration').absolutePath
             programArguments = ['--quickPlaySingleplayer', 'bge-client-integration']
+            if (project.hasProperty('uiScreenshots')) programArguments.addAll(['--width', '1920', '--height', '1080'])
         }
 
         dedicatedClientIntegrationTest {
+            if (project.hasProperty('uiScreenshots')) programArguments.addAll(['--width', '1920', '--height', '1080'])
             client()
             gameDirectory = project.file('run-client-integration-dedicated')
             systemProperty 'bge.clientIntegrationTest', 'true'

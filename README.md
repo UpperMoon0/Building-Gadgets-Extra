@@ -202,3 +202,5 @@ resize and fullscreen changes. Minecraft adapters retain packet and item access 
 PacketWeave handles chunking, bounded assembly, expiry and byte accounting; gadget
 identity, active-profile checks, response correlation and local save paths remain
 application policy.
+
+Workflow coverage, required CI evidence, and local test commands are documented in the [native UI regression suite](docs/ui-regression-tests.md).

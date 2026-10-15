@@ -29,6 +29,8 @@ public final class ModernClientRangeAdapter implements ClientRangeRoundTripScena
     }
 
     private final ScreenClicker clicker;
+    private static ScreenClicker generalClicker;
+    static void clickGeneral(Screen screen,double x,double y) { generalClicker.click(screen,x,y); }
     private final ModifierScreenRoundTrip modifierRoundTrip = new ModifierScreenRoundTrip();
     private String pendingPassDetail;
     private int copyTransportTicks;
@@ -75,7 +77,7 @@ public final class ModernClientRangeAdapter implements ClientRangeRoundTripScena
     }
 
     public ModernClientRangeAdapter(ScreenClicker clicker) {
-        this.clicker = clicker;
+        this.clicker = clicker; generalClicker=clicker;
     }
 
     private Minecraft minecraft() {

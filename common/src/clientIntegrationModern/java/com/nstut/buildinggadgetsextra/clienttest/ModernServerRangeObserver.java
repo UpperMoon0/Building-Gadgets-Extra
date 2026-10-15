@@ -48,6 +48,7 @@ public final class ModernServerRangeObserver {
         loginTicks = 0;
         observationTicks = 0;
         provisioned = false;
+        CutPasteServerScenario.reset();
         finished = false;
         modifiersObserved = false;
         buildRangeObserved = false;
@@ -71,6 +72,7 @@ public final class ModernServerRangeObserver {
         }
 
         observationTicks++;
+        CutPasteServerScenario.tick(watchedPlayer);
         ItemStack held = watchedPlayer.getItemInHand(InteractionHand.MAIN_HAND);
         if (held.getItem() instanceof BuildersMultitool) {
             if (MultitoolState.getLiveModifiers(held).value(0) == 2 && MultitoolState.getLiveModifiers(held).value(4) == 4) modifiersObserved = true;
@@ -94,7 +96,7 @@ public final class ModernServerRangeObserver {
             }
         }
 
-        if (modifiersObserved && buildRangeObserved && exchangeRangeObserved && copySelectionObserved && destructionRangesObserved) {
+        if (CutPasteServerScenario.complete() && modifiersObserved && buildRangeObserved && exchangeRangeObserved && copySelectionObserved && destructionRangesObserved) {
             finished = true;
             write("server-pass.txt", "authoritative server range/profile observer saw build/exchange profiles, copy selection, and destruction ranges");
             return;

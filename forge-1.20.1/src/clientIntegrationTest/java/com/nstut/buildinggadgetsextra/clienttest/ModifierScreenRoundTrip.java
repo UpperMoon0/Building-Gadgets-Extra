@@ -126,9 +126,9 @@ public final class ModifierScreenRoundTrip {
                 capture("cut-settings.png");phase=32;return false;
             }
             if(phase==32) {
-                if(!(Minecraft.getInstance().screen instanceof MultitoolRadialScreen)) return false;
+                if(Minecraft.getInstance().screen instanceof MultitoolRadialScreen) screen=(MultitoolRadialScreen)Minecraft.getInstance().screen;
+                if(!cutRoundTrip.tick(button->{screen=(MultitoolRadialScreen)Minecraft.getInstance().screen;press(button);},ModifierScreenRoundTrip::captureCurrent)) return false;
                 screen=(MultitoolRadialScreen)Minecraft.getInstance().screen;
-                if(!cutRoundTrip.tick(screen)) return false;
                 selectProfile(MultitoolMode.COPY_PASTE);phase=27;return false;
             }
             if(phase==27) {
@@ -248,6 +248,9 @@ public final class ModifierScreenRoundTrip {
         // Render a complete game frame. Drawing only the transparent screen over the previous frame
         // leaves old labels behind when the cut state changes between ticks.
         Minecraft mc=Minecraft.getInstance();
+        // Built-in first-login/tutorial toasts must not cover the controls under visual review.
+        mc.getTutorial().setStep(net.minecraft.client.tutorial.TutorialSteps.NONE);
+        mc.getToasts().clear();
         mc.getMainRenderTarget().clear(Minecraft.ON_OSX);
         mc.getMainRenderTarget().bindWrite(true);
         mc.gameRenderer.render(0, System.nanoTime(), true);

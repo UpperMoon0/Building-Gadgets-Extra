@@ -43,3 +43,5 @@ repo/
 **/run-client-integration/
 **/run-client-integration-server/
 
+**/run-client-integration-dedicated/
+__pycache__/

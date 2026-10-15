@@ -13,6 +13,7 @@ import net.minecraft.world.item.ItemStack;
 /** Real inline controls, field commits, stage resets and authoritative inventory echo. */
 public final class ModifierScreenRoundTrip {
     private int phase;
+    private final CutPasteRoundTrip cutRoundTrip=new CutPasteRoundTrip();
     private int reportedPhase=-1, diagnosticTicks;
     private boolean preparedCapture;
     private int captureTicks;
@@ -110,7 +111,13 @@ public final class ModifierScreenRoundTrip {
             }
             if(phase==26) {
                 if(!toolProfileReady(stack,MultitoolMode.CUT_PASTE,"copy")) return false;
-                capture("cut-settings.png");selectProfile(MultitoolMode.COPY_PASTE);phase=27;return false;
+                capture("cut-settings.png");phase=32;return false;
+            }
+            if(phase==32) {
+                if(Minecraft.getInstance().screen instanceof MultitoolRadialScreen) screen=(MultitoolRadialScreen)Minecraft.getInstance().screen;
+                if(!cutRoundTrip.tick(button->{screen=(MultitoolRadialScreen)Minecraft.getInstance().screen;press(button);},ModifierScreenRoundTrip::captureCurrent)) return false;
+                screen=(MultitoolRadialScreen)Minecraft.getInstance().screen;
+                selectProfile(MultitoolMode.COPY_PASTE);phase=27;return false;
             }
             if(phase==27) {
                 if(!toolProfileReady(stack,MultitoolMode.COPY_PASTE,"copy")) return false;

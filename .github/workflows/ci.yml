@@ -181,6 +181,7 @@ jobs:
         run: |
           chmod +x ./gradlew
           ./gradlew -p common test --no-daemon --no-configuration-cache
+          python3 -m unittest discover -s scripts -p 'test_verify_client_evidence.py'
 
   versions:
     name: Verify ${{ matrix.name }}
@@ -265,7 +266,7 @@ jobs:
           RESULT_DIR='${{ matrix.integration_result_dir }}'
           chmod +x ./gradlew
 
-          timeout --kill-after=30s 10m xvfb-run -a ./gradlew '${{ matrix.integration_client_task }}' --no-daemon --no-configuration-cache
+          timeout --kill-after=30s 10m xvfb-run -a -s '-screen 0 1920x1080x24' ./gradlew '${{ matrix.integration_client_task }}' -PuiScreenshots --no-daemon --no-configuration-cache 2>&1 | tee "$RESULT_DIR/client.log"
 
           test -f "$RESULT_DIR/client-pass.txt"
           test ! -f "$RESULT_DIR/client-fail.txt"
@@ -273,3 +274,18 @@ jobs:
           test ! -f "$RESULT_DIR/server-fail.txt"
           cat "$RESULT_DIR/client-pass.txt"
           cat "$RESULT_DIR/server-pass.txt"
+
+          python3 "$GITHUB_WORKSPACE/scripts/verify_client_evidence.py" --result-dir "$RESULT_DIR" --mode integrated --require-cut ${{ matrix.id == 'forge1201' && '--require-screenshots' || '' }}
+
+      - name: Upload integrated UI diagnostics
+        if: always() && matrix.client_kind == 'integrated'
+        uses: actions/upload-artifact@v4
+        with:
+          name: integrated-ui-${{ matrix.id }}
+          path: |
+            ${{ matrix.working_directory }}/${{ matrix.integration_result_dir }}/*.png
+            ${{ matrix.working_directory }}/${{ matrix.integration_result_dir }}/*.json
+            ${{ matrix.working_directory }}/${{ matrix.integration_result_dir }}/*.txt
+            ${{ matrix.working_directory }}/${{ matrix.integration_result_dir }}/*.log
+            ${{ matrix.working_directory }}/${{ matrix.gametest_run_dir }}/logs/*.log
+          if-no-files-found: ignore

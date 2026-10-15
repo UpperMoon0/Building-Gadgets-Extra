@@ -62,12 +62,14 @@ neoForge {
             systemProperty 'neoforge.enabledGameTestNamespaces', mod_id
         }
         clientIntegrationTest {
+            if (project.hasProperty('uiScreenshots')) programArguments.addAll(['--width', '1920', '--height', '1080'])
             client()
             gameDirectory = project.file('run-client-integration')
             systemProperty 'bge.clientIntegrationTest', 'true'
             systemProperty 'bge.clientIntegrationResultDir', project.file('build/client-integration').absolutePath
         }
         dedicatedClientIntegrationTest {
+            if (project.hasProperty('uiScreenshots')) programArguments.addAll(['--width', '1920', '--height', '1080'])
             client()
             gameDirectory = project.file('run-client-integration-dedicated')
             systemProperty 'bge.clientIntegrationTest', 'true'
