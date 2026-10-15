@@ -49,6 +49,7 @@ public final class BuildersMultitool extends GadgetCopyPaste {
                 if (!world.isClientSide && isPasteMode && hasCutBuffer && result.getResult() == ActionResultType.SUCCESS) {
                     stack.getOrCreateTag().putBoolean("cutBufferActive", false);
                     setMode(stack, GadgetCopyPaste.ToolMode.COPY.ordinal());
+                    GadgetCopyPaste.setSelectedRegion(stack, null);
                     player.inventory.setChanged();
                 }
                 return result;

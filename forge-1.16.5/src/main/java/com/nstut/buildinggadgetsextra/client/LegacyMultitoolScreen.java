@@ -40,6 +40,12 @@ public final class LegacyMultitoolScreen extends com.nstut.openui.minecraft.UiSc
     };
     private static MultitoolMenuState.Page rememberedPage = MultitoolMenuState.Page.GENERAL;
     private ItemStack stack;
+    private String cutSnapshot="";
+    private boolean refreshingCut;
+    private String cutSnapshot() {
+        ItemStack held=authoritativeStack();
+        return held.getOrCreateTag().getBoolean("cutBufferActive")+":"+GadgetCopyPaste.getSelectedRegion(held).map(r->r.getMin()+":"+r.getMax()).orElse("");
+    }
     private com.nstut.buildinggadgetsextra.common.ProfileSettingsLayout settingsLayout;
     private InlineModifiers inlineModifiers;
     private com.nstut.buildinggadgetsextra.client.ui.ToolSettingsPanel toolSettings;
@@ -65,6 +71,7 @@ public final class LegacyMultitoolScreen extends com.nstut.openui.minecraft.UiSc
     }
     private void closeNow() { super.onClose(); }
     @Override public void onClose() {
+        if(toolSettings!=null && !toolSettings.flush()) return;
         if(inlineModifiers != null) inlineModifiers.navigate(this::closeNow, true); else closeNow();
     }
     private final MultitoolMenuState navigation;
@@ -88,12 +95,18 @@ public final class LegacyMultitoolScreen extends com.nstut.openui.minecraft.UiSc
         ItemStack held = AbstractGadget.getGadget(minecraft.player);
         if (!held.isEmpty()) this.stack = held;
         if(inlineModifiers != null) inlineModifiers.tick(); profileControls.tick();
+        if(settingsLayout!=null && selectedTool()==MultitoolMode.CUT_PASTE
+                && MultitoolState.getActiveMode(held)==selectedTool() && !cutSnapshot.equals(cutSnapshot())) {
+            refreshingCut=true;
+            try { rebuildSettings(); } finally { refreshingCut=false; }
+        }
     }
 
     private void rebuildSettings() { populateContextButtons(); rebuildUI(); }
     private void populateContextButtons() {
         com.nstut.buildinggadgetsextra.client.ui.ToolSettingsPanel previousSettings=toolSettings;
         MultitoolMode previousProfile=settingsProfile;
+        boolean sameCutState=cutSnapshot.equals(cutSnapshot());
         toolSettings=null;settingsProfile=selectedTool();
         profileControls.clear(); profileRange=null;
 
@@ -108,7 +121,7 @@ public final class LegacyMultitoolScreen extends com.nstut.openui.minecraft.UiSc
         MultitoolMode tool = selectedTool();
         if (tool == MultitoolMode.DESTRUCTION) {
             toolSettings=createToolSettings("destruction");
-            if(previousProfile==settingsProfile) toolSettings.restoreFrom(previousSettings);
+            if(previousProfile==settingsProfile && !refreshingCut && (settingsProfile!=MultitoolMode.CUT_PASTE || sameCutState)) toolSettings.restoreFrom(previousSettings);
             setting(false,right,"anchor","buildinggadgets.radialmenu.anchor",false,()->false,LegacyMultitoolPacket.ANCHOR);
             setting(false,right,"raytrace_fluid","buildinggadgets.radialmenu.raytrace_fluid",true,()->AbstractGadget.shouldRayTraceFluid(stack),LegacyMultitoolPacket.RAYTRACE);
             setting(false,right,"undo","buildinggadgets.radialmenu.undo",false,()->false,LegacyMultitoolPacket.UNDO);
@@ -148,7 +161,7 @@ public final class LegacyMultitoolScreen extends com.nstut.openui.minecraft.UiSc
         if (tool == MultitoolMode.COPY_PASTE) {
             String mode = selectedAction == 1 ? "paste" : "copy";
             toolSettings=createToolSettings(mode);
-            if(previousProfile==settingsProfile) toolSettings.restoreFrom(previousSettings);
+            if(previousProfile==settingsProfile && !refreshingCut && (settingsProfile!=MultitoolMode.CUT_PASTE || sameCutState)) toolSettings.restoreFrom(previousSettings);
             if ("paste".equals(mode)) {
                 clientSetting(false, right, "copypaste_materiallist", "buildinggadgets.radialmenu.materiallist",
                         () -> minecraft.setScreen(new MaterialListGUI(stack)));
@@ -177,14 +190,16 @@ public final class LegacyMultitoolScreen extends com.nstut.openui.minecraft.UiSc
         }
 
         if (tool == MultitoolMode.CUT_PASTE) {
-            boolean hasCutBuffer = stack.getOrCreateTag().getBoolean("cutBufferActive")
-                    && GadgetCopyPaste.getSelectedRegion(stack).isPresent();
+            boolean hasCutBuffer = authoritativeStack().getOrCreateTag().getBoolean("cutBufferActive")
+                    && GadgetCopyPaste.getSelectedRegion(authoritativeStack()).isPresent();
+            cutSnapshot=cutSnapshot();
+            boolean selected=GadgetCopyPaste.getSelectedRegion(authoritativeStack()).isPresent();
+            profileControls.workflow(com.nstut.buildinggadgetsextra.client.ui.CutPasteControls.create(
+                    com.nstut.buildinggadgetsextra.common.CutPasteStep.of(hasCutBuffer,selected,selected),
+                    ()->navigate(()->ExtraNetwork.sendToServer(new CutSelectionPacket()))));
             toolSettings=createToolSettings(hasCutBuffer?"paste":"copy");
-            if(previousProfile==settingsProfile) toolSettings.restoreFrom(previousSettings);
+            if(previousProfile==settingsProfile && !refreshingCut && (settingsProfile!=MultitoolMode.CUT_PASTE || sameCutState)) toolSettings.restoreFrom(previousSettings);
             if (!hasCutBuffer) {
-                addAddonIcon( "cut", RadialIconLayout.MODERN_SETTING_ICON_SIZE,
-                        new TranslationTextComponent(ExtraConstants.CUT_SELECTION),
-                        () -> ExtraNetwork.sendToServer(new CutSelectionPacket()));
                 addAddonIcon( "save",
                         new TranslationTextComponent(ExtraConstants.SAVE_STRUCTURE),
                         ClientStructureFiles::chooseSave);
@@ -196,9 +211,6 @@ public final class LegacyMultitoolScreen extends com.nstut.openui.minecraft.UiSc
                 addAddonIcon( "mirror_vertical",
                         new TranslationTextComponent(ExtraConstants.MIRROR_VERTICAL),
                         () -> ExtraNetwork.sendToServer(new MirrorPacket(true)));
-                addAddonIcon( "load",
-                        new TranslationTextComponent(ExtraConstants.LOAD_STRUCTURE),
-                        ClientStructureFiles::chooseLoad);
             }
         }
         if(selectedTool() == MultitoolMode.BUILD || selectedTool() == MultitoolMode.EXCHANGING) {
@@ -397,6 +409,7 @@ public final class LegacyMultitoolScreen extends com.nstut.openui.minecraft.UiSc
             button.setActive(i==selectedAction); button.tooltip(new TranslationTextComponent(action.translation)); wheel.item(button);
         }
         String label=actions.isEmpty()?"":new TranslationTextComponent(actions.get(Math.min(selectedAction,actions.size()-1)).translation).getString();
+        if(selectedTool()==MultitoolMode.CUT_PASTE) label=authoritativeStack().getOrCreateTag().getBoolean("cutBufferActive")?"Paste":"Select area";
         wheel.center(com.nstut.buildinggadgetsextra.client.ui.ModifierPanel.button("Back",()->navigate(()->{
             navigation.back(); rememberedPage=MultitoolMenuState.Page.GENERAL; rebuildSettings();
         })),settingsLayout.backRadius*2);

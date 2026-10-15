@@ -37,6 +37,12 @@ public final class MultitoolRadialScreen extends com.nstut.openui.minecraft.UiSc
     private static MultitoolMenuState.Page rememberedPage = MultitoolMenuState.Page.GENERAL;
 
     private final ItemStack stack;
+    private String cutSnapshot="";
+    private boolean refreshingCut;
+    private String cutSnapshot() {
+        ItemStack held=authoritativeStack();
+        return GadgetNBT.hasCopyUUID(held)+":"+GadgetNBT.getCopyStartPos(held)+":"+GadgetNBT.getCopyEndPos(held);
+    }
     private com.nstut.buildinggadgetsextra.common.ProfileSettingsLayout settingsLayout;
     private InlineModifiers inlineModifiers;
     private com.nstut.buildinggadgetsextra.client.ui.ToolSettingsPanel toolSettings;
@@ -62,6 +68,7 @@ public final class MultitoolRadialScreen extends com.nstut.openui.minecraft.UiSc
     }
     private void closeNow() { super.onClose(); }
     @Override public void onClose() {
+        if(toolSettings!=null && !toolSettings.flush()) return;
         if(inlineModifiers != null) inlineModifiers.navigate(this::closeNow, true); else closeNow();
     }
     private final MultitoolMenuState navigation;
@@ -80,7 +87,14 @@ public final class MultitoolRadialScreen extends com.nstut.openui.minecraft.UiSc
         this.selectedAction = rememberedAction(selectedTool());
     }
 
-    @Override public void tick() { super.tick(); if(inlineModifiers != null) inlineModifiers.tick(); profileControls.tick(); }
+    @Override public void tick() { super.tick(); if(inlineModifiers != null) inlineModifiers.tick(); profileControls.tick();
+        if(settingsLayout!=null && selectedTool()==MultitoolMode.CUT_PASTE
+                && MultitoolState.getActiveMode(authoritativeStack())==selectedTool()
+                && !cutSnapshot.equals(cutSnapshot())) {
+            refreshingCut=true;
+            try { rebuildContextButtons(); } finally { refreshingCut=false; }
+        }
+    }
 
     @Override
     protected void init() {
@@ -93,6 +107,7 @@ public final class MultitoolRadialScreen extends com.nstut.openui.minecraft.UiSc
     private void populateContextButtons() {
         com.nstut.buildinggadgetsextra.client.ui.ToolSettingsPanel previousSettings=toolSettings;
         MultitoolMode previousProfile=settingsProfile;
+        boolean sameCutState=cutSnapshot.equals(cutSnapshot());
         toolSettings=null; settingsProfile=selectedTool();
         profileControls.clear(); profileRange=null;
 
@@ -111,7 +126,7 @@ public final class MultitoolRadialScreen extends com.nstut.openui.minecraft.UiSc
 
         if (selectedTool() == MultitoolMode.DESTRUCTION) {
             toolSettings=createToolSettings("destruction");
-            if(previousProfile==settingsProfile) toolSettings.restoreFrom(previousSettings);
+            if(previousProfile==settingsProfile && !refreshingCut && (settingsProfile!=MultitoolMode.CUT_PASTE || sameCutState)) toolSettings.restoreFrom(previousSettings);
             addUpstream(false,rightY,"anchor",Component.translatable("buildinggadgets2.radialmenu.anchor"),true,null,()->PacketHandler.sendToServer(new PacketAnchor()));
             addUpstream(false,rightY,"affecttiles",Component.translatable("buildinggadgets2.screen.affecttiles"),true,"affecttiles",null);
             addUpstream(false,rightY,"raytrace_fluid",Component.translatable("buildinggadgets2.radialmenu.raytracefluids"),true,"raytracefluid",null);
@@ -122,7 +137,15 @@ public final class MultitoolRadialScreen extends com.nstut.openui.minecraft.UiSc
 
         String mode = selectedAction == null ? "" : selectedAction.getId().getPath();
         boolean cutTool = selectedTool() == MultitoolMode.CUT_PASTE;
-        boolean hasCutBuffer = cutTool && GadgetNBT.hasCopyUUID(stack);
+        boolean hasCutBuffer = cutTool && GadgetNBT.hasCopyUUID(authoritativeStack());
+        if(cutTool) {
+            cutSnapshot=cutSnapshot();
+            ItemStack held=authoritativeStack();
+            com.nstut.buildinggadgetsextra.common.CutPasteStep step=com.nstut.buildinggadgetsextra.common.CutPasteStep.of(hasCutBuffer,
+                    !GadgetNBT.getCopyStartPos(held).equals(GadgetNBT.nullPos),!GadgetNBT.getCopyEndPos(held).equals(GadgetNBT.nullPos));
+            profileControls.workflow(com.nstut.buildinggadgetsextra.client.ui.CutPasteControls.create(step,
+                    ()->navigate(()->ExtraNetwork.sendToServer(new MultitoolCutPacket()))));
+        }
         String effectiveMode = cutTool ? (hasCutBuffer ? "paste" : "cut") : mode;
 
         addUpstream(false, rightY, "raytrace_fluid",
@@ -168,7 +191,7 @@ public final class MultitoolRadialScreen extends com.nstut.openui.minecraft.UiSc
             addUpstream(false, rightY, "paste_replace", Component.translatable("buildinggadgets2.screen.paste_replace"), true,
                     "pastereplace", null);
             toolSettings=createToolSettings("paste".equals(effectiveMode)?"paste":"copy");
-            if(previousProfile==settingsProfile) toolSettings.restoreFrom(previousSettings);
+            if(previousProfile==settingsProfile && !refreshingCut && (settingsProfile!=MultitoolMode.CUT_PASTE || sameCutState)) toolSettings.restoreFrom(previousSettings);
             if (RadialButtonPolicy.showRotateButton(effectiveMode)) {
                 addUpstream(true, leftY, "rotate", Component.translatable("buildinggadgets2.radialmenu.rotate"), false,
                         null, () -> PacketHandler.sendToServer(new PacketRotate()));
@@ -207,12 +230,6 @@ public final class MultitoolRadialScreen extends com.nstut.openui.minecraft.UiSc
                     load ? ClientStructureFiles::chooseLoad : ClientStructureFiles::chooseSave);
         }
 
-        if (cutTool && !hasCutBuffer) {
-            addAddonIcon(
-                    MirrorIconButton.upstreamSettingIcon("cut"), RadialIconLayout.MODERN_SETTING_ICON_SIZE,
-                    Component.translatable("buildinggadgets2.radialmenu.cut"),
-                    () -> ExtraNetwork.sendToServer(new MultitoolCutPacket()));
-        }
         if(selectedTool() == MultitoolMode.BUILD || selectedTool() == MultitoolMode.EXCHANGING) {
             inlineModifiers = new InlineModifiers(this::authoritativeStack);
             inlineModifiers.restoreFrom(previous);
@@ -446,7 +463,7 @@ public final class MultitoolRadialScreen extends com.nstut.openui.minecraft.UiSc
     private void sendSelection() {
         String modeStr;
         if (selectedTool() == MultitoolMode.CUT_PASTE) {
-            modeStr = GadgetNBT.hasCopyUUID(stack) ? "buildinggadgets2:paste" : "buildinggadgets2:cut";
+            modeStr = GadgetNBT.hasCopyUUID(authoritativeStack()) ? "buildinggadgets2:paste" : "buildinggadgets2:cut";
         } else {
             modeStr = selectedAction == null ? "" : selectedAction.getId().toString();
         }
@@ -507,6 +524,7 @@ public final class MultitoolRadialScreen extends com.nstut.openui.minecraft.UiSc
             button.setActive(action.equals(selectedAction)); button.tooltip(Component.translatable(action.i18n())); wheel.item(button);
         }
         String label=selectedAction==null?"":Component.translatable(selectedAction.i18n()).getString();
+        if(selectedTool()==MultitoolMode.CUT_PASTE) label=GadgetNBT.hasCopyUUID(authoritativeStack())?"Paste":"Select area";
         wheel.center(com.nstut.buildinggadgetsextra.client.ui.ModifierPanel.button("Back",()->navigate(()->{
             navigation.back(); rememberedPage=MultitoolMenuState.Page.GENERAL; rebuildContextButtons();
         })),settingsLayout.backRadius*2);

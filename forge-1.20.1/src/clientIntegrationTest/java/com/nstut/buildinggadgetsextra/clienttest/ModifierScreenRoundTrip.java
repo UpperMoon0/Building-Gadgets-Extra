@@ -13,6 +13,7 @@ import net.minecraft.world.item.ItemStack;
 /** Real inline controls, field commits, stage resets and authoritative inventory echo. */
 public final class ModifierScreenRoundTrip {
     private int phase;
+    private final CutPasteRoundTrip cutRoundTrip=new CutPasteRoundTrip();
     private int reportedPhase=-1, diagnosticTicks;
     private boolean preparedCapture;
     private int captureTicks;
@@ -122,7 +123,13 @@ public final class ModifierScreenRoundTrip {
             }
             if(phase==26) {
                 if(!toolProfileReady(stack,MultitoolMode.CUT_PASTE,"copy")) return false;
-                capture("cut-settings.png");selectProfile(MultitoolMode.COPY_PASTE);phase=27;return false;
+                capture("cut-settings.png");phase=32;return false;
+            }
+            if(phase==32) {
+                if(!(Minecraft.getInstance().screen instanceof MultitoolRadialScreen)) return false;
+                screen=(MultitoolRadialScreen)Minecraft.getInstance().screen;
+                if(!cutRoundTrip.tick(screen)) return false;
+                selectProfile(MultitoolMode.COPY_PASTE);phase=27;return false;
             }
             if(phase==27) {
                 if(!toolProfileReady(stack,MultitoolMode.COPY_PASTE,"copy")) return false;
@@ -238,18 +245,12 @@ public final class ModifierScreenRoundTrip {
         screen.mouseReleased(x,y,0);
     }
     private void renderFrame() {
-        // Render the current screen completely; tick-time framebuffer reads can catch an older frame.
+        // Render a complete game frame. Drawing only the transparent screen over the previous frame
+        // leaves old labels behind when the cut state changes between ticks.
         Minecraft mc=Minecraft.getInstance();
-        org.joml.Matrix4f previous=new org.joml.Matrix4f(com.mojang.blaze3d.systems.RenderSystem.getProjectionMatrix());
-        com.mojang.blaze3d.systems.RenderSystem.setProjectionMatrix(new org.joml.Matrix4f().setOrtho(0,screen.width,screen.height,0,1000,21000),com.mojang.blaze3d.vertex.VertexSorting.ORTHOGRAPHIC_Z);
-        com.mojang.blaze3d.vertex.PoseStack modelView=com.mojang.blaze3d.systems.RenderSystem.getModelViewStack();
-        modelView.pushPose(); modelView.setIdentity(); modelView.translate(0,0,-11000);
-        com.mojang.blaze3d.systems.RenderSystem.applyModelViewMatrix();
+        mc.getMainRenderTarget().clear(Minecraft.ON_OSX);
         mc.getMainRenderTarget().bindWrite(true);
-        net.minecraft.client.gui.GuiGraphics graphics=new net.minecraft.client.gui.GuiGraphics(mc,mc.renderBuffers().bufferSource());
-        graphics.drawManaged(()->screen.render(graphics,0,0,0)); graphics.flush();
-        modelView.popPose(); com.mojang.blaze3d.systems.RenderSystem.applyModelViewMatrix();
-        com.mojang.blaze3d.systems.RenderSystem.setProjectionMatrix(previous,com.mojang.blaze3d.vertex.VertexSorting.ORTHOGRAPHIC_Z);
+        mc.gameRenderer.render(0, System.nanoTime(), true);
     }
     public static void captureCurrent(String name) {
         ModifierScreenRoundTrip fixture=new ModifierScreenRoundTrip();

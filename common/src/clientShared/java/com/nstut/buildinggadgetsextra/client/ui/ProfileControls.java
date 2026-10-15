@@ -12,9 +12,11 @@ public final class ProfileControls {
     private final List<Runnable> refresh=new ArrayList<>();
     private ScrollView scroll;
     private UIComponent undo;
+    private UIComponent workflow;
+    public void workflow(UIComponent value) { workflow=value; }
     private double savedScroll;
     private int lastProfile=-1;
-    public void clear() { if(scroll!=null) savedScroll=scroll.scrollOffset(); context.clear(); refresh.clear(); undo=null; }
+    public void clear() { if(scroll!=null) savedScroll=scroll.scrollOffset(); context.clear(); refresh.clear(); undo=null; workflow=null; }
     public void icon(String namespace,String path,int source,String label,BooleanSupplier selected,Runnable action) {
         ButtonWidget button=ModifierPanel.button(label,action).content(IconWidget.texture(namespace,path,source,source).size(16));
         button.width(24); button.tooltip(label);
@@ -27,6 +29,7 @@ public final class ProfileControls {
         if(lastProfile!=profile) savedScroll=0;
         lastProfile=profile;
         VStack settings=new VStack().gap(6);
+        if(workflow!=null) settings.child(workflow);
         int columns=Math.max(1,(panelWidth-16+2)/26);
         int index=0;
         // Undo stays docked to the right of the first row, including wrapped toolbars.

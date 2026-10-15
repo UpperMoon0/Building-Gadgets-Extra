@@ -84,6 +84,7 @@ public final class CutSelectionPacketHandler {
         item.setMode(gadget, GadgetCopyPaste.ToolMode.PASTE.ordinal());
         gadget.getOrCreateTag().putBoolean("cutBufferActive", true);
         player.inventory.setChanged();
+        player.containerMenu.broadcastChanges();
         player.displayClientMessage(new TranslationTextComponent(ExtraConstants.CUT_COMPLETE, blocks.size()), true);
     }
 

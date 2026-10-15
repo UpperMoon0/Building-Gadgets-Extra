@@ -50,6 +50,7 @@ public final class MultitoolCutPacket {
         ItemStack stack = BaseGadget.getGadget(player);
         if (!(stack.getItem() instanceof BuildersMultitool)
                 || MultitoolState.getActiveMode(stack) != MultitoolMode.CUT_PASTE
+                || GadgetNBT.hasCopyUUID(stack)
                 || !GadgetNBT.getMode(stack).getId().getPath().equals("cut")
                 || ServerTickHandler.gadgetWorking(GadgetNBT.getUUID(stack))) return;
 
@@ -97,10 +98,12 @@ public final class MultitoolCutPacket {
         GadgetNBT.setCopyStartPos(stack, GadgetNBT.nullPos);
         GadgetNBT.setCopyEndPos(stack, GadgetNBT.nullPos);
         GadgetNBT.setCopyUUID(stack, buildUUID);
+        MultitoolState.syncCutPasteMode(stack);
         BG2Data data = BG2Data.get(Objects.requireNonNull(level.getServer()).overworld());
         data.addToCopyPaste(GadgetNBT.getUUID(stack), new ArrayList<>());
         data.addToTEMap(GadgetNBT.getUUID(stack), new ArrayList<>());
         player.displayClientMessage(Component.translatable("buildinggadgets2.messages.cutblocks", accepted.size()), true);
+        player.containerMenu.broadcastChanges();
     }
 
     private static boolean validSize(ServerPlayer player, AABB area) {

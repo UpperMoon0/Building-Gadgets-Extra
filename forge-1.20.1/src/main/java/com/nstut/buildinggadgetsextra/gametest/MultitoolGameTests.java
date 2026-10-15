@@ -41,6 +41,45 @@ public final class MultitoolGameTests {
     private MultitoolGameTests() {}
 
     @GameTest(template = "bge_empty", timeoutTicks = 20)
+    public static void cutAutomaticallyPreparesPasteAndRejectsSecondCut(GameTestHelper helper) throws Exception {
+        ServerPlayer player = FakePlayerFactory.get(helper.getLevel(),
+                new GameProfile(UUID.randomUUID(), "bge-cut-flow"));
+        ItemStack stack = new ItemStack(ExtraRegistration.BUILDERS_MULTITOOL.get());
+        BuildersMultitool multitool = (BuildersMultitool) stack.getItem();
+        player.setItemInHand(InteractionHand.MAIN_HAND, stack);
+        multitool.selectTool(stack, MultitoolMode.CUT_PASTE);
+        BlockPos source = helper.absolutePos(new BlockPos(1, 2, 1));
+        helper.getLevel().setBlock(source, Blocks.STONE.defaultBlockState(), 3);
+        GadgetNBT.setCopyStartPos(stack, source);
+        GadgetNBT.setCopyEndPos(stack, source);
+        stack.getCapability(net.minecraftforge.common.capabilities.ForgeCapabilities.ENERGY).ifPresent(e -> e.receiveEnergy(Integer.MAX_VALUE, false));
+        java.lang.reflect.Method cut = com.nstut.buildinggadgetsextra.network.MultitoolCutPacket.class.getDeclaredMethod("cut", ServerPlayer.class);
+        cut.setAccessible(true);
+        UUID buildId = null;
+        try {
+            cut.invoke(null, player);
+            helper.assertTrue(GadgetNBT.hasCopyUUID(stack), "accepted cut must store its contents");
+            buildId = GadgetNBT.getCopyUUID(stack);
+            helper.assertTrue(GadgetNBT.getMode(stack).getId().getPath().equals("paste"), "cut must activate paste without reopening the menu");
+            helper.assertTrue(MultitoolState.getProfileMode(stack, MultitoolMode.CUT_PASTE).getPath().equals("paste"), "saved action must follow paste");
+            multitool.selectTool(stack, MultitoolMode.BUILD);
+            multitool.selectTool(stack, MultitoolMode.CUT_PASTE);
+            helper.assertTrue(buildId.equals(GadgetNBT.getCopyUUID(stack)), "profile navigation must retain pending cut contents");
+            multitool.selectGadgetMode(stack, net.minecraft.resources.ResourceLocation.fromNamespaceAndPath("buildinggadgets2", "cut"));
+            helper.assertTrue(GadgetNBT.getMode(stack).getId().getPath().equals("paste"), "stale selection packet must not revert to cutting");
+            cut.invoke(null, player);
+            helper.assertTrue(buildId.equals(GadgetNBT.getCopyUUID(stack)), "second cut must not replace pending contents");
+            GadgetNBT.clearCopyUUID(stack);
+            MultitoolState.syncCutPasteMode(stack);
+            helper.assertTrue(GadgetNBT.getMode(stack).getId().getPath().equals("cut"), "consumed buffer returns to selection");
+            helper.succeed();
+        } finally {
+            if (buildId != null) com.direwolf20.buildinggadgets2.common.events.ServerTickHandler.buildMap.remove(buildId);
+        }
+    }
+
+
+    @GameTest(template = "bge_empty", timeoutTicks = 20)
     public static void profileStateStaysIsolated(GameTestHelper helper) {
         ItemStack stack = new ItemStack(ExtraRegistration.BUILDERS_MULTITOOL.get());
         BuildersMultitool multitool = (BuildersMultitool) stack.getItem();

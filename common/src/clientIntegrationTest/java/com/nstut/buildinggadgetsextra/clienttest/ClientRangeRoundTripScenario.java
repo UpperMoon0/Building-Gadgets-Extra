@@ -230,6 +230,7 @@ public final class ClientRangeRoundTripScenario {
                     advance(Phase.OPEN_COPY_CONFIG, 1);
                     break;
                 case OPEN_COPY_CONFIG:
+                    if (!adapter.isCopyScreenOpen()) return; // Wait for the authoritative submenu rebuild.
                     adapter.openCopyConfig();
                     advance(Phase.EDIT_COPY_START, 2);
                     break;
@@ -263,6 +264,7 @@ public final class ClientRangeRoundTripScenario {
                     advance(Phase.OPEN_DESTRUCTION_CONFIG, 1);
                     break;
                 case OPEN_DESTRUCTION_CONFIG:
+                    if (!adapter.isDestructionScreenOpen()) return;
                     adapter.openDestructionConfig();
                     advance(Phase.EDIT_DESTRUCTION, 2);
                     break;

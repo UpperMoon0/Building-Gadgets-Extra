@@ -62,6 +62,16 @@ public final class MultitoolState {
                 .copyTag().getStringOr(ACTIVE_MODE, ""));
     }
 
+    /** Cut/Paste has one legal action for each buffer state, including restored old items. */
+    public static void syncCutPasteMode(ItemStack stack) {
+        if (getActiveMode(stack) != MultitoolMode.CUT_PASTE) return;
+        com.direwolf20.buildinggadgets2.util.modes.BaseMode next = GadgetNBT.hasCopyUUID(stack)
+                ? new com.direwolf20.buildinggadgets2.util.modes.Paste()
+                : new com.direwolf20.buildinggadgets2.util.modes.Cut();
+        GadgetNBT.setMode(stack, next);
+        setProfileMode(stack, MultitoolMode.CUT_PASTE, next.getId());
+    }
+
     public static void setActiveMode(ItemStack stack, MultitoolMode mode) {
         CustomData.update(DataComponents.CUSTOM_DATA, stack,
                 tag -> tag.putString(ACTIVE_MODE, mode.serializedName()));

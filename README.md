@@ -47,6 +47,15 @@ The mod and [PacketWeave 0.1.3+](https://github.com/UpperMoon0/PacketWeave) must
 
 The Builder's Multitool keeps each virtual gadget profile independent while sharing a single physical FE battery. Fresh profiles start on the intended native Building Gadgets mode: Build To Me for Build, Surface for Exchange, Copy for Copy/Paste, and Cut for Cut/Paste.
 
+To move blocks with the **Cut/Paste** profile:
+
+1. Right-click the first corner, then Shift + right-click the opposite corner.
+2. Open the menu and press **Cut selection**. The button stays disabled until both corners are selected.
+3. The tool automatically enters Paste and the menu shows placement instructions. Wait for the cut to finish, close the menu, aim at the destination, and right-click to paste once.
+4. After pasting, the tool returns to selecting a new area. Switching profiles preserves cut contents until they are pasted; a second cut cannot replace them.
+
+Selection and Paste offset controls update from the server while the menu is open. No Back/reselect step is needed.
+
 The server config option `multitoolRangeMultiplier` defaults to **2.0** (allowed: **1.0-4.0**). It scales targeting reach for **all five profiles**, Build To Me's distance cap, the Build/Exchange range cap, and destruction dimensions. With upstream defaults, targeting increases from **32 to 64** blocks and the Build/Exchange range setting increases from **15 to 30**. The range slider controls the size of Build/Exchange patterns; Build To Me instead uses targeting distance.
 
 `multitoolMaxRange` is an optional **Build/Exchange** override: **0** (the new default) follows the multiplier; **1-64** sets an explicit cap. Existing configurations such as `multitoolMaxRange=32` retain that override. Set it to **0** to follow the multiplier. Legacy 1.16.5 also follows Building Gadgets' configured native range and targeting distance.
@@ -165,7 +174,7 @@ The profile toolbar, Range, mode wheel and modifier controls use one flat visual
 
 Array repeats with signed X/Y/Z spacing in blocks. Radial repeats around the vertical Y axis with center offsets relative to the operation origin. Counts include the original. Enabled counts are 2-16; spacing and center offsets are bounded to -64..64. Turning a stage off preserves its configured count and offsets. Each expanded stage has its own reset. Composition order is shown only when multiple stages are enabled and lists only those stages.
 
-Valid numeric edits save on Enter or leaving the field. Toggles save immediately. The server confirms the active profile's settings; there is no extra Apply/Cancel screen. Invalid fields show a specific error. Scrolling and resizing preserve edits; settings do not overlap the operation wheel at smaller GUI sizes. Build and Exchange settings are independent. Copy/Paste, Cut/Paste, Destruction and native gadgets keep their existing workflows.
+Valid numeric edits save on Enter or leaving the field. Toggles save immediately. The server confirms the active profile's settings; there is no extra Apply/Cancel screen. Invalid fields show a specific error. Scrolling and resizing preserve edits; settings do not overlap the operation wheel at smaller GUI sizes. Build and Exchange settings are independent. Copy/Paste and Destruction keep their native actions; Cut/Paste advances automatically from selection to one-time placement.
 
 Radial geometry rounds to blocks and directional states rotate to the nearest supported quarter turn. Overlaps keep the first candidate and are charged once. Preview and placement share the common planner. Plans above 65,536 positions or coordinate overflow are rejected with feedback; normal inventory, FE, world and protection rules still apply. All four versions support live modifiers; update clients and servers together.
 
