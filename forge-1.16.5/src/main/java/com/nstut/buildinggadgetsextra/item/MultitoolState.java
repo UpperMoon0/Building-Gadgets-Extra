@@ -70,7 +70,9 @@ public final class MultitoolState {
             index %= ExchangingModes.values().length;
             ((GadgetExchanger) OurItems.EXCHANGING_GADGET_ITEM.get()).setMode(stack, index);
         } else if (mode == MultitoolMode.COPY_PASTE || mode == MultitoolMode.CUT_PASTE) {
-            index %= GadgetCopyPaste.ToolMode.values().length;
+            index = mode == MultitoolMode.CUT_PASTE
+                    ? (stack.getOrCreateTag().getBoolean("cutBufferActive") ? GadgetCopyPaste.ToolMode.PASTE.ordinal() : GadgetCopyPaste.ToolMode.COPY.ordinal())
+                    : index % GadgetCopyPaste.ToolMode.values().length;
             ((GadgetCopyPaste) OurItems.COPY_PASTE_GADGET_ITEM.get()).setMode(stack, index);
         }
         stack.getOrCreateTag().putInt(PROFILE + mode.serializedName(), index);
@@ -81,13 +83,6 @@ public final class MultitoolState {
         saveCurrentProfile(stack, previous);
         setActiveMode(stack, selected);
         if (selected == MultitoolMode.DESTRUCTION) return;
-        if (selected == MultitoolMode.CUT_PASTE) {
-            boolean hasCutBuffer = stack.getOrCreateTag().getBoolean("cutBufferActive");
-            int modeIndex = hasCutBuffer ? GadgetCopyPaste.ToolMode.PASTE.ordinal() : GadgetCopyPaste.ToolMode.COPY.ordinal();
-            ((GadgetCopyPaste) OurItems.COPY_PASTE_GADGET_ITEM.get()).setMode(stack, modeIndex);
-            stack.getOrCreateTag().putInt(PROFILE + selected.serializedName(), modeIndex);
-            return;
-        }
         applyProfile(stack, selected, getProfile(stack, selected));
     }
 }

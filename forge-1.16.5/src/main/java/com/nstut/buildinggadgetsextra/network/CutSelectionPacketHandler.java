@@ -31,6 +31,7 @@ public final class CutSelectionPacketHandler {
 
         ItemStack gadget = AbstractGadget.getGadget(player);
         if (!(gadget.getItem() instanceof GadgetCopyPaste)
+                || gadget.getOrCreateTag().getBoolean("cutBufferActive")
                 || GadgetCopyPaste.getToolMode(gadget) != GadgetCopyPaste.ToolMode.COPY) return;
 
         Optional<Region> selected = GadgetCopyPaste.getSelectedRegion(gadget);

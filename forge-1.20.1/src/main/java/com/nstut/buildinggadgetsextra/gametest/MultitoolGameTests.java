@@ -60,6 +60,9 @@ public final class MultitoolGameTests {
             cut.invoke(null, player);
             helper.assertTrue(GadgetNBT.hasCopyUUID(stack), "accepted cut must store its contents");
             buildId = GadgetNBT.getCopyUUID(stack);
+            GadgetNBT.setMode(stack, new com.direwolf20.buildinggadgets2.util.modes.Cut());
+            helper.assertTrue(GadgetNBT.getMode(stack).getId().getPath().equals("paste"), "older cut buffers must preview Paste before the first click");
+            MultitoolState.syncCutPasteMode(stack);
             helper.assertTrue(GadgetNBT.getMode(stack).getId().getPath().equals("paste"), "cut must activate paste without reopening the menu");
             helper.assertTrue(MultitoolState.getProfileMode(stack, MultitoolMode.CUT_PASTE).getPath().equals("paste"), "saved action must follow paste");
             multitool.selectTool(stack, MultitoolMode.BUILD);
@@ -70,6 +73,8 @@ public final class MultitoolGameTests {
             cut.invoke(null, player);
             helper.assertTrue(buildId.equals(GadgetNBT.getCopyUUID(stack)), "second cut must not replace pending contents");
             GadgetNBT.clearCopyUUID(stack);
+            GadgetNBT.setMode(stack, new com.direwolf20.buildinggadgets2.util.modes.Paste());
+            helper.assertTrue(GadgetNBT.getMode(stack).getId().getPath().equals("cut"), "empty buffer must never preview a stale Paste action");
             MultitoolState.syncCutPasteMode(stack);
             helper.assertTrue(GadgetNBT.getMode(stack).getId().getPath().equals("cut"), "consumed buffer returns to selection");
             helper.succeed();

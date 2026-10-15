@@ -21,6 +21,14 @@ public abstract class GadgetNBTMultitoolMixin {
     private static void buildingGadgetsExtra$freshProfileDefault(ItemStack stack,
                                                                   CallbackInfoReturnable<com.direwolf20.buildinggadgets2.util.modes.BaseMode> cir) {
         if (!(stack.getItem() instanceof BuildersMultitool)) return;
+        // Older stacks may already contain cut blocks while still storing "cut" as their mode.
+        // Resolve preview and interaction from the same buffer state before the first click.
+        if (MultitoolState.getActiveMode(stack) == MultitoolMode.CUT_PASTE) {
+            cir.setReturnValue(GadgetNBT.hasCopyUUID(stack)
+                    ? new com.direwolf20.buildinggadgets2.util.modes.Paste()
+                    : new com.direwolf20.buildinggadgets2.util.modes.Cut());
+            return;
+        }
         if (!stack.getOrDefault(BG2DataComponents.GADGET_MODE, "").isEmpty()) return;
 
         MultitoolMode active = MultitoolState.getActiveMode(stack);
