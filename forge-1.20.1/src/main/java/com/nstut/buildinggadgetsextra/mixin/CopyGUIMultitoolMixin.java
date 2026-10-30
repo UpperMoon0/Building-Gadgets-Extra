@@ -10,7 +10,6 @@ import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
-import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 import java.util.List;
 
@@ -21,7 +20,7 @@ import java.util.List;
  * Confirm. Keep upstream behavior for upstream gadgets and restore that interaction for the multitool.
  *
  * BG2's incrementer also leaves its integer backing value unchanged when the text box is typed into;
- * synchronize the focused field after character input so Confirm uses what is visible on screen.
+ * synchronize the focused field before BG2 reads it for confirmation, without intercepting a mapped Minecraft input method.
  */
 @Mixin(value = CopyGUI.class, remap = false)
 public abstract class CopyGUIMultitoolMixin {
@@ -35,9 +34,8 @@ public abstract class CopyGUIMultitoolMixin {
         }
     }
 
-    @Inject(method = "charTyped", at = @At("RETURN"))
-    private void buildingGadgetsExtra$syncTypedCopyValue(char character, int modifiers,
-                                                          CallbackInfoReturnable<Boolean> cir) {
+    @Inject(method = "sendPacket", at = @At("HEAD"))
+    private void buildingGadgetsExtra$syncTypedCopyValue(CallbackInfo ci) {
         if (!(copyPasteTool.getItem() instanceof BuildersMultitool)) return;
         for (GuiIncrementer incrementer : fields) {
             GuiTextFieldBase text = ((GuiIncrementerAccessor) (Object) incrementer).buildingGadgetsExtra$getField();
