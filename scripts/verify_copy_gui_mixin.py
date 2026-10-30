@@ -70,6 +70,7 @@ def verify(module: str) -> None:
             assert "CopyGUIMultitoolMixin" in config.get("client", []), "Client mixin not registered"
             constants = utf8_constants(archive.read(CLASS))
             assert "sendPacket" in constants, "CopyGUI mixin missing BG2-owned sendPacket target"
+            assert "coordsModeSwitch" in constants, "CopyGUI mixin missing pre-toggle draft synchronization"
             assert "charTyped" not in constants, "Unmapped vanilla charTyped injection in packaged JAR"
             assert "onChange" in constants, "Deferred value-change hook was removed"
             assert "CallbackInfoReturnable" not in " ".join(constants), "Stale charTyped callback remains"
