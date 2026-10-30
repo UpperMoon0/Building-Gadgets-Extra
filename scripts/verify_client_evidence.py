@@ -13,7 +13,7 @@ SERVER_STEPS = {"typed_coordinates_selection_only", "clear_selection_only", "ter
 SCREENSHOTS = ("cut-typed-selection.png", "cut-first-corner.png", "cut-ready.png", "cut-paste-ready.png", "cut-after-paste.png")
 
 
-def verify(directory, mode, require_cut=False, require_screenshots=False, require_legacy_cut_state=False):
+def verify(directory, mode, require_cut=False, require_screenshots=False, require_legacy_cut_state=False, require_copy_gui=False):
     directory = Path(directory)
     failures = list(directory.glob("*-fail.txt"))
     if failures:
@@ -22,6 +22,11 @@ def verify(directory, mode, require_cut=False, require_screenshots=False, requir
         path = directory / (role + "-pass.txt")
         if not path.is_file() or not path.read_text(encoding="utf-8").strip():
             raise ValueError("Missing nonempty " + path.name)
+    if require_copy_gui:
+        for role in ("client", "server"):
+            path = directory / ("copy-gui-" + role + "-pass.txt")
+            if not path.is_file() or not path.read_text(encoding="utf-8").strip():
+                raise ValueError("Native BG2 CopyGUI interaction was skipped: missing " + path.name)
     if require_legacy_cut_state:
         path = directory / "legacy-cut-state-pass.txt"
         if not path.is_file() or not path.read_text(encoding="utf-8").strip():
@@ -65,9 +70,10 @@ def main():
     parser.add_argument("--require-cut", action="store_true")
     parser.add_argument("--require-screenshots", action="store_true")
     parser.add_argument("--require-legacy-cut-state", action="store_true")
+    parser.add_argument("--require-copy-gui", action="store_true")
     args = parser.parse_args()
     try:
-        print(verify(args.result_dir, args.mode, args.require_cut, args.require_screenshots, args.require_legacy_cut_state))
+        print(verify(args.result_dir, args.mode, args.require_cut, args.require_screenshots, args.require_legacy_cut_state, args.require_copy_gui))
     except (ValueError, KeyError, OSError) as error:
         parser.exit(1, "Invalid test evidence: " + str(error) + "\n")
 
