@@ -14,8 +14,8 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import java.util.List;
 
 /**
- * Defer multitool copy-coordinate changes until Confirm and synchronize typed text immediately before
- * BG2 reads the incrementer values. Upstream gadgets retain BG2's native behavior.
+ * Defer multitool copy-coordinate changes until Confirm and synchronize all valid typed coordinates before
+ * BG2 reads or converts the incrementer values. Upstream gadgets retain BG2's native behavior.
  */
 @Mixin(value = CopyGUI.class, remap = false)
 public abstract class CopyGUIMultitoolMixin {
@@ -29,15 +29,33 @@ public abstract class CopyGUIMultitoolMixin {
         }
     }
 
+    // Both methods are owned by BG2, so the remap=false Mixin stays valid in production.
+    // The mode switch calls updateTextFields immediately afterward and would otherwise
+    // replace typed drafts with the incrementers' old cached integers.
+    @Inject(method = "coordsModeSwitch", at = @At("HEAD"))
+    private void buildingGadgetsExtra$syncBeforeModeSwitch(CallbackInfo ci) {
+        buildingGadgetsExtra$syncAllValidCopyValues();
+    }
+
     @Inject(method = "sendPacket", at = @At("HEAD"))
-    private void buildingGadgetsExtra$syncTypedCopyValue(CallbackInfo ci) {
+    private void buildingGadgetsExtra$syncBeforeConfirm(CallbackInfo ci) {
+        buildingGadgetsExtra$syncAllValidCopyValues();
+    }
+
+    private void buildingGadgetsExtra$syncAllValidCopyValues() {
         if (!(copyPasteTool.getItem() instanceof BuildersMultitool)) return;
         for (GuiIncrementer incrementer : fields) {
             GuiTextFieldBase text = ((GuiIncrementerAccessor) (Object) incrementer).buildingGadgetsExtra$getField();
-            if (!text.isFocused()) continue;
             String visible = text.getValue();
             if (visible == null || visible.isEmpty() || "-".equals(visible)) continue;
-            incrementer.setValue(text.getInt(), false);
+            // Numeric input is validated by BG2, but parse explicitly so incomplete drafts
+            // cannot silently turn into zero. Keep previous values for invalid drafts.
+            try {
+                int value = Integer.parseInt(visible);
+                if (value != incrementer.getValue()) incrementer.setValue(value, false);
+            } catch (NumberFormatException ignored) {
+                // Preserve the last committed value rather than corrupting the selection.
+            }
         }
     }
 }
