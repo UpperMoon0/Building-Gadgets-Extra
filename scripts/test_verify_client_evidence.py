@@ -28,7 +28,7 @@ class EvidenceTests(unittest.TestCase):
     def test_native_copy_gui_evidence_cannot_be_skipped(self):
         with self.assertRaisesRegex(ValueError, "CopyGUI interaction was skipped"):
             verify(self.folder, "dedicated", True, require_copy_gui=True)
-        for role in ("client", "server"):
+        for role in ("client", "server", "native"):
             (self.folder / ("copy-gui-" + role + "-pass.txt")).write_text("passed")
         verify(self.folder, "dedicated", True, require_copy_gui=True)
         (self.folder / "copy-gui-server-pass.txt").unlink()
