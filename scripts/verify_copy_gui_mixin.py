@@ -15,6 +15,8 @@ CLASS = "com/nstut/buildinggadgetsextra/mixin/CopyGUIMultitoolMixin.class"
 CONFIG = "buildinggadgetsextra.mixins.json"
 MODERN = {"forge-1.20.1", "neoforge-1.21.1", "neoforge-26.1.2"}
 LEGACY = "forge-1.16.5"
+ALIASES = {"forge1165": LEGACY, "forge1201": "forge-1.20.1",
+           "neoforge1211": "neoforge-1.21.1", "neoforge2612": "neoforge-26.1.2"}
 
 
 def utf8_constants(classfile: bytes) -> set[str]:
@@ -49,6 +51,7 @@ def utf8_constants(classfile: bytes) -> set[str]:
 
 
 def verify(module: str) -> None:
+    module = ALIASES.get(module, module)
     if module not in MODERN | {LEGACY}:
         raise ValueError(f"Unsupported module: {module}")
     jars = [path for path in (ROOT / module / "build/libs").glob("*.jar")
@@ -75,5 +78,5 @@ def verify(module: str) -> None:
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("module", choices=sorted(MODERN | {LEGACY}))
+    parser.add_argument("module", choices=sorted(MODERN | {LEGACY} | set(ALIASES)))
     verify(parser.parse_args().module)
