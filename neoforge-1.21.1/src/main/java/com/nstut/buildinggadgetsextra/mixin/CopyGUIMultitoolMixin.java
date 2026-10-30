@@ -10,13 +10,12 @@ import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
-import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 import java.util.List;
 
 /**
- * Defer multitool copy-coordinate changes until Confirm and keep typed text synchronized with the
- * incrementer's integer value. Upstream gadgets retain BG2's native behavior.
+ * Defer multitool copy-coordinate changes until Confirm and synchronize typed text immediately before
+ * BG2 reads the incrementer values. Upstream gadgets retain BG2's native behavior.
  */
 @Mixin(value = CopyGUI.class, remap = false)
 public abstract class CopyGUIMultitoolMixin {
@@ -30,9 +29,8 @@ public abstract class CopyGUIMultitoolMixin {
         }
     }
 
-    @Inject(method = "charTyped", at = @At("RETURN"))
-    private void buildingGadgetsExtra$syncTypedCopyValue(char character, int modifiers,
-                                                          CallbackInfoReturnable<Boolean> cir) {
+    @Inject(method = "sendPacket", at = @At("HEAD"))
+    private void buildingGadgetsExtra$syncTypedCopyValue(CallbackInfo ci) {
         if (!(copyPasteTool.getItem() instanceof BuildersMultitool)) return;
         for (GuiIncrementer incrementer : fields) {
             GuiTextFieldBase text = ((GuiIncrementerAccessor) (Object) incrementer).buildingGadgetsExtra$getField();
