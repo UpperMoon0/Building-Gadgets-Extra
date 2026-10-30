@@ -42,6 +42,7 @@ public final class ModernClientRangeAdapter implements ClientRangeRoundTripScena
     private String pendingPassDetail;
     private int copyTransportTicks;
     private boolean copyTransportVerified;
+    private boolean nativeCopyGuiProofWritten;
 
     /** Called even after the UI scenario is DONE so a missing/truncated delivery cannot pass. */
     public void tickCopyTransport() {
@@ -253,8 +254,20 @@ public final class ModernClientRangeAdapter implements ClientRangeRoundTripScena
         if (minecraft().screen instanceof CopyGUI) throw new IllegalStateException("BG2 Confirm did not close CopyGUI");
     }
     @Override public boolean nativeCopyGuiServerResultObserved() {
-        return GadgetNBT.getCopyStartPos(held()).equals(new BlockPos(4, -2, 0))
+        boolean observed = GadgetNBT.getCopyStartPos(held()).equals(new BlockPos(4, -2, 0))
                 && GadgetNBT.getCopyEndPos(held()).equals(new BlockPos(9, 0, 7));
+        if (observed && !nativeCopyGuiProofWritten) {
+            try {
+                Path dir = Paths.get(System.getProperty("bge.clientIntegrationResultDir", "build/client-integration"));
+                Files.createDirectories(dir);
+                Files.writeString(dir.resolve("copy-gui-client-pass.txt"),
+                        "BG2 CopyGUI typed four fields, switched coordinate modes twice, Confirm and server echo: start=(4,-2,0), end=(9,0,7)\\n");
+                nativeCopyGuiProofWritten = true;
+            } catch (IOException error) {
+                throw new IllegalStateException("cannot write BG2 CopyGUI client proof", error);
+            }
+        }
+        return observed;
     }
 
     @Override public boolean isDestructionScreenOpen() { return minecraft().screen instanceof MultitoolRadialScreen && ((MultitoolRadialScreen)minecraft().screen).toolSettings()!=null && ((MultitoolRadialScreen)minecraft().screen).toolSettings().kind().equals("destruction"); }
