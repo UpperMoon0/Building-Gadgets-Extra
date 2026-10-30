@@ -71,6 +71,7 @@ def verify(module: str) -> None:
             constants = utf8_constants(archive.read(CLASS))
             assert "sendPacket" in constants, "CopyGUI mixin missing BG2-owned sendPacket target"
             assert "coordsModeSwitch" in constants, "CopyGUI mixin missing pre-toggle draft synchronization"
+            assert "updateTextFields" in constants, "CopyGUI mixin missing post-toggle geometry restoration"
             assert "charTyped" not in constants, "Unmapped vanilla charTyped injection in packaged JAR"
             assert "onChange" in constants, "Deferred value-change hook was removed"
             assert "CallbackInfoReturnable" not in " ".join(constants), "Stale charTyped callback remains"
