@@ -139,7 +139,7 @@ A release is needed when `mod_version` differs from the previous `main` revision
 
 Before publishing:
 
-1. Update `mod_version` in `gradle.properties` and add or update `changelog/<mod_version>.md` (for example, [0.0.4](changelog/0.0.4.md)).
+1. Update `mod_version` in `gradle.properties` and add or update the matching versioned changelog at `changelog/<mod_version>.md`.
 2. Merge the version bump to `main`.
 3. The Release workflow detects the version change, runs the dedicated client E2E gate, reruns unit/contract tests, rebuilds all four supported JARs, and verifies the expected artifacts.
 4. The workflow publishes all four builds to CurseForge, creates or reuses the matching `v<mod_version>` tag, and publishes the GitHub release using the version changelog.
