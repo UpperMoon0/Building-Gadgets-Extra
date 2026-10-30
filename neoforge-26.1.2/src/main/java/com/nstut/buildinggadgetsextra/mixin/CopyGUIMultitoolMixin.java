@@ -4,25 +4,30 @@ import com.direwolf20.buildinggadgets2.client.screen.CopyGUI;
 import com.direwolf20.buildinggadgets2.client.screen.widgets.GuiIncrementer;
 import com.direwolf20.buildinggadgets2.client.screen.widgets.GuiTextFieldBase;
 import com.nstut.buildinggadgetsextra.item.BuildersMultitool;
-import net.minecraft.client.input.CharacterEvent;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.core.BlockPos;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
+import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
-import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 import java.util.List;
 
 /**
- * Defer multitool copy-coordinate changes until Confirm and keep typed text synchronized with the
- * incrementer's integer value. Upstream gadgets retain BG2's native behavior.
+ * Defer multitool copy-coordinate changes until Confirm and synchronize all valid typed coordinates before
+ * BG2 reads or converts the incrementer values. Upstream gadgets retain BG2's native behavior.
  */
 @Mixin(value = CopyGUI.class, remap = false)
 public abstract class CopyGUIMultitoolMixin {
     @Shadow private ItemStack copyPasteTool;
     @Shadow private List<GuiIncrementer> fields;
+    @Shadow private boolean absoluteCoords;
+    @Shadow private BlockPos startPos;
+
+    @Unique private BlockPos buildingGadgetsExtra$pendingWorldStart;
+    @Unique private BlockPos buildingGadgetsExtra$pendingWorldEnd;
 
     @Inject(method = "onChange", at = @At("HEAD"), cancellable = true)
     private void buildingGadgetsExtra$deferMultitoolCopyChanges(int value, CallbackInfo ci) {
@@ -31,16 +36,54 @@ public abstract class CopyGUIMultitoolMixin {
         }
     }
 
-    @Inject(method = "charTyped", at = @At("RETURN"))
-    private void buildingGadgetsExtra$syncTypedCopyValue(CharacterEvent event,
-                                                          CallbackInfoReturnable<Boolean> cir) {
+    // Both methods are owned by BG2, so the remap=false Mixin stays valid in production.
+    // The mode switch calls updateTextFields immediately afterward and would otherwise
+    // replace typed drafts with the incrementers' old cached integers.
+    @Inject(method = "coordsModeSwitch", at = @At("HEAD"))
+    private void buildingGadgetsExtra$syncBeforeModeSwitch(CallbackInfo ci) {
+        buildingGadgetsExtra$syncAllValidCopyValues();
+        if (!(copyPasteTool.getItem() instanceof BuildersMultitool) || fields.size() != 6) return;
+        BlockPos shownStart = new BlockPos(fields.get(0).getValue(), fields.get(1).getValue(), fields.get(2).getValue());
+        BlockPos shownEnd = new BlockPos(fields.get(3).getValue(), fields.get(4).getValue(), fields.get(5).getValue());
+        // BG2 computes relative End from the NEW Start when Confirm is pressed.
+        // Its mode toggle instead converts End using the OLD Start; preserve world geometry.
+        buildingGadgetsExtra$pendingWorldStart = absoluteCoords ? shownStart : startPos.offset(shownStart);
+        buildingGadgetsExtra$pendingWorldEnd = absoluteCoords ? shownEnd : buildingGadgetsExtra$pendingWorldStart.offset(shownEnd);
+    }
+
+    @Inject(method = "updateTextFields", at = @At("RETURN"))
+    private void buildingGadgetsExtra$restoreModeSwitchGeometry(CallbackInfo ci) {
+        if (buildingGadgetsExtra$pendingWorldStart == null || !(copyPasteTool.getItem() instanceof BuildersMultitool)) return;
+        BlockPos worldStart = buildingGadgetsExtra$pendingWorldStart;
+        BlockPos worldEnd = buildingGadgetsExtra$pendingWorldEnd;
+        buildingGadgetsExtra$pendingWorldStart = null;
+        buildingGadgetsExtra$pendingWorldEnd = null;
+        BlockPos shownStart = absoluteCoords ? worldStart : worldStart.subtract(startPos);
+        BlockPos shownEnd = absoluteCoords ? worldEnd : worldEnd.subtract(worldStart);
+        int[] values = {shownStart.getX(), shownStart.getY(), shownStart.getZ(),
+                shownEnd.getX(), shownEnd.getY(), shownEnd.getZ()};
+        for (int index = 0; index < values.length; index++) fields.get(index).setValue(values[index], false);
+    }
+
+    @Inject(method = "sendPacket", at = @At("HEAD"))
+    private void buildingGadgetsExtra$syncBeforeConfirm(CallbackInfo ci) {
+        buildingGadgetsExtra$syncAllValidCopyValues();
+    }
+
+    private void buildingGadgetsExtra$syncAllValidCopyValues() {
         if (!(copyPasteTool.getItem() instanceof BuildersMultitool)) return;
         for (GuiIncrementer incrementer : fields) {
             GuiTextFieldBase text = ((GuiIncrementerAccessor) (Object) incrementer).buildingGadgetsExtra$getField();
-            if (!text.isFocused()) continue;
             String visible = text.getValue();
             if (visible == null || visible.isEmpty() || "-".equals(visible)) continue;
-            incrementer.setValue(text.getInt(), false);
+            // Numeric input is validated by BG2, but parse explicitly so incomplete drafts
+            // cannot silently turn into zero. Keep previous values for invalid drafts.
+            try {
+                int value = Integer.parseInt(visible);
+                if (value != incrementer.getValue()) incrementer.setValue(value, false);
+            } catch (NumberFormatException ignored) {
+                // Preserve the last committed value rather than corrupting the selection.
+            }
         }
     }
 }

@@ -45,7 +45,10 @@ class ReleaseDocumentationContractTest {
             contains(document, "100,000-position bounding volume");
             contains(document, "Paste mode");
         }
-        contains(changelog, "## " + properties.getProperty("mod_version"));
+        String version = properties.getProperty("mod_version");
+        assertTrue(changelog.contains("## " + version)
+                        || changelog.contains("# Building Gadgets Extra " + version),
+                "Missing changelog release heading for " + version);
         contains(readme, "mod_version");
         contains(readme, "publishes all four builds to CurseForge");
         contains(readme, "No manual tag creation is required");

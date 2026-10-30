@@ -31,6 +31,7 @@ public final class ModernServerRangeObserver {
     private static boolean buildRangeObserved;
     private static boolean exchangeRangeObserved;
     private static boolean copySelectionObserved;
+    private static boolean nativeCopyGuiObserved;
     private static boolean destructionRangesObserved;
 
     private ModernServerRangeObserver() {}
@@ -54,6 +55,7 @@ public final class ModernServerRangeObserver {
         buildRangeObserved = false;
         exchangeRangeObserved = false;
         copySelectionObserved = false;
+        nativeCopyGuiObserved = false;
         destructionRangesObserved = false;
     }
 
@@ -89,6 +91,14 @@ public final class ModernServerRangeObserver {
                     && GadgetNBT.getCopyStartPos(held).getX() == ClientRangeRoundTripScenario.COPY_START_X_TARGET) {
                 copySelectionObserved = true;
             }
+            if (mode == MultitoolMode.COPY_PASTE
+                    && GadgetNBT.getCopyStartPos(held).equals(new BlockPos(4, -2, 0))
+                    && GadgetNBT.getCopyEndPos(held).equals(new BlockPos(9, 0, 7))) {
+                if (!nativeCopyGuiObserved) {
+                    nativeCopyGuiObserved = true;
+                    write("copy-gui-server-pass.txt", "authoritative BG2 CopyGUI Confirm: start=(4,-2,0), end=(9,0,7)");
+                }
+            }
             if (mode == MultitoolMode.DESTRUCTION
                     && GadgetNBT.getToolValue(held, "left") == ClientRangeRoundTripScenario.DESTRUCTION_LEFT_TARGET
                     && GadgetNBT.getToolValue(held, "depth") == ClientRangeRoundTripScenario.DESTRUCTION_DEPTH_TARGET) {
@@ -96,9 +106,9 @@ public final class ModernServerRangeObserver {
             }
         }
 
-        if (CutPasteServerScenario.complete() && modifiersObserved && buildRangeObserved && exchangeRangeObserved && copySelectionObserved && destructionRangesObserved) {
+        if (CutPasteServerScenario.complete() && modifiersObserved && buildRangeObserved && exchangeRangeObserved && copySelectionObserved && nativeCopyGuiObserved && destructionRangesObserved) {
             finished = true;
-            write("server-pass.txt", "authoritative server range/profile observer saw build/exchange profiles, copy selection, and destruction ranges");
+            write("server-pass.txt", "authoritative server range/profile observer saw build/exchange profiles, copy selection, native BG2 CopyGUI coordinates, and destruction ranges");
             return;
         }
 
@@ -107,6 +117,7 @@ public final class ModernServerRangeObserver {
             write("server-fail.txt", "server did not observe all UI mutations; build=" + buildRangeObserved
                     + " exchange=" + exchangeRangeObserved
                     + " copy=" + copySelectionObserved
+                    + " nativeCopyGui=" + nativeCopyGuiObserved
                     + " destruction=" + destructionRangesObserved
                     + " mode=" + MultitoolState.getActiveMode(held)
                     + " range=" + GadgetNBT.getToolRange(held)

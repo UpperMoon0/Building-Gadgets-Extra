@@ -40,6 +40,11 @@ public final class ClientRangeRoundTripScenario {
         default void clickCopyStartXPlus() { throw new UnsupportedOperationException(); }
         default void confirmCopyConfig() { throw new UnsupportedOperationException(); }
         default int clientCopyStartX() { return Integer.MIN_VALUE; }
+        default void openNativeCopyGui() { throw new UnsupportedOperationException(); }
+        default void editNativeCopyGuiFields() { throw new UnsupportedOperationException(); }
+        default void toggleNativeCopyGuiModeAndCheck(boolean absolute) { throw new UnsupportedOperationException(); }
+        default void confirmNativeCopyGui() { throw new UnsupportedOperationException(); }
+        default boolean nativeCopyGuiServerResultObserved() { return false; }
         default boolean isDestructionScreenOpen() { return false; }
         default void openDestructionConfig() { throw new UnsupportedOperationException(); }
         default int visibleDestructionLeft() { return Integer.MIN_VALUE; }
@@ -73,6 +78,12 @@ public final class ClientRangeRoundTripScenario {
         EDIT_COPY_START,
         VERIFY_COPY_EDIT,
         WAIT_COPY_SYNC,
+        OPEN_NATIVE_COPY_GUI,
+        EDIT_NATIVE_COPY_GUI,
+        TOGGLE_NATIVE_COPY_GUI_ABSOLUTE,
+        TOGGLE_NATIVE_COPY_GUI_RELATIVE,
+        CONFIRM_NATIVE_COPY_GUI,
+        WAIT_NATIVE_COPY_GUI_SYNC,
         OPEN_RADIAL_FOR_DESTRUCTION,
         SWITCH_DESTRUCTION,
         WAIT_DESTRUCTION_PROFILE,
@@ -249,6 +260,30 @@ public final class ClientRangeRoundTripScenario {
                     break;
                 case WAIT_COPY_SYNC:
                     if (adapter.clientCopyStartX() != COPY_START_X_TARGET) return;
+                    advance(Phase.OPEN_NATIVE_COPY_GUI, 1);
+                    break;
+                case OPEN_NATIVE_COPY_GUI:
+                    adapter.openNativeCopyGui();
+                    advance(Phase.EDIT_NATIVE_COPY_GUI, 2);
+                    break;
+                case EDIT_NATIVE_COPY_GUI:
+                    adapter.editNativeCopyGuiFields();
+                    advance(Phase.TOGGLE_NATIVE_COPY_GUI_ABSOLUTE, 1);
+                    break;
+                case TOGGLE_NATIVE_COPY_GUI_ABSOLUTE:
+                    adapter.toggleNativeCopyGuiModeAndCheck(true);
+                    advance(Phase.TOGGLE_NATIVE_COPY_GUI_RELATIVE, 1);
+                    break;
+                case TOGGLE_NATIVE_COPY_GUI_RELATIVE:
+                    adapter.toggleNativeCopyGuiModeAndCheck(false);
+                    advance(Phase.CONFIRM_NATIVE_COPY_GUI, 1);
+                    break;
+                case CONFIRM_NATIVE_COPY_GUI:
+                    adapter.confirmNativeCopyGui();
+                    advance(Phase.WAIT_NATIVE_COPY_GUI_SYNC, 1);
+                    break;
+                case WAIT_NATIVE_COPY_GUI_SYNC:
+                    if (!adapter.nativeCopyGuiServerResultObserved()) return;
                     advance(Phase.OPEN_RADIAL_FOR_DESTRUCTION, 1);
                     break;
                 case OPEN_RADIAL_FOR_DESTRUCTION:
@@ -318,7 +353,7 @@ public final class ClientRangeRoundTripScenario {
                             "reopened destruction UI lost Left; visible=" + adapter.visibleDestructionLeft());
                     require(adapter.visibleDestructionDepth() == DESTRUCTION_DEPTH_TARGET,
                             "reopened destruction UI lost Depth; visible=" + adapter.visibleDestructionDepth());
-                    succeed("range profile isolation, copy selection editing, and destruction persistence round trips passed");
+                    succeed("range profile isolation, native BG2 CopyGUI multi-field/mode-switch/Confirm, and destruction persistence round trips passed");
                     break;
                 default:
                     break;

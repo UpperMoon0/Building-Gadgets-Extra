@@ -25,6 +25,16 @@ class EvidenceTests(unittest.TestCase):
     def test_complete_matching_run_passes(self):
         verify(self.folder, "dedicated", True)
 
+    def test_native_copy_gui_evidence_cannot_be_skipped(self):
+        with self.assertRaisesRegex(ValueError, "CopyGUI interaction was skipped"):
+            verify(self.folder, "dedicated", True, require_copy_gui=True)
+        for role in ("client", "server", "native"):
+            (self.folder / ("copy-gui-" + role + "-pass.txt")).write_text("passed")
+        verify(self.folder, "dedicated", True, require_copy_gui=True)
+        (self.folder / "copy-gui-server-pass.txt").unlink()
+        with self.assertRaisesRegex(ValueError, "copy-gui-server-pass.txt"):
+            verify(self.folder, "dedicated", True, require_copy_gui=True)
+
     def test_generic_green_marker_cannot_hide_skipped_cut_flow(self):
         (self.folder / "cut-flow-client.json").unlink()
         with self.assertRaisesRegex(ValueError, "skipped"):
