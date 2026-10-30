@@ -23,7 +23,7 @@ def verify(directory, mode, require_cut=False, require_screenshots=False, requir
         if not path.is_file() or not path.read_text(encoding="utf-8").strip():
             raise ValueError("Missing nonempty " + path.name)
     if require_copy_gui:
-        for role in ("client", "server"):
+        for role in ("client", "server", "native"):
             path = directory / ("copy-gui-" + role + "-pass.txt")
             if not path.is_file() or not path.read_text(encoding="utf-8").strip():
                 raise ValueError("Native BG2 CopyGUI interaction was skipped: missing " + path.name)
