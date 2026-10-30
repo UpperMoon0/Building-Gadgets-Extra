@@ -158,15 +158,15 @@ The configurable range is 1–1,000,000. Larger copies use more memory and may p
 
 Forge 1.16.5 already supports larger world copies through Building Gadgets' `Max Copy Dimensions` server setting (and its operator-controlled `OverrideCopySize` command); Extra's `maxCopyVolume` controls native structure imports on that version.
 
-Large BG2 copy previews are synchronized in bounded chunks rather than one oversized packet. Preview transfers are limited to 8 MiB of serialized NBT and a 64 MiB decoded-NBT budget. Update Extra on both the server and all clients together; 0.0.5 uses a new preview-transfer protocol.
+Large BG2 copy previews are synchronized in bounded chunks rather than one oversized packet. Preview transfers are limited to 8 MiB of serialized NBT and a 64 MiB decoded-NBT budget. Update Extra on both the server and all clients together because copy-preview transport is protocol-sensitive.
 
-### Live Build/Exchange mirroring (0.0.6)
+### Live Build/Exchange mirroring
 
 On Forge 1.20.1, NeoForge 1.21.1, and NeoForge 26.1.2, select the Builder's Multitool Building or Exchanging profile and use **Horizontal Mirror** or **Vertical Mirror** in its radial menu. Each toggle stays with that profile. Preview and placement use the same mirrored candidates, with directional block states transformed per copy. Horizontal mirroring follows the facing axis; vertical mirroring uses the operation anchor. Existing candidates take precedence when copies overlap.
 
-Interactive plans are limited to 65,536 positions. Since 0.0.7, an oversized or overflowing plan rejects the operation, and live mirroring is also available on Forge 1.16.5. Update Extra on both server and clients together for matching protocols.
+Interactive plans are limited to 65,536 positions. Oversized or overflowing plans reject the operation, and live mirroring is also available on Forge 1.16.5. Update Extra on both server and clients together for matching protocols.
 
-### Composable live modifiers (0.0.7)
+### Composable live modifiers
 
 Select the Builder's Multitool Building or Exchanging profile. Its settings area contains Range, the existing profile options, and a **Modifiers** group. Horizontal/Vertical Mirror, Array and Radial have visible On/Off states. The separate Array and Radial icons (or disclosure buttons) expand their numeric controls inline; they do not open another screen.
 
