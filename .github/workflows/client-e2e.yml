@@ -173,7 +173,7 @@ jobs:
 
           cat "$RESULT_DIR/client-pass.txt"
           cat "$RESULT_DIR/server-pass.txt"
-          python3 "$GITHUB_WORKSPACE/scripts/verify_client_evidence.py" --result-dir "$RESULT_DIR" --mode dedicated ${{ matrix.name != 'Forge 1.16.5' && '--require-cut' || '--require-legacy-cut-state' }} ${{ matrix.name == 'Forge 1.20.1' && '--require-screenshots' || '' }}
+          python3 "$GITHUB_WORKSPACE/scripts/verify_client_evidence.py" --result-dir "$RESULT_DIR" --mode dedicated ${{ matrix.name != 'Forge 1.16.5' && '--require-cut --require-copy-gui' || '--require-legacy-cut-state' }} ${{ matrix.name == 'Forge 1.20.1' && '--require-screenshots' || '' }}
 
       - name: Upload dedicated E2E diagnostics
         if: always()
