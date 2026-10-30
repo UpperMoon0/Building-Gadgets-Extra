@@ -94,7 +94,10 @@ public final class ModernServerRangeObserver {
             if (mode == MultitoolMode.COPY_PASTE
                     && GadgetNBT.getCopyStartPos(held).equals(new BlockPos(4, -2, 0))
                     && GadgetNBT.getCopyEndPos(held).equals(new BlockPos(9, 0, 7))) {
-                nativeCopyGuiObserved = true;
+                if (!nativeCopyGuiObserved) {
+                    nativeCopyGuiObserved = true;
+                    write("copy-gui-server-pass.txt", "authoritative BG2 CopyGUI Confirm: start=(4,-2,0), end=(9,0,7)");
+                }
             }
             if (mode == MultitoolMode.DESTRUCTION
                     && GadgetNBT.getToolValue(held, "left") == ClientRangeRoundTripScenario.DESTRUCTION_LEFT_TARGET
