@@ -271,7 +271,7 @@ public final class ModernClientRangeAdapter implements ClientRangeRoundTripScena
     }
     @Override public void toggleNativeCopyGuiModeAndCheck(boolean absolute) {
         clickCopyGuiButton(true);
-        int[] expected = absolute ? new int[]{4, -2, 0, 6, 2, 7} : new int[]{3, -2, 0, 5, 2, 7};
+        int[] expected = absolute ? new int[]{4, -2, 0, 9, 0, 7} : new int[]{3, -2, 0, 5, 2, 7};
         List<GuiIncrementer> fields = copyGuiFields();
         for (int i = 0; i < 6; i++) {
             int actual = fields.get(i).getValue();
