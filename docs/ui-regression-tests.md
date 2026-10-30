@@ -22,6 +22,12 @@ Native server GameTests additionally cover repeated empty/populated Clear, selec
 
 Each stage has a bounded timeout with its name, held mode, buffer state, corners, and player pose in diagnostics. Tests exercise actual fullscreen changes; synthetic layout checks supplement them.
 
+## Building Gadgets 2 CopyGUI production regression
+
+On every modern loader, exercise the **upstream Building Gadgets 2 CopyGUI**, not just Extra's inline Copy/Cut settings. Use a Builder's Multitool with a known, server-authoritative start and end selection. Open the native CopyGUI, type valid signed values in multiple Start and End coordinate fields, move focus between fields, toggle relative/absolute coordinates in both directions, and press Confirm. Verify that the values shown after each mode switch and the final server-authoritative start/end positions match the intended geometry. Repeat with direct Confirm without a toggle, and with an incomplete `-` draft to ensure no accidental zero write. Ensure native Building Gadgets Copy/Paste gadgets retain their upstream immediate-change behavior when using incrementer buttons.
+
+The packaged-JAR verifier and real-client startup class-load gate catch production Mixin mapping errors, **not** coordinate editing semantics. Until the actual CopyGUI interaction sequence and server acknowledgement are exercised by the automated client/server driver on all three modern ports, mark this acceptance case **manual / unverified**; green CI alone does not establish it. The client driver must emit explicit per-port interaction evidence before this becomes an automated release gate.
+
 ## CI gates and artifacts
 
 `scripts/verify_client_evidence.py` requires nonempty client/server pass markers, absence of failure markers, and matching `cut-flow-client.json` / `cut-flow-server.json` proofs. Every required transition and both operation UUIDs must match. Dedicated proof cannot stand in for integrated proof, or vice versa. The verifier's negative tests remove every required transition in turn, remove the whole scenario, mismatch UUIDs, add failures beside passes, and remove screenshots; all must be rejected.
