@@ -226,6 +226,12 @@ public final class ModernClientRangeAdapter implements ClientRangeRoundTripScena
         for (int i = 0; i < indices.length; i++)
             if (!values[i].equals(copyGuiText(fields.get(indices[i])).getValue()))
                 throw new IllegalStateException("BG2 CopyGUI lost a draft after focus changed");
+        // An incomplete negative draft must not replace the previous valid End Y value (2).
+        fields.get(4).setFocused(true);
+        copyGuiText(fields.get(4)).setValue("-");
+        fields.get(4).setFocused(false);
+        if (!"-".equals(copyGuiText(fields.get(4)).getValue()))
+            throw new IllegalStateException("incomplete BG2 CopyGUI draft was unexpectedly rewritten");
     }
     private void clickCopyGuiButton(boolean modeToggle) {
         CopyGUI screen = requireCopyGui();
