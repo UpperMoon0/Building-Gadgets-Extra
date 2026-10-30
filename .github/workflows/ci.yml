@@ -278,7 +278,7 @@ jobs:
           cat "$RESULT_DIR/client-pass.txt"
           cat "$RESULT_DIR/server-pass.txt"
 
-          python3 "$GITHUB_WORKSPACE/scripts/verify_client_evidence.py" --result-dir "$RESULT_DIR" --mode integrated --require-cut ${{ matrix.id == 'forge1201' && '--require-screenshots' || '' }}
+          python3 "$GITHUB_WORKSPACE/scripts/verify_client_evidence.py" --result-dir "$RESULT_DIR" --mode integrated --require-cut --require-copy-gui ${{ matrix.id == 'forge1201' && '--require-screenshots' || '' }}
 
       - name: Upload integrated UI diagnostics
         if: always() && matrix.client_kind == 'integrated'
