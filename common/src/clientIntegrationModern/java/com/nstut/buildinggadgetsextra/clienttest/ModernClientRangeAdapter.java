@@ -2,6 +2,7 @@ package com.nstut.buildinggadgetsextra.clienttest;
 
 import com.direwolf20.buildinggadgets2.common.items.BaseGadget;
 import com.direwolf20.buildinggadgets2.client.screen.CopyGUI;
+import com.direwolf20.buildinggadgets2.setup.Registration;
 import com.direwolf20.buildinggadgets2.client.screen.widgets.GuiIncrementer;
 import com.direwolf20.buildinggadgets2.client.screen.widgets.GuiTextFieldBase;
 import com.nstut.buildinggadgetsextra.mixin.GuiIncrementerAccessor;
@@ -76,8 +77,10 @@ public final class ModernClientRangeAdapter implements ClientRangeRoundTripScena
                 }
             }
             if (copyTransportVerified && pendingPassDetail != null) {
+                verifyNativeGadgetImmediateChange();
                 finish("client-pass.txt", pendingPassDetail
-                        + "; million-position upstream copy delivery verified (UUIDs, count, air, bounds)", null, 0);
+                        + "; million-position upstream copy delivery verified (UUIDs, count, air, bounds)"
+                        + "; native BG2 gadget incrementer immediate-change behavior verified", null, 0);
             }
         } catch (Throwable error) {
             fail("million-position upstream copy delivery failed", error);
@@ -87,6 +90,27 @@ public final class ModernClientRangeAdapter implements ClientRangeRoundTripScena
     public ModernClientRangeAdapter(ScreenClicker clicker) {
         this.clicker = clicker; generalClicker=clicker;
     }
+
+    /** The upstream gadget must still send on incrementer changes; only the multitool defers. */
+    private void verifyNativeGadgetImmediateChange() throws IOException {
+        ItemStack nativeGadget = new ItemStack(Registration.CopyPaste_Gadget.get());
+        GadgetNBT.setCopyStartPos(nativeGadget, BlockPos.ZERO);
+        GadgetNBT.setCopyEndPos(nativeGadget, new BlockPos(2, 2, 2));
+        minecraft().setScreen(new CopyGUI(nativeGadget));
+        try {
+            List<GuiIncrementer> fields = copyGuiFields();
+            fields.get(0).setValue(1); // upstream onChange -> sendPacket -> relative Start X resets
+            if (fields.get(0).getValue() != 0)
+                throw new IllegalStateException("native BG2 gadget no longer commits incrementer changes immediately");
+            Path dir = Paths.get(System.getProperty("bge.clientIntegrationResultDir", "build/client-integration"));
+            Files.createDirectories(dir);
+            Files.writeString(dir.resolve("copy-gui-native-pass.txt"),
+                    "native BG2 Copy/Paste gadget immediately committed Start X incrementer change\\n");
+        } finally {
+            minecraft().setScreen(null);
+        }
+    }
+
 
     private Minecraft minecraft() {
         return Minecraft.getInstance();
