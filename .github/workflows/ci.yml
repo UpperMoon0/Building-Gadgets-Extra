@@ -322,9 +322,11 @@ jobs:
         uses: actions/setup-java@v5
         with:
           distribution: temurin
+          # Last version becomes JAVA_HOME. Gradle 8 must launch on Java 21;
+          # the nested NeoForge 26.x Gradle 9 build uses the Java 25 toolchain.
           java-version: |
-            21
             25
+            21
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
