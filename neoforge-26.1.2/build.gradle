@@ -94,7 +94,7 @@ neoForge {
 }
 
 dependencies {
-    implementation 'curse.maven:building-gadgets-298187:7964119'
+    implementation 'curse.maven:building-gadgets-298187:9364350'
     testImplementation platform('org.junit:junit-bom:5.11.4')
     testImplementation 'org.junit.jupiter:junit-jupiter'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
