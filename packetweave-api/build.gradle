@@ -1,3 +1,10 @@
 plugins { id 'java-library' }
 java.toolchain.languageVersion=JavaLanguageVersion.of(8)
 sourceSets.main.java.srcDir file('../vendor/PacketWeave/core/src/main/java')
+
+// The separate NeoForge 26.x Gradle 9 / Java 25 build includes this same project
+// directory. Keep its outputs separate from the Gradle 8 / Java 21 root build;
+// otherwise concurrent builds overwrite each other's PacketWeave classes/JARs.
+if (rootProject.name == 'building-gadgets-extra-neoforge-26.1.2') {
+    layout.buildDirectory = rootProject.layout.buildDirectory.dir('packetweave-api')
+}
