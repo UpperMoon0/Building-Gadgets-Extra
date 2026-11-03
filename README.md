@@ -20,12 +20,14 @@ Building Gadgets Extra is a Forge and NeoForge addon for [Building Gadgets](http
 
 | Minecraft | Loader | Building Gadgets | Java |
 | --- | --- | --- | --- |
-| 26.1.2 | NeoForge 26.1.2.82+ | Building Gadgets 2 1.4.6 | 25 |
-| 1.21.1 | NeoForge 21.1.240+ | Building Gadgets 2 1.3.9 | 21 |
+| 26.1.2 | NeoForge 26.1.2.82+ | Building Gadgets 2 1.4.6+ (build target: 26.1.2.3) | 25 |
+| 1.21.1 | NeoForge 21.1.240+ | Building Gadgets 2 1.3.9+ (build target: 21.1.1) | 21 |
 | 1.20.1 | Forge 47.4.21 | Building Gadgets 2 1.0.8 | 17 |
 | 1.16.5 | Forge 36.2.42 | Building Gadgets 3.8.4 | 8 |
 
-The mod and [PacketWeave 0.1.3+](https://github.com/UpperMoon0/PacketWeave) must be installed on the server and every connecting client. Clients also require [OpenUI MC 0.0.13+](https://github.com/UpperMoon0/OpenUI-MC). Use the matching Minecraft/loader artifact for each dependency.
+The Building Gadgets version constraints have no upper cap; the Minecraft and loader constraints still apply. Newer upstream builds may change APIs and must be runtime-tested before claiming compatibility. The listed build targets are the upstream releases used to compile this version.
+
+The mod and [PacketWeave 0.1.3+(https://github.com/UpperMoon0/PacketWeave) must be installed on the server and every connecting client. Clients also require [OpenUI MC 0.0.13+](https://github.com/UpperMoon0/OpenUI-MC). Use the matching Minecraft/loader artifact for each dependency.
 
 ## Installation
 
