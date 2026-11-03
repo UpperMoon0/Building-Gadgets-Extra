@@ -21,6 +21,7 @@ jobs:
     outputs:
       matrix: ${{ steps.plan.outputs.matrix }}
       run_versions: ${{ steps.plan.outputs.run_versions }}
+      release_dry_run: ${{ steps.plan.outputs.release_dry_run }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v5
@@ -148,9 +149,19 @@ jobs:
                   "client_kind": "none"
               }]
 
+          # The release task graph includes an independent Gradle 9/Java 25 build.
+          # Exercise it on PRs that modify shared outputs or release orchestration.
+          release_files = {
+              'build.gradle', 'settings.gradle', 'packetweave-api/build.gradle',
+              'neoforge-26.1.2/settings.gradle', 'neoforge-26.1.2/build.gradle',
+              '.github/workflows/release.yml', '.github/workflows/ci.yml',
+          }
+          release_dry_run = select_all or any(path in release_files for path in changed)
+
           with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as handle:
               handle.write("matrix=" + json.dumps({"include": include}, separators=(",", ":")) + "\n")
               handle.write("run_versions=" + ("true" if selected else "false") + "\n")
+              handle.write("release_dry_run=" + ("true" if release_dry_run else "false") + "\n")
 
           print("Changed files:")
           for path in changed:
@@ -294,3 +305,40 @@ jobs:
             ${{ matrix.working_directory }}/${{ matrix.integration_result_dir }}/*.log
             ${{ matrix.working_directory }}/${{ matrix.gametest_run_dir }}/logs/*.log
           if-no-files-found: ignore
+
+  release-dry-run:
+    name: Release aggregate build (PR dry run)
+    needs: changes
+    if: github.event_name == 'pull_request' && needs.changes.outputs.release_dry_run == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+        with:
+          submodules: recursive
+
+      - name: Setup Java 21 and Java 25
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: |
+            21
+            25
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Build pinned native dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          chmod +x ./gradlew ./neoforge-26.1.2/gradlew
+          for target in forge-1.16.5 forge-1.20.1 neoforge-1.21.1 neoforge-26.1.2; do
+            python3 scripts/prepare_dependencies.py --target "$target"
+          done
+
+      - name: Verify aggregate tests and release packages
+        run: |
+          ./gradlew test --no-parallel --no-daemon --no-configuration-cache
+          ./gradlew build --no-parallel --no-daemon --no-configuration-cache
