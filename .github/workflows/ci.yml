@@ -183,6 +183,7 @@ jobs:
           ./gradlew -p common test --no-daemon --no-configuration-cache
           python3 -m unittest discover -s scripts -p 'test_verify_client_evidence.py'
           python3 scripts/verify_bg2_dependency_contract.py
+          python3 -m unittest discover -s scripts -p 'test_verify_build_isolation.py'
 
   versions:
     name: Verify ${{ matrix.name }}
