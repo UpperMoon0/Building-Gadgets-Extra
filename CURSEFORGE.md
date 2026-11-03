@@ -47,10 +47,12 @@ Building Gadgets Extra works in singleplayer and multiplayer. For multiplayer, i
 
 ## Supported Versions
 
-- Minecraft 26.1.2 with NeoForge and Building Gadgets 2 1.4.6
-- Minecraft 1.21.1 with NeoForge and Building Gadgets 2 1.3.9
-- Minecraft 1.20.1 with Forge and Building Gadgets 2 1.0.8
-- Minecraft 1.16.5 with Forge and Building Gadgets 3.8.4
+- Minecraft 26.1.2 with NeoForge and Building Gadgets 2 1.4.6+ (compiled against 26.1.2.3)
+- Minecraft 1.21.1 with NeoForge and Building Gadgets 2 1.3.9+ (compiled against 21.1.1)
+- Minecraft 1.20.1 with Forge and Building Gadgets 2 1.0.8+
+- Minecraft 1.16.5 with Forge and Building Gadgets 3.8.4+
+
+The dependency ranges have no arbitrary upper bound. Use the artifact for the matching Minecraft and loader version; newer upstream versions are accepted by metadata but still require compatibility testing when upstream APIs change.
 
 ### Copying more than 100,000 positions
 
