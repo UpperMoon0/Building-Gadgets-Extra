@@ -132,10 +132,10 @@ jobs:
           python3 scripts/prepare_dependencies.py --target neoforge-26.1.2
 
       - name: Run tests
-        run: ./gradlew test --no-daemon --no-configuration-cache
+        run: ./gradlew test --no-parallel --no-daemon --no-configuration-cache
 
       - name: Build release JARs
-        run: ./gradlew build --no-daemon --no-configuration-cache
+        run: ./gradlew build --no-parallel --no-daemon --no-configuration-cache
 
       - name: Verify release JARs
         shell: bash
